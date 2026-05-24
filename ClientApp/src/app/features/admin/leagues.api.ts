@@ -1,4 +1,4 @@
-import { HttpClient } from '@angular/common/http';
+import { HttpClient, HttpParams } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
 import { Observable } from 'rxjs';
 
@@ -26,6 +26,7 @@ export interface DivisionSummary {
 export interface CreateLeagueRequest {
   name: string;
   description: string | null;
+  firstLeagueAdminUserId: string;
 }
 
 export interface CreateDivisionRequest {
@@ -36,6 +37,19 @@ export interface CreateDivisionRequest {
   winPoints: number;
   drawPoints: number;
   lossPoints: number;
+}
+
+export interface LeagueAdminSummary {
+  userId: string;
+  email: string;
+  displayName: string | null;
+  grantedAt: string;
+}
+
+export interface UserLookup {
+  id: string;
+  email: string;
+  displayName: string | null;
 }
 
 @Injectable({ providedIn: 'root' })
@@ -60,5 +74,22 @@ export class LeaguesApi {
 
   createDivision(leagueId: string, req: CreateDivisionRequest): Observable<DivisionSummary> {
     return this.http.post<DivisionSummary>(`/api/leagues/${leagueId}/divisions`, req);
+  }
+
+  listAdmins(leagueId: string): Observable<LeagueAdminSummary[]> {
+    return this.http.get<LeagueAdminSummary[]>(`/api/leagues/${leagueId}/admins`);
+  }
+
+  grantAdmin(leagueId: string, userId: string): Observable<void> {
+    return this.http.post<void>(`/api/leagues/${leagueId}/admins`, { userId });
+  }
+
+  revokeAdmin(leagueId: string, userId: string): Observable<void> {
+    return this.http.delete<void>(`/api/leagues/${leagueId}/admins/${userId}`);
+  }
+
+  lookupUser(email: string): Observable<UserLookup> {
+    const params = new HttpParams().set('email', email);
+    return this.http.get<UserLookup>('/api/users/lookup', { params });
   }
 }
