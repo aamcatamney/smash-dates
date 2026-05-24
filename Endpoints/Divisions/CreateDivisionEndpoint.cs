@@ -1,3 +1,4 @@
+using System.Security.Claims;
 using Npgsql;
 using smash_dates.Models;
 using smash_dates.Repositories;
@@ -32,20 +33,24 @@ public static class CreateDivisionEndpoint
 
     public static IEndpointRouteBuilder MapCreateDivisionEndpoint(this IEndpointRouteBuilder app)
     {
-        app.MapPost("", Handle)
-            .RequireAuthorization(AuthorizationPolicies.SystemAdmin);
+        app.MapPost("", Handle);
         return app;
     }
 
     private static async Task<IResult> Handle(
         Guid leagueId,
         CreateDivisionRequest request,
+        ClaimsPrincipal principal,
         ILeagueRepository leagues,
         IDivisionRepository divisions,
+        ILeagueAdminRepository leagueAdmins,
         CancellationToken ct)
     {
         var league = await leagues.GetByIdAsync(leagueId, ct);
         if (league is null) return Results.NotFound();
+
+        var authz = await LeagueAuthorizer.RequireLeagueAdminAsync(principal, leagueId, leagueAdmins, ct);
+        if (authz is not null) return authz;
 
         var name = (request.Name ?? string.Empty).Trim();
         if (name.Length == 0 || name.Length > MaxNameLength)

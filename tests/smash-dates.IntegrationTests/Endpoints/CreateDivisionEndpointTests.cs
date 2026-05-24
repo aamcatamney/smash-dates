@@ -58,6 +58,29 @@ public sealed class CreateDivisionEndpointTests : IntegrationTestBase
     }
 
     [Fact]
+    public async Task Post_AsLeagueAdmin_CreatesDivision_Returns201()
+    {
+        var sys = await Seeder.CreateSystemAdminUserAsync("sys@example.com", "correct-horse-battery");
+        var leagueAdmin = await Seeder.CreateUserAsync("la@example.com", "correct-horse-battery");
+        var leagueId = await Seeder.CreateLeagueAsync("NL", sys.Id);
+        await Seeder.GrantLeagueAdminAsync(leagueId, leagueAdmin.Id, sys.Id);
+        await Client.PostAsJsonAsync("/api/auth/login", new { email = "la@example.com", password = "correct-horse-battery" });
+
+        var response = await Client.PostAsJsonAsync($"/api/leagues/{leagueId}/divisions", new
+        {
+            name = "Mens 1",
+            gender = "Mens",
+            rank = 1,
+            rubbersPerMatch = 9,
+            winPoints = 2,
+            drawPoints = 1,
+            lossPoints = 0,
+        });
+
+        response.StatusCode.Should().Be(HttpStatusCode.Created);
+    }
+
+    [Fact]
     public async Task Post_AsNonAdmin_Returns403()
     {
         var admin = await Seeder.CreateSystemAdminUserAsync("admin@example.com", "correct-horse-battery");
