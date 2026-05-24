@@ -17,7 +17,7 @@ public static class CreateLeagueEndpoint
 
     public static IEndpointRouteBuilder MapCreateLeagueEndpoint(this IEndpointRouteBuilder app)
     {
-        app.MapPost("", Handle)
+        app.MapPost("/", Handle)
             .RequireAuthorization(AuthorizationPolicies.SystemAdmin);
         return app;
     }

@@ -8,7 +8,7 @@ public static class ListLeaguesEndpoint
 
     public static IEndpointRouteBuilder MapListLeaguesEndpoint(this IEndpointRouteBuilder app)
     {
-        app.MapGet("", Handle);
+        app.MapGet("/", Handle);
         return app;
     }
 

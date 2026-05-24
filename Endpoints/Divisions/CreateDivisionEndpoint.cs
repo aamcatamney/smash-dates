@@ -33,7 +33,7 @@ public static class CreateDivisionEndpoint
 
     public static IEndpointRouteBuilder MapCreateDivisionEndpoint(this IEndpointRouteBuilder app)
     {
-        app.MapPost("", Handle);
+        app.MapPost("/", Handle);
         return app;
     }
 

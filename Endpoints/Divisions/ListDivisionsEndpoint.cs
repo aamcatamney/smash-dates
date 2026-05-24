@@ -16,7 +16,7 @@ public static class ListDivisionsEndpoint
 
     public static IEndpointRouteBuilder MapListDivisionsEndpoint(this IEndpointRouteBuilder app)
     {
-        app.MapGet("", Handle);
+        app.MapGet("/", Handle);
         return app;
     }
 
