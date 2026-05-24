@@ -71,4 +71,23 @@ public sealed class TestDataSeeder
               RETURNING id",
             new { name, description, createdBy });
     }
+
+    public async Task<Guid> CreateDivisionAsync(
+        Guid leagueId,
+        string name,
+        DivisionGender gender,
+        int rank,
+        int rubbersPerMatch,
+        int winPoints = 2,
+        int drawPoints = 1,
+        int lossPoints = 0)
+    {
+        await using var conn = new NpgsqlConnection(_connectionString);
+        await conn.OpenAsync();
+        return await conn.ExecuteScalarAsync<Guid>(
+            @"INSERT INTO divisions (league_id, name, gender, rank, rubbers_per_match, win_points, draw_points, loss_points)
+              VALUES (@leagueId, @name, @gender, @rank, @rubbersPerMatch, @winPoints, @drawPoints, @lossPoints)
+              RETURNING id",
+            new { leagueId, name, gender = gender.ToString(), rank, rubbersPerMatch, winPoints, drawPoints, lossPoints });
+    }
 }
