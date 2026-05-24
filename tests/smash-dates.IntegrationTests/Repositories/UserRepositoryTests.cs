@@ -110,4 +110,15 @@ public sealed class UserRepositoryTests : IAsyncLifetime
 
         await act.Should().ThrowAsync<Exception>();
     }
+
+    [Fact]
+    public async Task GetByIdAsync_NewUser_HasIsSystemAdminFalse()
+    {
+        var id = await _repo.CreateAsync("plain@example.com", "correct-horse-battery", null);
+
+        var loaded = await _repo.GetByIdAsync(id);
+
+        loaded.Should().NotBeNull();
+        loaded!.IsSystemAdmin.Should().BeFalse();
+    }
 }

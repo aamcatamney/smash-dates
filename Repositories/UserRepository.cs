@@ -7,7 +7,7 @@ namespace smash_dates.Repositories;
 public sealed class UserRepository : IUserRepository
 {
     private const string SelectColumns =
-        "id, email, password_hash, display_name, is_active, created_at, updated_at";
+        "id, email, password_hash, display_name, is_active, is_system_admin, created_at, updated_at";
 
     private readonly IDbConnectionFactory _factory;
 
