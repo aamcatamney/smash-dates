@@ -1,4 +1,4 @@
-namespace claude_starter.Services.Auth;
+namespace smash_dates.Services.Auth;
 
 public sealed class BCryptPasswordHasher : IPasswordHasher
 {

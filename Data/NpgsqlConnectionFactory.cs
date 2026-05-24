@@ -1,7 +1,7 @@
 using System.Data;
 using Npgsql;
 
-namespace claude_starter.Data;
+namespace smash_dates.Data;
 
 public sealed class NpgsqlConnectionFactory : IDbConnectionFactory
 {

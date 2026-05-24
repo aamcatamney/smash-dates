@@ -1,6 +1,6 @@
 using Microsoft.AspNetCore.Antiforgery;
 
-namespace claude_starter.Endpoints.Auth;
+namespace smash_dates.Endpoints.Auth;
 
 public static class AuthEndpoints
 {

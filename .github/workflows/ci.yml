@@ -25,13 +25,13 @@ jobs:
           dotnet-version: '10.0.x'
 
       - name: Restore
-        run: dotnet restore claude-starter.sln
+        run: dotnet restore smash-dates.sln
 
       - name: Build
-        run: dotnet build claude-starter.sln --configuration Release --no-restore
+        run: dotnet build smash-dates.sln --configuration Release --no-restore
 
       - name: Test
-        run: dotnet test --solution claude-starter.sln --configuration Release --no-build
+        run: dotnet test --solution smash-dates.sln --configuration Release --no-build
 
   frontend:
     name: Frontend (build)

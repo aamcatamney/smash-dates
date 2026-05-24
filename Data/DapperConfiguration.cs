@@ -1,7 +1,7 @@
 using System.Runtime.CompilerServices;
 using Dapper;
 
-namespace claude_starter.Data;
+namespace smash_dates.Data;
 
 internal static class DapperConfiguration
 {

@@ -15,10 +15,10 @@ RUN npm run build -- --configuration production
 # Stage 2: build .NET backend
 FROM mcr.microsoft.com/dotnet/sdk:10.0 AS server-build
 WORKDIR /src
-COPY global.json claude-starter.csproj ./
-RUN dotnet restore claude-starter.csproj
+COPY global.json smash-dates.csproj ./
+RUN dotnet restore smash-dates.csproj
 COPY . .
-RUN dotnet publish claude-starter.csproj \
+RUN dotnet publish smash-dates.csproj \
     -c Release \
     -o /app/publish \
     --no-restore \
@@ -36,4 +36,4 @@ COPY --from=client-build /src/ClientApp/dist ./ClientApp/dist
 
 USER $APP_UID
 EXPOSE 8080
-ENTRYPOINT ["dotnet", "claude-starter.dll"]
+ENTRYPOINT ["dotnet", "smash-dates.dll"]

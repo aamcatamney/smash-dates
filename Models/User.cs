@@ -1,4 +1,4 @@
-namespace claude_starter.Models;
+namespace smash_dates.Models;
 
 public sealed class User
 {

@@ -1,6 +1,6 @@
 using DbUp;
 
-namespace claude_starter.Migrations;
+namespace smash_dates.Migrations;
 
 public static class DbMigrator
 {

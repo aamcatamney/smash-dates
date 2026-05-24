@@ -1,9 +1,9 @@
 using System.Xml.Linq;
 using Dapper;
 using Microsoft.AspNetCore.DataProtection.Repositories;
-using claude_starter.Data;
+using smash_dates.Data;
 
-namespace claude_starter.Services.DataProtection;
+namespace smash_dates.Services.DataProtection;
 
 public sealed class PostgresXmlRepository : IXmlRepository
 {

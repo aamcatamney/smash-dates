@@ -5,7 +5,7 @@ export const routes: Routes = [
   {
     path: '',
     pathMatch: 'full',
-    title: 'Home · claude-starter',
+    title: 'Home · smash-dates',
     canActivate: [authGuard],
     loadComponent: () => import('./features/landing/landing.page'),
   },

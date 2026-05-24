@@ -6,7 +6,7 @@
   },
   "newProjectRoot": "projects",
   "projects": {
-    "claude-starter": {
+    "smash-dates": {
       "projectType": "application",
       "schematics": {
         "@schematics/angular:component": {
@@ -83,10 +83,10 @@
           "builder": "@angular/build:dev-server",
           "configurations": {
             "production": {
-              "buildTarget": "claude-starter:build:production"
+              "buildTarget": "smash-dates:build:production"
             },
             "development": {
-              "buildTarget": "claude-starter:build:development"
+              "buildTarget": "smash-dates:build:development"
             }
           },
           "defaultConfiguration": "development"
@@ -96,7 +96,7 @@
           "options": {
             "runner": "vitest",
             "tsConfig": "tsconfig.spec.json",
-            "buildTarget": "claude-starter:build:development"
+            "buildTarget": "smash-dates:build:development"
           }
         }
       }

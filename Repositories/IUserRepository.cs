@@ -1,6 +1,6 @@
-using claude_starter.Models;
+using smash_dates.Models;
 
-namespace claude_starter.Repositories;
+namespace smash_dates.Repositories;
 
 public interface IUserRepository
 {

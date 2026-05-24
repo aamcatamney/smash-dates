@@ -9,7 +9,7 @@ import { AuthStore } from '../../core/auth/auth.store';
     <div class="min-h-screen flex flex-col bg-slate-50">
       <header class="border-b border-slate-200 bg-white">
         <div class="mx-auto flex max-w-5xl items-center justify-between px-4 py-3">
-          <span class="text-sm font-semibold tracking-wide text-slate-900">claude-starter</span>
+          <span class="text-sm font-semibold tracking-wide text-slate-900">smash-dates</span>
           <div class="flex items-center gap-4">
             <span class="text-sm text-slate-600" aria-live="polite">
               Hi, <span class="font-medium text-slate-900">{{ store.displayName() }}</span>

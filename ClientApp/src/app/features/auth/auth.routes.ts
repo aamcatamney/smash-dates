@@ -4,13 +4,13 @@ import { redirectIfAuthedGuard } from '../../core/auth/auth.guard';
 export const AUTH_ROUTES: Routes = [
   {
     path: 'login',
-    title: 'Sign in · claude-starter',
+    title: 'Sign in · smash-dates',
     canActivate: [redirectIfAuthedGuard],
     loadComponent: () => import('./login.page'),
   },
   {
     path: 'register',
-    title: 'Create account · claude-starter',
+    title: 'Create account · smash-dates',
     canActivate: [redirectIfAuthedGuard],
     loadComponent: () => import('./register.page'),
   },

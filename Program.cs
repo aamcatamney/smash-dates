@@ -9,12 +9,12 @@ using Microsoft.AspNetCore.DataProtection.Repositories;
 using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.Extensions.FileProviders;
 using Microsoft.Extensions.Options;
-using claude_starter.Data;
-using claude_starter.Endpoints.Auth;
-using claude_starter.Migrations;
-using claude_starter.Repositories;
-using claude_starter.Services.Auth;
-using claude_starter.Services.DataProtection;
+using smash_dates.Data;
+using smash_dates.Endpoints.Auth;
+using smash_dates.Migrations;
+using smash_dates.Repositories;
+using smash_dates.Services.Auth;
+using smash_dates.Services.DataProtection;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -29,7 +29,7 @@ DbMigrator.Apply(connectionString);
 
 builder.Services
     .AddDataProtection()
-    .SetApplicationName("claude-starter");
+    .SetApplicationName("smash-dates");
 
 builder.Services.AddSingleton<PostgresXmlRepository>();
 builder.Services.AddSingleton<IConfigureOptions<KeyManagementOptions>>(sp =>
@@ -128,7 +128,7 @@ if (!app.Environment.IsDevelopment())
     app.UseHttpsRedirection();
 }
 
-var clientAppPath = Path.Combine(builder.Environment.ContentRootPath, "ClientApp", "dist", "claude-starter", "browser");
+var clientAppPath = Path.Combine(builder.Environment.ContentRootPath, "ClientApp", "dist", "smash-dates", "browser");
 if (Directory.Exists(clientAppPath))
 {
     app.UseStaticFiles(new StaticFileOptions

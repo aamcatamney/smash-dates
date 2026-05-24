@@ -1,8 +1,8 @@
 using System.Security.Claims;
 using Microsoft.AspNetCore.Antiforgery;
-using claude_starter.Repositories;
+using smash_dates.Repositories;
 
-namespace claude_starter.Endpoints.Auth;
+namespace smash_dates.Endpoints.Auth;
 
 public static class MeEndpoint
 {

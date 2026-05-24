@@ -1,10 +1,10 @@
-# claude-starter
+# smash-dates
 
 .NET 10 web app serving an Angular client. Backend uses Dapper + Npgsql against PostgreSQL with SQL migrations applied on startup via DbUp.
 
 ## Stack
 
-- .NET 10 (single project, `claude-starter.csproj`)
+- .NET 10 (single project, `smash-dates.csproj`)
 - PostgreSQL
 - Dapper + Npgsql (repository pattern, no EF Core)
 - DbUp for migrations (embedded `Migrations/Scripts/*.sql`)
@@ -23,7 +23,7 @@
 Connection string is read from `ConnectionStrings:Postgres`. Default in `appsettings.json` points at `localhost:5432` as `postgres` / `postgres`. Override via env var:
 
 ```
-ConnectionStrings__Postgres=Host=db;Port=5432;Database=claude_starter;Username=...;Password=...
+ConnectionStrings__Postgres=Host=db;Port=5432;Database=smash_dates;Username=...;Password=...
 ```
 
 ## Running locally
@@ -56,14 +56,14 @@ cd ..
 
 ### Dev loop
 
-Two terminals, both same-origin (Angular output served from `wwwroot` by .NET — no `ng serve`, no proxy):
+Two terminals, both same-origin (Angular output served from `wwwroot` by .NET â€” no `ng serve`, no proxy):
 
 ```powershell
-# Terminal 1 — rebuild Angular on change into dist/
+# Terminal 1 â€” rebuild Angular on change into dist/
 cd ClientApp
 npm run watch
 
-# Terminal 2 — run API (also serves the Angular bundle and SPA fallback)
+# Terminal 2 â€” run API (also serves the Angular bundle and SPA fallback)
 dotnet run
 ```
 
@@ -95,34 +95,5 @@ Create `Migrations/Scripts/NNNN_description.sql` (zero-padded sequence). The fil
 
 ## License
 
-MIT — see [LICENSE](LICENSE).
+MIT â€” see [LICENSE](LICENSE).
 
-<!-- TEMPLATE:START -->
-## Using this template
-
-Clone the repo, then rename the project to your own name. The rename scripts replace every `claude-starter` / `claude_starter` placeholder in source + filenames, strip this section, delete `.git/`, clean `bin/` and `obj/`, and self-delete.
-
-**Linux / macOS:**
-
-```bash
-./rename-project.sh my-new-app
-```
-
-**Windows (PowerShell):**
-
-```powershell
-./rename-project.ps1 my-new-app
-```
-
-Name must be kebab-case, 2-50 chars, starting with a letter (`^[a-z][a-z0-9-]{1,49}$`). The snake-case form (`my_new_app`) is derived automatically for namespaces and the Postgres database name.
-
-Flags: `--yes` / `-y` skip the confirmation prompt; `--force` bypasses the safety guard that checks you are still in the template directory.
-
-After it finishes:
-
-```bash
-git init && git add -A && git commit -m "Initial commit"
-cd ClientApp && npm install
-dotnet restore my-new-app.sln
-```
-<!-- TEMPLATE:END -->

@@ -3,7 +3,7 @@ using Microsoft.AspNetCore.Antiforgery;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Cookies;
 
-namespace claude_starter.Endpoints.Auth;
+namespace smash_dates.Endpoints.Auth;
 
 public static class LogoutEndpoint
 {

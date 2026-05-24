@@ -1,6 +1,6 @@
 using System.Data;
 
-namespace claude_starter.Data;
+namespace smash_dates.Data;
 
 public interface IDbConnectionFactory
 {

@@ -3,10 +3,10 @@ using System.Security.Claims;
 using Microsoft.AspNetCore.Antiforgery;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Cookies;
-using claude_starter.Repositories;
-using claude_starter.Services.Auth;
+using smash_dates.Repositories;
+using smash_dates.Services.Auth;
 
-namespace claude_starter.Endpoints.Auth;
+namespace smash_dates.Endpoints.Auth;
 
 public static class RegisterEndpoint
 {

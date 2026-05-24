@@ -1,8 +1,8 @@
 using Dapper;
-using claude_starter.Data;
-using claude_starter.Models;
+using smash_dates.Data;
+using smash_dates.Models;
 
-namespace claude_starter.Repositories;
+namespace smash_dates.Repositories;
 
 public sealed class UserRepository : IUserRepository
 {

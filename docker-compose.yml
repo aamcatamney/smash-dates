@@ -1,10 +1,10 @@
 services:
   postgres:
     image: postgres:17-alpine
-    container_name: claude-starter-postgres
+    container_name: smash-dates-postgres
     restart: unless-stopped
     environment:
-      POSTGRES_DB: claude_starter
+      POSTGRES_DB: smash_dates
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: postgres
     ports:
@@ -12,7 +12,7 @@ services:
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres -d claude_starter"]
+      test: ["CMD-SHELL", "pg_isready -U postgres -d smash_dates"]
       interval: 5s
       timeout: 5s
       retries: 5
