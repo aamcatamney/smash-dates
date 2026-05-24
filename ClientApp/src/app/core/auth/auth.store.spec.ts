@@ -10,6 +10,7 @@ const sampleUser: AuthenticatedUser = {
   id: '00000000-0000-0000-0000-000000000001',
   email: 'jane@example.com',
   displayName: 'Jane',
+  isSystemAdmin: false,
 };
 
 function asObservable<T>(value: T): Observable<T> {
@@ -140,6 +141,18 @@ describe('AuthStore', () => {
 
     expect(store.status()).toBe('anonymous');
     expect(store.user()).toBeNull();
+  });
+
+  it('isSystemAdmin exposes the user flag', async () => {
+    const adminUser: AuthenticatedUser = { ...sampleUser, isSystemAdmin: true };
+    api = createApiMock({ me: () => asObservable(adminUser) });
+    TestBed.resetTestingModule();
+    TestBed.configureTestingModule({ providers: [{ provide: AuthApi, useFactory: () => api }] });
+    const store = TestBed.inject(AuthStore);
+
+    await store.loadMe();
+
+    expect(store.isSystemAdmin()).toBe(true);
   });
 
   it('displayName falls back to email when displayName missing', async () => {

@@ -26,6 +26,7 @@ export const AuthStore = signalStore(
   withComputed((store) => ({
     isAuthed: computed(() => store.status() === 'authed'),
     isResolved: computed(() => store.status() !== 'unknown'),
+    isSystemAdmin: computed(() => store.user()?.isSystemAdmin ?? false),
     displayName: computed(() => {
       const user = store.user();
       if (!user) return null;
