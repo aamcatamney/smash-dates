@@ -1,4 +1,5 @@
 using Dapper;
+using Npgsql;
 using smash_dates.Data;
 using smash_dates.Models;
 
@@ -8,6 +9,9 @@ public sealed class UserRepository : IUserRepository
 {
     private const string SelectColumns =
         "id, email, password_hash, display_name, is_active, is_system_admin, created_at, updated_at";
+
+    // Constraint names referenced by Postgres exceptions (SQLSTATE 23505).
+    private const string SystemAdminUniqueConstraint = "ux_users_one_system_admin";
 
     private readonly IDbConnectionFactory _factory;
 
@@ -56,14 +60,31 @@ public sealed class UserRepository : IUserRepository
                 transaction: tx,
                 cancellationToken: ct));
 
-        var id = await conn.ExecuteScalarAsync<Guid>(
-            new CommandDefinition(
-                @"INSERT INTO users (email, password_hash, display_name, is_system_admin)
-                  VALUES (lower(@email), @passwordHash, @displayName, @isSystemAdmin)
-                  RETURNING id",
-                new { email, passwordHash, displayName, isSystemAdmin = !hasAnyUser },
-                transaction: tx,
-                cancellationToken: ct));
+        var insertSql = @"INSERT INTO users (email, password_hash, display_name, is_system_admin)
+                          VALUES (lower(@email), @passwordHash, @displayName, @isSystemAdmin)
+                          RETURNING id";
+
+        Guid id;
+        try
+        {
+            id = await conn.ExecuteScalarAsync<Guid>(
+                new CommandDefinition(
+                    insertSql,
+                    new { email, passwordHash, displayName, isSystemAdmin = !hasAnyUser },
+                    transaction: tx,
+                    cancellationToken: ct));
+        }
+        catch (PostgresException ex) when (ex.SqlState == "23505" && ex.ConstraintName == SystemAdminUniqueConstraint)
+        {
+            // Lost the race to become the first SystemAdmin: a concurrent registration
+            // committed first. Retry as a non-admin user inside the same transaction.
+            id = await conn.ExecuteScalarAsync<Guid>(
+                new CommandDefinition(
+                    insertSql,
+                    new { email, passwordHash, displayName, isSystemAdmin = false },
+                    transaction: tx,
+                    cancellationToken: ct));
+        }
 
         tx.Commit();
         return id;

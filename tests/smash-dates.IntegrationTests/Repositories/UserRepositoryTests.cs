@@ -1,3 +1,4 @@
+using Dapper;
 using smash_dates.Data;
 using smash_dates.IntegrationTests.Infrastructure;
 using smash_dates.Repositories;
@@ -141,5 +142,25 @@ public sealed class UserRepositoryTests : IAsyncLifetime
         var loaded = await _repo.GetByIdAsync(secondId);
 
         loaded!.IsSystemAdmin.Should().BeFalse();
+    }
+
+    [Fact]
+    public async Task SchemaEnforces_OnlyOneSystemAdmin()
+    {
+        // Direct INSERTs bypass the repo's bootstrap logic and prove the partial
+        // unique index would catch a concurrent race that the application logic missed.
+        await using var conn = new Npgsql.NpgsqlConnection(_fixture.ConnectionString);
+        await conn.OpenAsync();
+        await conn.ExecuteAsync(
+            @"INSERT INTO users (email, password_hash, is_system_admin)
+              VALUES ('first@example.com', 'h', true)");
+
+        var act = () => conn.ExecuteAsync(
+            @"INSERT INTO users (email, password_hash, is_system_admin)
+              VALUES ('second@example.com', 'h', true)");
+
+        var ex = await act.Should().ThrowAsync<Npgsql.PostgresException>();
+        ex.Which.SqlState.Should().Be("23505");
+        ex.Which.ConstraintName.Should().Be("ux_users_one_system_admin");
     }
 }

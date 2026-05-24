@@ -69,7 +69,9 @@ public static class CreateDivisionEndpoint
                 leagueId, name, gender, request.Rank, request.RubbersPerMatch,
                 request.WinPoints, request.DrawPoints, request.LossPoints, ct);
 
-            return Results.Created($"/api/leagues/{leagueId}/divisions/{id}", new DivisionResponse(
+            // No GET-by-id endpoint exists yet; point Location at the list URL so clients
+            // can refetch without 404. A per-division GET can be added in a later slice.
+            return Results.Created($"/api/leagues/{leagueId}/divisions", new DivisionResponse(
                 id, leagueId, name, gender.ToString(), request.Rank, request.RubbersPerMatch,
                 request.WinPoints, request.DrawPoints, request.LossPoints));
         }
