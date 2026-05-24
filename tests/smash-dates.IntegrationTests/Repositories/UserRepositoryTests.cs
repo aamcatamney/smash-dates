@@ -1,3 +1,4 @@
+using Dapper;
 using smash_dates.Data;
 using smash_dates.IntegrationTests.Infrastructure;
 using smash_dates.Repositories;
@@ -109,5 +110,57 @@ public sealed class UserRepositoryTests : IAsyncLifetime
         var act = () => _repo.CreateAsync("EVE@example.com", "hash", null);
 
         await act.Should().ThrowAsync<Exception>();
+    }
+
+    [Fact]
+    public async Task GetByIdAsync_NonFirstUser_HasIsSystemAdminFalse()
+    {
+        await _repo.CreateAsync("first@example.com", "hash", null);
+        var id = await _repo.CreateAsync("plain@example.com", "correct-horse-battery", null);
+
+        var loaded = await _repo.GetByIdAsync(id);
+
+        loaded.Should().NotBeNull();
+        loaded!.IsSystemAdmin.Should().BeFalse();
+    }
+
+    [Fact]
+    public async Task CreateAsync_WhenNoUsersExist_PromotesNewUserToSystemAdmin()
+    {
+        var id = await _repo.CreateAsync("first@example.com", "hash", null);
+        var loaded = await _repo.GetByIdAsync(id);
+
+        loaded!.IsSystemAdmin.Should().BeTrue();
+    }
+
+    [Fact]
+    public async Task CreateAsync_WhenUsersExist_DoesNotPromote()
+    {
+        await _repo.CreateAsync("first@example.com", "hash1", null);
+
+        var secondId = await _repo.CreateAsync("second@example.com", "hash2", null);
+        var loaded = await _repo.GetByIdAsync(secondId);
+
+        loaded!.IsSystemAdmin.Should().BeFalse();
+    }
+
+    [Fact]
+    public async Task SchemaEnforces_OnlyOneSystemAdmin()
+    {
+        // Direct INSERTs bypass the repo's bootstrap logic and prove the partial
+        // unique index would catch a concurrent race that the application logic missed.
+        await using var conn = new Npgsql.NpgsqlConnection(_fixture.ConnectionString);
+        await conn.OpenAsync();
+        await conn.ExecuteAsync(
+            @"INSERT INTO users (email, password_hash, is_system_admin)
+              VALUES ('first@example.com', 'h', true)");
+
+        var act = () => conn.ExecuteAsync(
+            @"INSERT INTO users (email, password_hash, is_system_admin)
+              VALUES ('second@example.com', 'h', true)");
+
+        var ex = await act.Should().ThrowAsync<Npgsql.PostgresException>();
+        ex.Which.SqlState.Should().Be("23505");
+        ex.Which.ConstraintName.Should().Be("ux_users_one_system_admin");
     }
 }

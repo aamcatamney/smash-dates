@@ -89,6 +89,26 @@ cd ClientApp
 npm test
 ```
 
+## Foundation slice
+
+The first vertical slice exposes the bootstrap admin surface for the league-scheduling domain:
+
+- `POST /api/auth/register` — first registered user is automatically promoted to **SystemAdmin** (other users default to non-admin).
+- `POST /api/leagues` *(SystemAdmin)* — create a League.
+- `GET  /api/leagues` *(authenticated)* — list Leagues.
+- `GET  /api/leagues/{id}` *(authenticated)* — get one League.
+- `POST /api/leagues/{leagueId}/divisions` *(SystemAdmin)* — create a Division (with `gender`, `rank`, `rubbersPerMatch`, `winPoints`/`drawPoints`/`lossPoints`).
+- `GET  /api/leagues/{leagueId}/divisions` *(authenticated)* — list Divisions.
+
+Frontend routes (Angular, lazy-loaded under `/admin`, gated by `systemAdminGuard`):
+
+- `/admin/leagues` — list + create form.
+- `/admin/leagues/:id` — detail with divisions list + create form.
+
+Subsequent slices will add Clubs, Teams, Venues, Seasons, Weeks, Blocked Dates, the LeagueAdmin/ClubAdmin role grants, and the auto-scheduler.
+
+The domain glossary lives in [CONTEXT.md](CONTEXT.md); architectural decisions are recorded under [docs/adr/](docs/adr/).
+
 ## Adding a migration
 
 Create `Migrations/Scripts/NNNN_description.sql` (zero-padded sequence). The file is automatically included as an embedded resource. DbUp applies scripts in name order on next startup.

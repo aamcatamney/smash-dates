@@ -1,4 +1,5 @@
 using Dapper;
+using Npgsql;
 using smash_dates.Data;
 using smash_dates.Models;
 
@@ -7,7 +8,10 @@ namespace smash_dates.Repositories;
 public sealed class UserRepository : IUserRepository
 {
     private const string SelectColumns =
-        "id, email, password_hash, display_name, is_active, created_at, updated_at";
+        "id, email, password_hash, display_name, is_active, is_system_admin, created_at, updated_at";
+
+    // Constraint names referenced by Postgres exceptions (SQLSTATE 23505).
+    private const string SystemAdminUniqueConstraint = "ux_users_one_system_admin";
 
     private readonly IDbConnectionFactory _factory;
 
@@ -39,13 +43,51 @@ public sealed class UserRepository : IUserRepository
     public async Task<Guid> CreateAsync(string email, string passwordHash, string? displayName, CancellationToken ct = default)
     {
         using var conn = _factory.Create();
-        return await conn.ExecuteScalarAsync<Guid>(
+        if (conn is System.Data.Common.DbConnection dbConn)
+        {
+            await dbConn.OpenAsync(ct);
+        }
+        else
+        {
+            conn.Open();
+        }
+
+        using var tx = conn.BeginTransaction();
+
+        var hasAnyUser = await conn.ExecuteScalarAsync<bool>(
             new CommandDefinition(
-                @"INSERT INTO users (email, password_hash, display_name)
-                  VALUES (lower(@email), @passwordHash, @displayName)
-                  RETURNING id",
-                new { email, passwordHash, displayName },
+                "SELECT EXISTS(SELECT 1 FROM users)",
+                transaction: tx,
                 cancellationToken: ct));
+
+        var insertSql = @"INSERT INTO users (email, password_hash, display_name, is_system_admin)
+                          VALUES (lower(@email), @passwordHash, @displayName, @isSystemAdmin)
+                          RETURNING id";
+
+        Guid id;
+        try
+        {
+            id = await conn.ExecuteScalarAsync<Guid>(
+                new CommandDefinition(
+                    insertSql,
+                    new { email, passwordHash, displayName, isSystemAdmin = !hasAnyUser },
+                    transaction: tx,
+                    cancellationToken: ct));
+        }
+        catch (PostgresException ex) when (ex.SqlState == "23505" && ex.ConstraintName == SystemAdminUniqueConstraint)
+        {
+            // Lost the race to become the first SystemAdmin: a concurrent registration
+            // committed first. Retry as a non-admin user inside the same transaction.
+            id = await conn.ExecuteScalarAsync<Guid>(
+                new CommandDefinition(
+                    insertSql,
+                    new { email, passwordHash, displayName, isSystemAdmin = false },
+                    transaction: tx,
+                    cancellationToken: ct));
+        }
+
+        tx.Commit();
+        return id;
     }
 
     public async Task<bool> UpdatePasswordAsync(Guid id, string passwordHash, CancellationToken ct = default)

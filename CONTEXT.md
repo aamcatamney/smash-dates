@@ -1,0 +1,107 @@
+# Smash Dates — Domain Glossary
+
+> Living document. Captures the canonical language of the badminton-league scheduling domain. No implementation detail.
+
+## Roles and Access
+
+- **User** — global account (email + password).
+- **SystemAdmin** — bootstrap role. Creates Leagues; assigns first LeagueAdmin per League. First registered user becomes SystemAdmin.
+- **LeagueAdmin@League** — per-League role-grant. Creates Divisions, Clubs in this League, Teams, assigns Teams to Divisions, configures Seasons + Weeks, runs scheduler, force-confirms Matches.
+- **ClubAdmin@Club** — per-Club role-grant. Manages Venues, enters blocked dates (Club-wide and per-Team), accepts/rejects proposed Matches for the Club.
+- Authenticated Users may **read** any League's schedule. No `Player` role and no anonymous public view in v1.
+- One User may hold many role-grants simultaneously (e.g. LeagueAdmin of League A + ClubAdmin of Club B).
+
+## Terms
+
+### Blocked Date
+A `(StartDate, EndDate, Reason)` range during which one of three scopes cannot host or play Matches. Single-day blocks are stored as a range with `StartDate == EndDate`. `Reason` is required free text.
+
+Three scopes, all owned by the relevant Club admin:
+- **VenueBlocked** — venue unavailable (other booking, maintenance).
+- **ClubBlocked** — no Team of the Club plays (club AGM, social night).
+- **TeamBlocked** — this Team cannot play (player exams, holiday).
+
+### Venue
+A physical hall belonging to a Club. A Club has 1..N Venues, all interchangeable from the scheduler's perspective. Each Venue has a court **capacity** of 1 or 2 simultaneous Matches per slot, and a list of **unavailable dates**.
+
+### Match Status
+Lifecycle: `Proposed → Confirmed → Played | Postponed → Rejected`.
+
+- A newly-scheduled Match starts `Proposed`.
+- Both the home Club admin **and** the away Club admin must accept for it to become `Confirmed`.
+- If either rejects, the Match becomes `Rejected`. The scheduler re-runs **incrementally** — `Confirmed` Matches are locked; only `Rejected` and `Proposed` Matches are re-allocated.
+- League admin may force a Match to `Confirmed` to break stalemates.
+- After `Active`, a Match may be **Postponed**: ClubAdmin requests, both Clubs + LeagueAdmin must approve, then Match returns to `Proposed` and the scheduler reruns just that Match.
+- A `Confirmed` Match on or after its scheduled date may be marked `Played` with `HomeScore`, `AwayScore`, `PlayedOn`. The Match has a calendar date only — kick-off time is agreed between Clubs out-of-band.
+- A Match may be recorded as a **Walkover** by either side. Score awarded is the maximum for the winning side (e.g. 9–0 in a 9-rubber Division). Standings count it as a normal win; UI annotates the result with a walkover marker.
+
+### Home Venue (for a Match)
+Selected by the scheduler at scheduling time from the home Club's pool of Venues — whichever has capacity on the chosen date. No team-level or club-level fixed venue.
+
+### Match
+A **tie** between two Teams played on a single night. Composed internally of multiple rubbers (singles + doubles), but the scheduler treats a Match as one atomic unit placed on a `(Venue, Date)` slot. Rubber-level scoring is out of scope.
+
+A `(Venue, Date)` slot may host 1 or 2 Matches simultaneously (court capacity).
+
+### Division
+A persistent bucket within a League (e.g. "Mens 1", "Mens 2", "Mixed 1"). Has:
+- a fixed **gender type**: `Mens` | `Ladies` | `Mixed`,
+- a rank order,
+- **`RubbersPerMatch`** — number of rubbers (mini-games) contested per Match. Typical: 9 for Mens/Mixed (no draws), 6 for Ladies (draws possible at 3–3). Set by LeagueAdmin per Division.
+- **`PointsScheme`** — `(WinPoints, DrawPoints, LossPoints)`. Defaults to `(2, 1, 0)` but configurable per Division.
+
+Match `HomeScore + AwayScore` must equal `RubbersPerMatch`.
+
+Persists across Seasons. Membership (which Teams play in it) is set per-Season.
+
+### Standings
+Materialised league table per `(Season, Division)`, refreshed on Match result entry. Columns: played, won, drawn, lost, rubbers for, rubbers against, rubber difference, points. Sort: points desc → rubber difference desc → rubbers for desc → head-to-head.
+
+### Team
+A persistent named roster belonging to one Club (e.g. "Acme Mens 1", "Acme Mixed 2"). Persists across Seasons. Has an inherent gender (`Mens`/`Ladies`/`Mixed`) matching the Divisions it can play in.
+
+### Season Entry
+A per-Season assignment placing a Team into a Division for that Season. Lets Teams promote/relegate between Divisions without losing identity.
+
+### Club
+A persistent organisation. Created by `SystemAdmin`. Can join many Leagues (via Club-League membership invites — League invites, Club accepts).
+
+### Week Type
+Binary attribute of each calendar week in a Season:
+- **Level week** — `Mens` and `Ladies` divisions play.
+- **Mixed week** — `Mixed` divisions play.
+
+No other week types (no cup weeks, no bye weeks) at this stage.
+
+### Scheduling Constraints
+
+**Hard (scheduler must satisfy):**
+- A Team plays at most one Match per calendar date.
+- A `(Venue, Date)` slot hosts no more than its court capacity (1 or 2 Matches).
+- A Venue cannot host on its unavailable dates.
+- A Team cannot play on its Club's blocked dates or the Team's own blocked dates.
+- Derby-first rule (see [Derby](#derby)).
+- Every Team plays every other Team in its Division home and away (double round-robin).
+- Matches land only in Weeks of the matching WeekType for the Division's gender.
+
+**Soft (scheduler optimises, penalty-weighted):**
+- Minimise back-to-back / closely-spaced Matches for any one Team.
+- Maximise gap between the home leg and the away leg of the same pairing (target ≈ half season length).
+
+Penalty weights and target gap values are **per-League configuration** with sensible defaults.
+
+### Derby
+A Match between two Teams from the same Club in the same Division. When a Club has N≥2 Teams in one Division, all `N*(N-1)` intra-club Matches (each pair home+away) must be scheduled **before** any of those Teams plays any other Team in the Division. Hard scheduler constraint.
+
+### Season Lifecycle
+States: `Draft → Scheduling → Proposed → Active → Closed`.
+- `Draft` — admin configures Weeks, assigns Teams to Divisions, clubs accept League membership and enter blocked dates.
+- `Scheduling` — LeagueAdmin clicks **Generate Schedule**; scheduler runs asynchronously as a background job.
+- `Proposed` — schedule exists; clubs accept/reject Matches; LeagueAdmin may force-confirm.
+- `Active` — first Match date reached; blocked-date editing locked.
+- `Closed` — season end date passed.
+
+Blocked dates may be added freely while Season is `Draft` or `Proposed`. From `Active` onward, blocked-date additions are forbidden.
+
+### Season
+Has a start date, end date, and an **explicit ordered list of Weeks**. Each Week has `(StartDate, EndDate, WeekType)` — a calendar range (typically Mon–Sun) within which Matches scheduled in that week may land on any night. Admin enters the week list when creating the Season; gaps (Christmas, tournaments) are handled by simply omitting weeks from the list.
