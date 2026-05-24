@@ -10,7 +10,7 @@ namespace smash_dates.Endpoints.Auth;
 public static class LoginEndpoint
 {
     public sealed record LoginRequest(string Email, string Password, bool RememberMe);
-    public sealed record UserResponse(Guid Id, string Email, string? DisplayName);
+    public sealed record UserResponse(Guid Id, string Email, string? DisplayName, bool IsSystemAdmin);
 
     public static IEndpointRouteBuilder MapLoginEndpoint(this IEndpointRouteBuilder app)
     {
@@ -44,11 +44,16 @@ public static class LoginEndpoint
             return Results.Problem(statusCode: StatusCodes.Status401Unauthorized, title: "Invalid credentials");
         }
 
-        var identity = new ClaimsIdentity(new[]
+        var claims = new List<Claim>
         {
-            new Claim(ClaimTypes.NameIdentifier, user.Id.ToString()),
-            new Claim(ClaimTypes.Email, user.Email),
-        }, CookieAuthenticationDefaults.AuthenticationScheme);
+            new(ClaimTypes.NameIdentifier, user.Id.ToString()),
+            new(ClaimTypes.Email, user.Email),
+        };
+        if (user.IsSystemAdmin)
+        {
+            claims.Add(new Claim(AuthorizationPolicies.SystemAdminClaim, "true"));
+        }
+        var identity = new ClaimsIdentity(claims, CookieAuthenticationDefaults.AuthenticationScheme);
 
         var props = new AuthenticationProperties
         {
@@ -65,6 +70,6 @@ public static class LoginEndpoint
 
         logger.LogInformation("Login success. UserId={UserId}", user.Id);
 
-        return Results.Ok(new UserResponse(user.Id, user.Email, user.DisplayName));
+        return Results.Ok(new UserResponse(user.Id, user.Email, user.DisplayName, user.IsSystemAdmin));
     }
 }

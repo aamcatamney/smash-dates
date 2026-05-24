@@ -56,12 +56,19 @@ public static class RegisterEndpoint
         var displayName = string.IsNullOrWhiteSpace(request.DisplayName) ? null : request.DisplayName!.Trim();
 
         var id = await users.CreateAsync(email, hash, displayName, ct);
+        var created = await users.GetByIdAsync(id, ct)
+            ?? throw new InvalidOperationException("User vanished immediately after creation.");
 
-        var identity = new ClaimsIdentity(new[]
+        var claims = new List<Claim>
         {
-            new Claim(ClaimTypes.NameIdentifier, id.ToString()),
-            new Claim(ClaimTypes.Email, email.ToLowerInvariant()),
-        }, CookieAuthenticationDefaults.AuthenticationScheme);
+            new(ClaimTypes.NameIdentifier, id.ToString()),
+            new(ClaimTypes.Email, email.ToLowerInvariant()),
+        };
+        if (created.IsSystemAdmin)
+        {
+            claims.Add(new Claim(AuthorizationPolicies.SystemAdminClaim, "true"));
+        }
+        var identity = new ClaimsIdentity(claims, CookieAuthenticationDefaults.AuthenticationScheme);
 
         await http.SignInAsync(
             CookieAuthenticationDefaults.AuthenticationScheme,
@@ -72,6 +79,6 @@ public static class RegisterEndpoint
 
         logger.LogInformation("Register success. UserId={UserId}", id);
 
-        return Results.Ok(new LoginEndpoint.UserResponse(id, email.ToLowerInvariant(), displayName));
+        return Results.Ok(new LoginEndpoint.UserResponse(id, email.ToLowerInvariant(), displayName, created.IsSystemAdmin));
     }
 }

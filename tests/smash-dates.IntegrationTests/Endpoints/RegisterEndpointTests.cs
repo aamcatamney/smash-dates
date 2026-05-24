@@ -68,4 +68,33 @@ public sealed class RegisterEndpointTests : IntegrationTestBase
 
         response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
     }
+
+    [Fact]
+    public async Task Register_FirstUser_IsSystemAdmin()
+    {
+        var response = await Client.PostAsJsonAsync("/api/auth/register", new
+        {
+            email = "first@example.com",
+            password = "correct-horse-battery",
+        });
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        var body = await response.Content.ReadFromJsonAsync<LoginEndpoint.UserResponse>();
+        body!.IsSystemAdmin.Should().BeTrue();
+    }
+
+    [Fact]
+    public async Task Register_SecondUser_IsNotSystemAdmin()
+    {
+        await Seeder.CreateUserAsync("first@example.com", "correct-horse-battery");
+
+        var response = await Client.PostAsJsonAsync("/api/auth/register", new
+        {
+            email = "second@example.com",
+            password = "correct-horse-battery",
+        });
+
+        var body = await response.Content.ReadFromJsonAsync<LoginEndpoint.UserResponse>();
+        body!.IsSystemAdmin.Should().BeFalse();
+    }
 }

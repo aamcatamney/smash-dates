@@ -90,7 +90,12 @@ builder.Services
         };
     });
 
-builder.Services.AddAuthorization();
+builder.Services.AddAuthorization(options =>
+{
+    options.AddPolicy(AuthorizationPolicies.SystemAdmin, policy =>
+        policy.RequireAuthenticatedUser()
+              .RequireClaim(AuthorizationPolicies.SystemAdminClaim, "true"));
+});
 
 builder.Services.AddAntiforgery(options =>
 {
