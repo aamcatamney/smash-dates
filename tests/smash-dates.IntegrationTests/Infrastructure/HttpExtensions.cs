@@ -29,4 +29,18 @@ internal static class HttpExtensions
 
     public static Task<HttpResponseMessage> PostJsonAsync<T>(this HttpClient client, string path, T body) =>
         client.PostAsJsonAsync(path, body);
+
+    public static async Task LoginAsAsync(this HttpClient client, string email, string password, TestDataSeeder seeder)
+    {
+        await seeder.CreateUserAsync(email, password);
+        var response = await client.PostAsJsonAsync("/api/auth/login", new { email, password });
+        response.EnsureSuccessStatusCode();
+    }
+
+    public static async Task LoginAsSystemAdminAsync(this HttpClient client, string email, string password, TestDataSeeder seeder)
+    {
+        await seeder.CreateSystemAdminUserAsync(email, password);
+        var response = await client.PostAsJsonAsync("/api/auth/login", new { email, password });
+        response.EnsureSuccessStatusCode();
+    }
 }

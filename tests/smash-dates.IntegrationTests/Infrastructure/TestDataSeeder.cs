@@ -40,6 +40,27 @@ public sealed class TestDataSeeder
         };
     }
 
+    public async Task<User> CreateSystemAdminUserAsync(string email, string password, string? displayName = null)
+    {
+        var hash = _hasher.Hash(password);
+        await using var conn = new NpgsqlConnection(_connectionString);
+        await conn.OpenAsync();
+        var id = await conn.ExecuteScalarAsync<Guid>(
+            @"INSERT INTO users (email, password_hash, display_name, is_active, is_system_admin)
+              VALUES (lower(@email), @hash, @displayName, true, true)
+              RETURNING id",
+            new { email, hash, displayName });
+        return new User
+        {
+            Id = id,
+            Email = email.ToLowerInvariant(),
+            PasswordHash = hash,
+            DisplayName = displayName,
+            IsActive = true,
+            IsSystemAdmin = true,
+        };
+    }
+
     public async Task<Guid> CreateLeagueAsync(string name, Guid createdBy, string? description = null)
     {
         await using var conn = new NpgsqlConnection(_connectionString);
