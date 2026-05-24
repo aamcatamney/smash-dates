@@ -26,22 +26,23 @@ public static class RevokeLeagueAdminEndpoint
         var authz = await LeagueAuthorizer.RequireLeagueAdminAsync(principal, leagueId, admins, ct);
         if (authz is not null) return authz;
 
-        var isAdmin = await admins.IsAdminAsync(leagueId, userId, ct);
-        if (!isAdmin) return Results.NotFound();
-
-        if (!principal.IsSystemAdmin())
+        // SystemAdmin can force-revoke even when it would leave the league adminless.
+        if (principal.IsSystemAdmin())
         {
-            var count = await admins.CountByLeagueAsync(leagueId, ct);
-            if (count <= 1)
-            {
-                return Results.Problem(
-                    statusCode: StatusCodes.Status409Conflict,
-                    title: "Cannot remove the last LeagueAdmin",
-                    detail: "Grant LeagueAdmin to another user first, or ask a SystemAdmin to force the removal.");
-            }
+            var removed = await admins.RevokeAsync(leagueId, userId, ct);
+            return removed ? Results.NoContent() : Results.NotFound();
         }
 
-        await admins.RevokeAsync(leagueId, userId, ct);
-        return Results.NoContent();
+        var outcome = await admins.RevokeUnlessLastAsync(leagueId, userId, ct);
+        return outcome switch
+        {
+            RevokeResult.Revoked => Results.NoContent(),
+            RevokeResult.NotAdmin => Results.NotFound(),
+            RevokeResult.WouldBeLastAdmin => Results.Problem(
+                statusCode: StatusCodes.Status409Conflict,
+                title: "Cannot remove the last LeagueAdmin",
+                detail: "Grant LeagueAdmin to another user first, or ask a SystemAdmin to force the removal."),
+            _ => Results.Problem(statusCode: StatusCodes.Status500InternalServerError),
+        };
     }
 }

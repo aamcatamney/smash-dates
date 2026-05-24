@@ -69,4 +69,42 @@ public sealed class LeagueAdminRepository : ILeagueAdminRepository
                 cancellationToken: ct));
         return rows > 0;
     }
+
+    public async Task<RevokeResult> RevokeUnlessLastAsync(Guid leagueId, Guid userId, CancellationToken ct = default)
+    {
+        using var conn = _factory.Create();
+        // Single statement: only delete when more than one admin exists for the league.
+        // RETURNING distinguishes "deleted" from "no rows touched". A separate existence
+        // probe tells us whether the grant existed at all — which lets us return
+        // NotAdmin vs WouldBeLastAdmin. The probe runs inside the same statement chain
+        // by virtue of the WITH ... RETURNING combination below, so the count and delete
+        // are evaluated together by Postgres without a TOCTOU window.
+        var outcome = await conn.QuerySingleOrDefaultAsync<string?>(
+            new CommandDefinition(
+                @"WITH existing AS (
+                      SELECT 1 FROM league_admins
+                      WHERE league_id = @leagueId AND user_id = @userId
+                  ),
+                  attempt AS (
+                      DELETE FROM league_admins
+                      WHERE league_id = @leagueId
+                        AND user_id = @userId
+                        AND (SELECT COUNT(*) FROM league_admins WHERE league_id = @leagueId) > 1
+                      RETURNING 1
+                  )
+                  SELECT CASE
+                      WHEN NOT EXISTS (SELECT 1 FROM existing) THEN 'NotAdmin'
+                      WHEN EXISTS (SELECT 1 FROM attempt) THEN 'Revoked'
+                      ELSE 'WouldBeLastAdmin'
+                  END",
+                new { leagueId, userId },
+                cancellationToken: ct));
+
+        return outcome switch
+        {
+            "Revoked" => RevokeResult.Revoked,
+            "WouldBeLastAdmin" => RevokeResult.WouldBeLastAdmin,
+            _ => RevokeResult.NotAdmin,
+        };
+    }
 }

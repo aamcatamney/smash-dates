@@ -97,7 +97,7 @@ The first vertical slice exposes the bootstrap admin surface for the league-sche
 - `POST /api/leagues` *(SystemAdmin)* — create a League.
 - `GET  /api/leagues` *(authenticated)* — list Leagues.
 - `GET  /api/leagues/{id}` *(authenticated)* — get one League.
-- `POST /api/leagues/{leagueId}/divisions` *(SystemAdmin)* — create a Division (with `gender`, `rank`, `rubbersPerMatch`, `winPoints`/`drawPoints`/`lossPoints`).
+- `POST /api/leagues/{leagueId}/divisions` *(LeagueAdmin@thisLeague | SystemAdmin)* — create a Division (with `gender`, `rank`, `rubbersPerMatch`, `winPoints`/`drawPoints`/`lossPoints`). (Originally SystemAdmin-only; broadened in slice 2a.)
 - `GET  /api/leagues/{leagueId}/divisions` *(authenticated)* — list Divisions.
 
 Frontend routes (Angular, lazy-loaded under `/admin`, gated by `systemAdminGuard`):
