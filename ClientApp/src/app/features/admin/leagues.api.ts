@@ -10,9 +10,7 @@ export interface LeagueSummary {
   description: string | null;
 }
 
-export interface LeagueDetail extends LeagueSummary {
-  createdBy: string;
-}
+export type LeagueDetail = LeagueSummary;
 
 export interface DivisionSummary {
   id: string;
