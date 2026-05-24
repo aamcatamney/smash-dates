@@ -14,6 +14,7 @@ using smash_dates.Endpoints.Auth;
 using smash_dates.Endpoints.Divisions;
 using smash_dates.Endpoints.LeagueAdmins;
 using smash_dates.Endpoints.Leagues;
+using smash_dates.Endpoints.Users;
 using smash_dates.Migrations;
 using smash_dates.Repositories;
 using smash_dates.Services.Auth;
@@ -165,6 +166,7 @@ app.MapAuthEndpoints();
 app.MapLeagueEndpoints();
 app.MapDivisionEndpoints();
 app.MapLeagueAdminEndpoints();
+app.MapUserEndpoints();
 
 if (Directory.Exists(clientAppPath))
 {
