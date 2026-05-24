@@ -1,0 +1,7 @@
+namespace smash_dates.IntegrationTests.Infrastructure;
+
+[CollectionDefinition(Name)]
+public sealed class IntegrationTestCollection : ICollectionFixture<PostgresFixture>
+{
+    public const string Name = "integration";
+}
