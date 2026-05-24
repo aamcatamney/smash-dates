@@ -39,4 +39,15 @@ public sealed class TestDataSeeder
             IsActive = isActive,
         };
     }
+
+    public async Task<Guid> CreateLeagueAsync(string name, Guid createdBy, string? description = null)
+    {
+        await using var conn = new NpgsqlConnection(_connectionString);
+        await conn.OpenAsync();
+        return await conn.ExecuteScalarAsync<Guid>(
+            @"INSERT INTO leagues (name, description, created_by)
+              VALUES (@name, @description, @createdBy)
+              RETURNING id",
+            new { name, description, createdBy });
+    }
 }
