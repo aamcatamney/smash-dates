@@ -112,13 +112,34 @@ public sealed class UserRepositoryTests : IAsyncLifetime
     }
 
     [Fact]
-    public async Task GetByIdAsync_NewUser_HasIsSystemAdminFalse()
+    public async Task GetByIdAsync_NonFirstUser_HasIsSystemAdminFalse()
     {
+        await _repo.CreateAsync("first@example.com", "hash", null);
         var id = await _repo.CreateAsync("plain@example.com", "correct-horse-battery", null);
 
         var loaded = await _repo.GetByIdAsync(id);
 
         loaded.Should().NotBeNull();
+        loaded!.IsSystemAdmin.Should().BeFalse();
+    }
+
+    [Fact]
+    public async Task CreateAsync_WhenNoUsersExist_PromotesNewUserToSystemAdmin()
+    {
+        var id = await _repo.CreateAsync("first@example.com", "hash", null);
+        var loaded = await _repo.GetByIdAsync(id);
+
+        loaded!.IsSystemAdmin.Should().BeTrue();
+    }
+
+    [Fact]
+    public async Task CreateAsync_WhenUsersExist_DoesNotPromote()
+    {
+        await _repo.CreateAsync("first@example.com", "hash1", null);
+
+        var secondId = await _repo.CreateAsync("second@example.com", "hash2", null);
+        var loaded = await _repo.GetByIdAsync(secondId);
+
         loaded!.IsSystemAdmin.Should().BeFalse();
     }
 }

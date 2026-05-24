@@ -39,13 +39,34 @@ public sealed class UserRepository : IUserRepository
     public async Task<Guid> CreateAsync(string email, string passwordHash, string? displayName, CancellationToken ct = default)
     {
         using var conn = _factory.Create();
-        return await conn.ExecuteScalarAsync<Guid>(
+        if (conn is System.Data.Common.DbConnection dbConn)
+        {
+            await dbConn.OpenAsync(ct);
+        }
+        else
+        {
+            conn.Open();
+        }
+
+        using var tx = conn.BeginTransaction();
+
+        var hasAnyUser = await conn.ExecuteScalarAsync<bool>(
             new CommandDefinition(
-                @"INSERT INTO users (email, password_hash, display_name)
-                  VALUES (lower(@email), @passwordHash, @displayName)
-                  RETURNING id",
-                new { email, passwordHash, displayName },
+                "SELECT EXISTS(SELECT 1 FROM users)",
+                transaction: tx,
                 cancellationToken: ct));
+
+        var id = await conn.ExecuteScalarAsync<Guid>(
+            new CommandDefinition(
+                @"INSERT INTO users (email, password_hash, display_name, is_system_admin)
+                  VALUES (lower(@email), @passwordHash, @displayName, @isSystemAdmin)
+                  RETURNING id",
+                new { email, passwordHash, displayName, isSystemAdmin = !hasAnyUser },
+                transaction: tx,
+                cancellationToken: ct));
+
+        tx.Commit();
+        return id;
     }
 
     public async Task<bool> UpdatePasswordAsync(Guid id, string passwordHash, CancellationToken ct = default)
