@@ -109,6 +109,17 @@ Subsequent slices will add Clubs, Teams, Venues, Seasons, Weeks, Blocked Dates, 
 
 The domain glossary lives in [CONTEXT.md](CONTEXT.md); architectural decisions are recorded under [docs/adr/](docs/adr/).
 
+## Slice 2a — League admin grants
+
+- `POST /api/leagues` *(SystemAdmin)* — body now requires `firstLeagueAdminUserId`. League + first admin grant are created atomically.
+- `GET  /api/leagues/{id}/admins` *(authenticated)*
+- `POST /api/leagues/{id}/admins` *(LeagueAdmin@thisLeague | SystemAdmin)* — body `{ userId }`. Idempotent.
+- `DELETE /api/leagues/{id}/admins/{userId}` *(LeagueAdmin@thisLeague | SystemAdmin)* — last-admin removal returns 409 unless caller is SystemAdmin.
+- `POST /api/leagues/{leagueId}/divisions` *(LeagueAdmin@thisLeague | SystemAdmin)* — previously SystemAdmin-only.
+- `GET  /api/users/lookup?email=...` *(authenticated)* — resolves email → userId for granter UIs.
+
+Frontend route added: `/admin/leagues/:id/admins`. Create-league form now also requires the first admin's email.
+
 ## Adding a migration
 
 Create `Migrations/Scripts/NNNN_description.sql` (zero-padded sequence). The file is automatically included as an embedded resource. DbUp applies scripts in name order on next startup.
