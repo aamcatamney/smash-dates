@@ -83,6 +83,21 @@ public sealed class TestDataSeeder
             new { leagueId, userId, grantedBy });
     }
 
+    public async Task<Guid> CreateClubAsync(
+        string name,
+        string shortCode,
+        string contactEmail = "club@example.com",
+        string? notes = null)
+    {
+        await using var conn = new NpgsqlConnection(_connectionString);
+        await conn.OpenAsync();
+        return await conn.ExecuteScalarAsync<Guid>(
+            @"INSERT INTO clubs (name, short_code, contact_email, notes)
+              VALUES (@name, @shortCode, @contactEmail, @notes)
+              RETURNING id",
+            new { name, shortCode, contactEmail, notes });
+    }
+
     public async Task<Guid> CreateDivisionAsync(
         Guid leagueId,
         string name,
