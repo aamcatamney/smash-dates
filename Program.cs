@@ -12,7 +12,9 @@ using Microsoft.Extensions.Options;
 using smash_dates.Data;
 using smash_dates.Endpoints.Auth;
 using smash_dates.Endpoints.Divisions;
+using smash_dates.Endpoints.LeagueAdmins;
 using smash_dates.Endpoints.Leagues;
+using smash_dates.Endpoints.Users;
 using smash_dates.Migrations;
 using smash_dates.Repositories;
 using smash_dates.Services.Auth;
@@ -25,6 +27,7 @@ builder.Services.AddSingleton<IPasswordHasher, BCryptPasswordHasher>();
 builder.Services.AddScoped<IUserRepository, UserRepository>();
 builder.Services.AddScoped<ILeagueRepository, LeagueRepository>();
 builder.Services.AddScoped<IDivisionRepository, DivisionRepository>();
+builder.Services.AddScoped<ILeagueAdminRepository, LeagueAdminRepository>();
 
 var connectionString = builder.Configuration.GetConnectionString("Postgres")
     ?? throw new InvalidOperationException("ConnectionStrings:Postgres missing");
@@ -162,6 +165,8 @@ app.UseAuthorization();
 app.MapAuthEndpoints();
 app.MapLeagueEndpoints();
 app.MapDivisionEndpoints();
+app.MapLeagueAdminEndpoints();
+app.MapUserEndpoints();
 
 if (Directory.Exists(clientAppPath))
 {

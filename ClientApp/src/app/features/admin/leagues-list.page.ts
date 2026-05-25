@@ -40,6 +40,15 @@ import { LeaguesApi, LeagueSummary } from './leagues.api';
               class="rounded-md border border-slate-300 px-3 py-2 font-mono text-sm focus:outline-none focus:ring-2 focus:ring-slate-900"
             />
           </label>
+          <label class="grid gap-1">
+            <span class="font-mono text-xs uppercase tracking-wider text-slate-600">First admin email</span>
+            <input
+              type="email"
+              formControlName="firstAdminEmail"
+              class="rounded-md border border-slate-300 px-3 py-2 font-mono text-sm focus:outline-none focus:ring-2 focus:ring-slate-900"
+              required
+            />
+          </label>
           <button
             type="submit"
             [disabled]="submitting() || form.invalid"
@@ -82,6 +91,10 @@ export default class LeaguesListPage {
   protected readonly form = new FormGroup({
     name: new FormControl('', { nonNullable: true, validators: [Validators.required] }),
     description: new FormControl('', { nonNullable: true }),
+    firstAdminEmail: new FormControl('', {
+      nonNullable: true,
+      validators: [Validators.required, Validators.email],
+    }),
   });
 
   constructor() {
@@ -96,7 +109,7 @@ export default class LeaguesListPage {
   }
 
   protected onCreate(): void {
-    const { name, description } = this.form.getRawValue();
+    const { name, description, firstAdminEmail } = this.form.getRawValue();
     const trimmedName = name.trim();
     if (!trimmedName) return;
 
@@ -104,18 +117,30 @@ export default class LeaguesListPage {
     this.error.set(null);
     const trimmedDescription = description.trim();
 
-    this.api
-      .create({ name: trimmedName, description: trimmedDescription ? trimmedDescription : null })
-      .subscribe({
-        next: () => {
-          this.submitting.set(false);
-          this.form.reset({ name: '', description: '' });
-          this.refresh();
-        },
-        error: (err: { error?: { title?: string } }) => {
-          this.submitting.set(false);
-          this.error.set(err?.error?.title ?? 'Create failed.');
-        },
-      });
+    this.api.lookupUser(firstAdminEmail.trim()).subscribe({
+      next: (user) => {
+        this.api
+          .create({
+            name: trimmedName,
+            description: trimmedDescription ? trimmedDescription : null,
+            firstLeagueAdminUserId: user.id,
+          })
+          .subscribe({
+            next: () => {
+              this.submitting.set(false);
+              this.form.reset({ name: '', description: '', firstAdminEmail: '' });
+              this.refresh();
+            },
+            error: (err: { error?: { title?: string } }) => {
+              this.submitting.set(false);
+              this.error.set(err?.error?.title ?? 'Create failed.');
+            },
+          });
+      },
+      error: () => {
+        this.submitting.set(false);
+        this.error.set('No registered user with that email — they must register first.');
+      },
+    });
   }
 }

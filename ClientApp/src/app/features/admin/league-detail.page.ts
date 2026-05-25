@@ -1,6 +1,6 @@
 import { ChangeDetectionStrategy, Component, inject, signal } from '@angular/core';
 import { FormControl, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
-import { ActivatedRoute } from '@angular/router';
+import { ActivatedRoute, RouterLink } from '@angular/router';
 import { switchMap, tap } from 'rxjs';
 import {
   CreateDivisionRequest,
@@ -12,7 +12,7 @@ import {
 
 @Component({
   selector: 'app-league-detail-page',
-  imports: [ReactiveFormsModule],
+  imports: [ReactiveFormsModule, RouterLink],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <div class="min-h-screen bg-slate-50">
@@ -28,6 +28,11 @@ import {
           @if (l.description) {
             <p class="mt-1 font-mono text-sm text-slate-500">{{ l.description }}</p>
           }
+          <a
+            [routerLink]="['/admin/leagues', leagueId, 'admins']"
+            class="mt-2 inline-block font-mono text-xs uppercase tracking-wider text-slate-500 hover:underline"
+            >manage admins →</a
+          >
         }
 
         <h2 class="mt-8 font-mono text-lg font-semibold text-slate-900">Divisions</h2>
@@ -136,7 +141,7 @@ export default class LeagueDetailPage {
   protected readonly divisions = signal<DivisionSummary[]>([]);
   protected readonly error = signal<string | null>(null);
   protected readonly submitting = signal(false);
-  private leagueId = '';
+  protected leagueId = '';
 
   protected readonly form = new FormGroup({
     name: new FormControl('', { nonNullable: true, validators: [Validators.required] }),

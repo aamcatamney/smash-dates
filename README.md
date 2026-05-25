@@ -97,7 +97,7 @@ The first vertical slice exposes the bootstrap admin surface for the league-sche
 - `POST /api/leagues` *(SystemAdmin)* — create a League.
 - `GET  /api/leagues` *(authenticated)* — list Leagues.
 - `GET  /api/leagues/{id}` *(authenticated)* — get one League.
-- `POST /api/leagues/{leagueId}/divisions` *(SystemAdmin)* — create a Division (with `gender`, `rank`, `rubbersPerMatch`, `winPoints`/`drawPoints`/`lossPoints`).
+- `POST /api/leagues/{leagueId}/divisions` *(LeagueAdmin@thisLeague | SystemAdmin)* — create a Division (with `gender`, `rank`, `rubbersPerMatch`, `winPoints`/`drawPoints`/`lossPoints`). (Originally SystemAdmin-only; broadened in slice 2a.)
 - `GET  /api/leagues/{leagueId}/divisions` *(authenticated)* — list Divisions.
 
 Frontend routes (Angular, lazy-loaded under `/admin`, gated by `systemAdminGuard`):
@@ -108,6 +108,17 @@ Frontend routes (Angular, lazy-loaded under `/admin`, gated by `systemAdminGuard
 Subsequent slices will add Clubs, Teams, Venues, Seasons, Weeks, Blocked Dates, the LeagueAdmin/ClubAdmin role grants, and the auto-scheduler.
 
 The domain glossary lives in [CONTEXT.md](CONTEXT.md); architectural decisions are recorded under [docs/adr/](docs/adr/).
+
+## Slice 2a — League admin grants
+
+- `POST /api/leagues` *(SystemAdmin)* — body now requires `firstLeagueAdminUserId`. League + first admin grant are created atomically.
+- `GET  /api/leagues/{id}/admins` *(authenticated)*
+- `POST /api/leagues/{id}/admins` *(LeagueAdmin@thisLeague | SystemAdmin)* — body `{ userId }`. Idempotent.
+- `DELETE /api/leagues/{id}/admins/{userId}` *(LeagueAdmin@thisLeague | SystemAdmin)* — last-admin removal returns 409 unless caller is SystemAdmin.
+- `POST /api/leagues/{leagueId}/divisions` *(LeagueAdmin@thisLeague | SystemAdmin)* — previously SystemAdmin-only.
+- `GET  /api/users/lookup?email=...` *(authenticated)* — resolves email → userId for granter UIs.
+
+Frontend route added: `/admin/leagues/:id/admins`. Create-league form now also requires the first admin's email.
 
 ## Adding a migration
 

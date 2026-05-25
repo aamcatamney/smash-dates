@@ -6,8 +6,8 @@
 
 - **User** — global account (email + password).
 - **SystemAdmin** — bootstrap role. Creates Leagues; assigns first LeagueAdmin per League. First registered user becomes SystemAdmin.
-- **LeagueAdmin@League** — per-League role-grant. Creates Divisions, Clubs in this League, Teams, assigns Teams to Divisions, configures Seasons + Weeks, runs scheduler, force-confirms Matches.
-- **ClubAdmin@Club** — per-Club role-grant. Manages Venues, enters blocked dates (Club-wide and per-Team), accepts/rejects proposed Matches for the Club.
+- **LeagueAdmin@League** — per-League role-grant. Manages Divisions, invites Clubs into the League, manages Teams' Season assignments, configures Seasons + Weeks, runs the scheduler, force-confirms Matches. Many Users can hold the LeagueAdmin grant for the same League; any holder can grant or revoke the role for another User. A League must always have at least one LeagueAdmin (last-admin removal rejected with 409 unless the caller is `SystemAdmin`, who may force the League adminless pending re-bootstrap). A LeagueAdmin may resign as long as another LeagueAdmin remains. League-scoped endpoints (Division CRUD, Season setup, etc.) authorize either `LeagueAdmin@<thisLeague>` **or** `SystemAdmin`.
+- **ClubAdmin@Club** — per-Club role-grant. Manages Venues, enters blocked dates (Club-wide and per-Team), accepts/rejects proposed Matches for the Club. Many Users can hold the ClubAdmin grant for the same Club; any holder can grant or revoke the role for another User. A Club must always have at least one ClubAdmin (the last-admin removal is rejected with 409 unless the caller is `SystemAdmin`, who may force the Club into an adminless state pending re-bootstrap). A ClubAdmin may resign as long as another ClubAdmin remains.
 - Authenticated Users may **read** any League's schedule. No `Player` role and no anonymous public view in v1.
 - One User may hold many role-grants simultaneously (e.g. LeagueAdmin of League A + ClubAdmin of Club B).
 
@@ -63,8 +63,28 @@ A persistent named roster belonging to one Club (e.g. "Acme Mens 1", "Acme Mixed
 ### Season Entry
 A per-Season assignment placing a Team into a Division for that Season. Lets Teams promote/relegate between Divisions without losing identity.
 
+### Club–League Membership
+A link between a Club and a League with one of five states: `Pending`, `Accepted`, `Declined`, `Withdrawn`, `Expelled`.
+
+Lifecycle:
+- A `LeagueAdmin@League` invites a Club, creating a `Pending` membership. Invites are rejected if a `Pending` or `Accepted` membership already exists for the same `(Club, League)` pair.
+- Any `ClubAdmin@Club` may **Accept** (→ `Accepted`) or **Decline** (→ `Declined`).
+- Any `ClubAdmin@Club` may **Withdraw** an `Accepted` membership (→ `Withdrawn`).
+- Any `LeagueAdmin@League` may **Expel** an `Accepted` membership (→ `Expelled`).
+- A `Withdrawn` / `Expelled` / `Declined` membership is terminal. Re-invites create a **new** membership row; status is never reset in place.
+
+**Mid-season constraint:** `Withdraw` and `Expel` are blocked (409) while any of this League's Seasons is in state `Draft`, `Scheduling`, `Proposed`, or `Active` and contains at least one Team belonging to this Club via a Season Entry. Membership can only be ended between Seasons (after `Closed`).
+
 ### Club
 A persistent organisation. Created by `SystemAdmin`. Can join many Leagues (via Club-League membership invites — League invites, Club accepts).
+
+Attributes:
+- **Name** — full name (e.g. "Acme Badminton Club").
+- **ShortCode** — 3–5 character compact identifier (e.g. "ACME") used in fixture listings and the brutalist UI. ASCII letters/digits only, stored and displayed uppercase, case-insensitively unique across all Clubs.
+- **ContactEmail** — primary contact address for membership invites and match-confirmation notifications when no ClubAdmin is currently signed in.
+- **Notes** — free text for anything else (visible to all authenticated users; treat as a public field, not as private internal data).
+
+Club records are an **open registry**: every authenticated User may read every Club's full record (including `ContactEmail` and `Notes`). Write access is restricted to `ClubAdmin@<thisClub>` or `SystemAdmin` (and Club creation to `SystemAdmin` only).
 
 ### Week Type
 Binary attribute of each calendar week in a Season:

@@ -1,4 +1,5 @@
 using Dapper;
+using Npgsql;
 using smash_dates.Data;
 using smash_dates.Models;
 
@@ -46,5 +47,45 @@ public sealed class LeagueRepository : ILeagueRepository
                   RETURNING id",
                 new { name, description, createdBy },
                 cancellationToken: ct));
+    }
+
+    public async Task<Guid> CreateWithFirstAdminAsync(
+        string name,
+        string? description,
+        Guid createdBy,
+        Guid firstAdminUserId,
+        CancellationToken ct = default)
+    {
+        using var conn = _factory.Create();
+        if (conn is System.Data.Common.DbConnection dbConn)
+        {
+            await dbConn.OpenAsync(ct);
+        }
+        else
+        {
+            conn.Open();
+        }
+
+        using var tx = conn.BeginTransaction();
+
+        var id = await conn.ExecuteScalarAsync<Guid>(
+            new CommandDefinition(
+                @"INSERT INTO leagues (name, description, created_by)
+                  VALUES (@name, @description, @createdBy)
+                  RETURNING id",
+                new { name, description, createdBy },
+                transaction: tx,
+                cancellationToken: ct));
+
+        await conn.ExecuteAsync(
+            new CommandDefinition(
+                @"INSERT INTO league_admins (league_id, user_id, granted_by)
+                  VALUES (@id, @firstAdminUserId, @createdBy)",
+                new { id, firstAdminUserId, createdBy },
+                transaction: tx,
+                cancellationToken: ct));
+
+        tx.Commit();
+        return id;
     }
 }
