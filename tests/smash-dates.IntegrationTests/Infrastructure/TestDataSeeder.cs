@@ -109,6 +109,21 @@ public sealed class TestDataSeeder
             new { clubId, userId, grantedBy });
     }
 
+    public async Task<Guid> CreateMembershipAsync(
+        Guid clubId,
+        Guid leagueId,
+        MembershipStatus status = MembershipStatus.Pending,
+        Guid? invitedBy = null)
+    {
+        await using var conn = new NpgsqlConnection(_connectionString);
+        await conn.OpenAsync();
+        return await conn.ExecuteScalarAsync<Guid>(
+            @"INSERT INTO club_league_memberships (club_id, league_id, status, invited_by)
+              VALUES (@clubId, @leagueId, @status, @invitedBy)
+              RETURNING id",
+            new { clubId, leagueId, status = status.ToString(), invitedBy });
+    }
+
     public async Task<Guid> CreateDivisionAsync(
         Guid leagueId,
         string name,
