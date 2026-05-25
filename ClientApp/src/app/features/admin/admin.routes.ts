@@ -21,4 +21,14 @@ export const ADMIN_ROUTES: Routes = [
     title: 'League admins · smash-dates',
     loadComponent: () => import('./league-admins.page'),
   },
+  {
+    path: 'clubs',
+    title: 'Clubs · smash-dates',
+    loadComponent: () => import('./clubs-list.page'),
+  },
+  {
+    path: 'clubs/:id',
+    title: 'Club · smash-dates',
+    loadComponent: () => import('./club-detail.page'),
+  },
 ];

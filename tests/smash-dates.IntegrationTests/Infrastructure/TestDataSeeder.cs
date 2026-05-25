@@ -83,6 +83,47 @@ public sealed class TestDataSeeder
             new { leagueId, userId, grantedBy });
     }
 
+    public async Task<Guid> CreateClubAsync(
+        string name,
+        string shortCode,
+        string contactEmail = "club@example.com",
+        string? notes = null)
+    {
+        await using var conn = new NpgsqlConnection(_connectionString);
+        await conn.OpenAsync();
+        return await conn.ExecuteScalarAsync<Guid>(
+            @"INSERT INTO clubs (name, short_code, contact_email, notes)
+              VALUES (@name, @shortCode, @contactEmail, @notes)
+              RETURNING id",
+            new { name, shortCode, contactEmail, notes });
+    }
+
+    public async Task GrantClubAdminAsync(Guid clubId, Guid userId, Guid? grantedBy = null)
+    {
+        await using var conn = new NpgsqlConnection(_connectionString);
+        await conn.OpenAsync();
+        await conn.ExecuteAsync(
+            @"INSERT INTO club_admins (club_id, user_id, granted_by)
+              VALUES (@clubId, @userId, @grantedBy)
+              ON CONFLICT DO NOTHING",
+            new { clubId, userId, grantedBy });
+    }
+
+    public async Task<Guid> CreateMembershipAsync(
+        Guid clubId,
+        Guid leagueId,
+        MembershipStatus status = MembershipStatus.Pending,
+        Guid? invitedBy = null)
+    {
+        await using var conn = new NpgsqlConnection(_connectionString);
+        await conn.OpenAsync();
+        return await conn.ExecuteScalarAsync<Guid>(
+            @"INSERT INTO club_league_memberships (club_id, league_id, status, invited_by)
+              VALUES (@clubId, @leagueId, @status, @invitedBy)
+              RETURNING id",
+            new { clubId, leagueId, status = status.ToString(), invitedBy });
+    }
+
     public async Task<Guid> CreateDivisionAsync(
         Guid leagueId,
         string name,

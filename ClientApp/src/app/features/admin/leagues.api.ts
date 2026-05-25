@@ -52,6 +52,15 @@ export interface UserLookup {
   displayName: string | null;
 }
 
+export interface MembershipSummary {
+  id: string;
+  clubId: string;
+  leagueId: string;
+  status: 'Pending' | 'Accepted' | 'Declined' | 'Withdrawn' | 'Expelled';
+  invitedAt: string;
+  respondedAt: string | null;
+}
+
 @Injectable({ providedIn: 'root' })
 export class LeaguesApi {
   private readonly http = inject(HttpClient);
@@ -91,5 +100,17 @@ export class LeaguesApi {
   lookupUser(email: string): Observable<UserLookup> {
     const params = new HttpParams().set('email', email);
     return this.http.get<UserLookup>('/api/users/lookup', { params });
+  }
+
+  listMemberships(leagueId: string): Observable<MembershipSummary[]> {
+    return this.http.get<MembershipSummary[]>(`/api/leagues/${leagueId}/memberships`);
+  }
+
+  invite(leagueId: string, clubId: string): Observable<void> {
+    return this.http.post<void>(`/api/leagues/${leagueId}/memberships`, { clubId });
+  }
+
+  expel(leagueId: string, membershipId: string): Observable<void> {
+    return this.http.post<void>(`/api/leagues/${leagueId}/memberships/${membershipId}/expel`, {});
   }
 }

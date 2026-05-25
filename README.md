@@ -120,6 +120,27 @@ The domain glossary lives in [CONTEXT.md](CONTEXT.md); architectural decisions a
 
 Frontend route added: `/admin/leagues/:id/admins`. Create-league form now also requires the first admin's email.
 
+## Slice 2b — Clubs + ClubAdmin + Memberships
+
+- `POST   /api/clubs` *(SystemAdmin)* — atomically creates a Club and the first ClubAdmin grant. Body: `name`, `shortCode` (3-5 chars), `contactEmail`, optional `notes`, `firstClubAdminUserId`.
+- `GET    /api/clubs` *(authenticated)* — open registry.
+- `GET    /api/clubs/{id}` *(authenticated)*.
+- `PATCH  /api/clubs/{id}` *(ClubAdmin@thisClub | SystemAdmin)*.
+- `GET    /api/clubs/{id}/admins` *(authenticated)*.
+- `POST   /api/clubs/{id}/admins` *(ClubAdmin@thisClub | SystemAdmin)* — body `{ userId }`. Idempotent.
+- `DELETE /api/clubs/{id}/admins/{userId}` *(ClubAdmin@thisClub | SystemAdmin)* — last-admin rule mirrors LeagueAdmin.
+- `POST   /api/leagues/{leagueId}/memberships` *(LeagueAdmin@thisLeague | SystemAdmin)* — body `{ clubId }`. Creates Pending.
+- `GET    /api/leagues/{leagueId}/memberships` *(authenticated)*.
+- `GET    /api/clubs/{clubId}/memberships` *(authenticated)*.
+- `POST   /api/leagues/{leagueId}/memberships/{id}/accept` *(ClubAdmin@thatClub)*.
+- `POST   /api/leagues/{leagueId}/memberships/{id}/decline` *(ClubAdmin@thatClub)*.
+- `POST   /api/leagues/{leagueId}/memberships/{id}/withdraw` *(ClubAdmin@thatClub)*.
+- `POST   /api/leagues/{leagueId}/memberships/{id}/expel` *(LeagueAdmin@thisLeague | SystemAdmin)*.
+
+Frontend additions: `/admin/clubs` (list + create when SystemAdmin), `/admin/clubs/:id` (detail with admin management + memberships). League detail gains a member-clubs section with invite + expel. The `/admin` route's `systemAdminGuard` is loosened to plain `authGuard` so ClubAdmins can reach their own pages; per-action authorisation remains server-enforced.
+
+The mid-season Withdraw/Expel block (per CONTEXT.md) is **deferred** until Seasons + Season Entries land.
+
 ## Adding a migration
 
 Create `Migrations/Scripts/NNNN_description.sql` (zero-padded sequence). The file is automatically included as an embedded resource. DbUp applies scripts in name order on next startup.

@@ -8,7 +8,9 @@ import {
   DivisionSummary,
   LeagueDetail,
   LeaguesApi,
+  MembershipSummary,
 } from './leagues.api';
+import { ClubsApi, ClubSummary } from './clubs.api';
 
 @Component({
   selector: 'app-league-detail-page',
@@ -129,6 +131,53 @@ import {
             <p class="font-mono text-sm text-red-600" role="alert">{{ error() }}</p>
           }
         </form>
+
+        <h2 class="mt-10 font-mono text-lg font-semibold text-slate-900">Member clubs</h2>
+        <ul class="mt-3 divide-y divide-slate-200 rounded-md border border-slate-200 bg-white">
+          @for (m of memberships(); track m.id) {
+            <li class="flex items-center justify-between px-4 py-3 font-mono text-sm">
+              <span>
+                club <span class="text-slate-500">{{ m.clubId }}</span>
+                <span class="ml-3 inline-block rounded bg-slate-200 px-2 py-0.5 text-xs">{{ m.status }}</span>
+              </span>
+              @if (m.status === 'Accepted') {
+                <button
+                  type="button"
+                  (click)="onExpel(m)"
+                  class="rounded-md border border-red-300 px-3 py-1 text-xs text-red-700 hover:bg-red-50"
+                >Expel</button>
+              }
+            </li>
+          } @empty {
+            <li class="px-4 py-3 font-mono text-sm text-slate-500">No member clubs.</li>
+          }
+        </ul>
+
+        <form
+          [formGroup]="inviteForm"
+          (ngSubmit)="onInvite()"
+          class="mt-4 grid gap-3 rounded-md border border-slate-200 bg-white p-4 shadow-sm"
+        >
+          <label class="grid gap-1">
+            <span class="font-mono text-xs uppercase tracking-wider text-slate-600">Invite club</span>
+            <select
+              formControlName="clubId"
+              class="rounded-md border border-slate-300 px-3 py-2 font-mono text-sm focus:outline-none focus:ring-2 focus:ring-slate-900"
+            >
+              <option value="">-- choose a club --</option>
+              @for (c of availableClubs(); track c.id) {
+                <option [value]="c.id">{{ c.shortCode }} · {{ c.name }}</option>
+              }
+            </select>
+          </label>
+          <button
+            type="submit"
+            [disabled]="inviteForm.invalid"
+            class="justify-self-start rounded-md bg-slate-900 px-4 py-2 font-mono text-sm font-medium text-amber-300 disabled:opacity-50"
+          >
+            Send invite
+          </button>
+        </form>
       </main>
     </div>
   `,
@@ -136,12 +185,19 @@ import {
 export default class LeagueDetailPage {
   private readonly route = inject(ActivatedRoute);
   private readonly api = inject(LeaguesApi);
+  private readonly clubsApi = inject(ClubsApi);
 
   protected readonly league = signal<LeagueDetail | null>(null);
   protected readonly divisions = signal<DivisionSummary[]>([]);
+  protected readonly memberships = signal<MembershipSummary[]>([]);
+  protected readonly availableClubs = signal<ClubSummary[]>([]);
   protected readonly error = signal<string | null>(null);
   protected readonly submitting = signal(false);
   protected leagueId = '';
+
+  protected readonly inviteForm = new FormGroup({
+    clubId: new FormControl('', { nonNullable: true, validators: [Validators.required] }),
+  });
 
   protected readonly form = new FormGroup({
     name: new FormControl('', { nonNullable: true, validators: [Validators.required] }),
@@ -161,12 +217,48 @@ export default class LeagueDetailPage {
         }),
         switchMap((p) => this.api.get(p.get('id') ?? '')),
         tap((l) => this.league.set(l)),
+        tap(() => {
+          this.refreshMemberships();
+          this.refreshAvailableClubs();
+        }),
         switchMap((l) => this.api.listDivisions(l.id)),
       )
       .subscribe({
         next: (rows) => this.divisions.set(rows),
         error: () => this.error.set('Failed to load league.'),
       });
+  }
+
+  private refreshMemberships(): void {
+    if (!this.leagueId) return;
+    this.api.listMemberships(this.leagueId).subscribe({
+      next: (rows) => this.memberships.set(rows),
+    });
+  }
+
+  private refreshAvailableClubs(): void {
+    this.clubsApi.list().subscribe({
+      next: (rows) => this.availableClubs.set(rows),
+    });
+  }
+
+  protected onInvite(): void {
+    const clubId = this.inviteForm.getRawValue().clubId;
+    if (!clubId) return;
+    this.api.invite(this.leagueId, clubId).subscribe({
+      next: () => {
+        this.inviteForm.reset({ clubId: '' });
+        this.refreshMemberships();
+      },
+      error: (err: { error?: { title?: string } }) =>
+        this.error.set(err?.error?.title ?? 'Invite failed.'),
+    });
+  }
+
+  protected onExpel(m: MembershipSummary): void {
+    this.api.expel(this.leagueId, m.id).subscribe({
+      next: () => this.refreshMemberships(),
+    });
   }
 
   protected onCreate(): void {
