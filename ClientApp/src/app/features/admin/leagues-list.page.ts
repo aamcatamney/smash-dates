@@ -1,7 +1,8 @@
-import { ChangeDetectionStrategy, Component, inject, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
 import { FormControl, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import { RouterLink } from '@angular/router';
 import { LeaguesApi, LeagueSummary } from './leagues.api';
+import { AuthStore } from '../../core/auth/auth.store';
 
 @Component({
   selector: 'app-leagues-list-page',
@@ -18,6 +19,7 @@ import { LeaguesApi, LeagueSummary } from './leagues.api';
       <main class="mx-auto w-full max-w-5xl px-4 py-10">
         <h1 class="font-mono text-2xl font-semibold text-slate-900">Leagues</h1>
 
+        @if (canCreate()) {
         <form
           [formGroup]="form"
           (ngSubmit)="onCreate()"
@@ -60,6 +62,7 @@ import { LeaguesApi, LeagueSummary } from './leagues.api';
             <p class="font-mono text-sm text-red-600" role="alert">{{ error() }}</p>
           }
         </form>
+        }
 
         <ul class="mt-8 divide-y divide-slate-200 rounded-md border border-slate-200 bg-white">
           @for (league of leagues(); track league.id) {
@@ -83,10 +86,12 @@ import { LeaguesApi, LeagueSummary } from './leagues.api';
 })
 export default class LeaguesListPage {
   private readonly api = inject(LeaguesApi);
+  private readonly auth = inject(AuthStore);
 
   protected readonly leagues = signal<LeagueSummary[]>([]);
   protected readonly submitting = signal(false);
   protected readonly error = signal<string | null>(null);
+  protected readonly canCreate = computed(() => this.auth.isSystemAdmin());
 
   protected readonly form = new FormGroup({
     name: new FormControl('', { nonNullable: true, validators: [Validators.required] }),

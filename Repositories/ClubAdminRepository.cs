@@ -63,6 +63,12 @@ public sealed class ClubAdminRepository : IClubAdminRepository
     public async Task<RevokeResult> RevokeUnlessLastAsync(Guid clubId, Guid userId, CancellationToken ct = default)
     {
         using var conn = _factory.Create();
+        // Single statement: only delete when more than one admin exists for the club.
+        // RETURNING distinguishes "deleted" from "no rows touched". A separate existence
+        // probe tells us whether the grant existed at all - which lets us return
+        // NotAdmin vs WouldBeLastAdmin. The probe and the delete are evaluated together
+        // by Postgres in a single CTE, eliminating the TOCTOU window that an
+        // application-level count + delete would have.
         var outcome = await conn.QuerySingleOrDefaultAsync<string?>(
             new CommandDefinition(
                 @"WITH existing AS (
