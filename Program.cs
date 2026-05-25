@@ -13,6 +13,7 @@ using smash_dates.Data;
 using smash_dates.Endpoints.Auth;
 using smash_dates.Endpoints.ClubAdmins;
 using smash_dates.Endpoints.Clubs;
+using smash_dates.Endpoints.Memberships;
 using smash_dates.Endpoints.Divisions;
 using smash_dates.Endpoints.LeagueAdmins;
 using smash_dates.Endpoints.Leagues;
@@ -174,6 +175,7 @@ app.MapLeagueAdminEndpoints();
 app.MapUserEndpoints();
 app.MapClubEndpoints();
 app.MapClubAdminEndpoints();
+app.MapMembershipEndpoints();
 
 if (Directory.Exists(clientAppPath))
 {
