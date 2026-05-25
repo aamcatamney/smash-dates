@@ -98,6 +98,17 @@ public sealed class TestDataSeeder
             new { name, shortCode, contactEmail, notes });
     }
 
+    public async Task GrantClubAdminAsync(Guid clubId, Guid userId, Guid? grantedBy = null)
+    {
+        await using var conn = new NpgsqlConnection(_connectionString);
+        await conn.OpenAsync();
+        await conn.ExecuteAsync(
+            @"INSERT INTO club_admins (club_id, user_id, granted_by)
+              VALUES (@clubId, @userId, @grantedBy)
+              ON CONFLICT DO NOTHING",
+            new { clubId, userId, grantedBy });
+    }
+
     public async Task<Guid> CreateDivisionAsync(
         Guid leagueId,
         string name,
