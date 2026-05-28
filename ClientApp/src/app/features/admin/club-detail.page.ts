@@ -4,18 +4,15 @@ import { ActivatedRoute, RouterLink } from '@angular/router';
 import { switchMap, tap } from 'rxjs';
 import { ClubAdminSummary, ClubDetail, ClubsApi, MembershipSummary } from './clubs.api';
 import { LeaguesApi } from './leagues.api';
+import { AdminHeaderComponent } from './admin-header.component';
 
 @Component({
   selector: 'app-club-detail-page',
-  imports: [ReactiveFormsModule, RouterLink],
+  imports: [ReactiveFormsModule, RouterLink, AdminHeaderComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <div class="min-h-screen bg-slate-50">
-      <header class="border-b border-slate-200 bg-white">
-        <div class="mx-auto flex max-w-5xl items-center justify-between px-4 py-3">
-          <span class="font-mono text-sm font-semibold tracking-wide text-slate-900">smash-dates / admin</span>
-        </div>
-      </header>
+      <app-admin-header />
 
       <main class="mx-auto w-full max-w-5xl px-4 py-10">
         <a
