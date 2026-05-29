@@ -22,7 +22,7 @@ Three scopes, all owned by the relevant Club admin:
 - **TeamBlocked** — this Team cannot play (player exams, holiday).
 
 ### Venue
-A physical hall belonging to a Club. A Club has 1..N Venues, all interchangeable from the scheduler's perspective. Each Venue has a court **capacity** of 1 or 2 simultaneous Matches per slot, and a list of **unavailable dates**.
+A physical hall belonging to a Club. A Club has 1..N Venues, all interchangeable from the scheduler's perspective. Each Venue has a court **capacity** of 1 or 2 simultaneous Matches per slot, and a list of **unavailable dates** (the [VenueBlocked](#blocked-date) scope — not a separate concept).
 
 ### Match Status
 Lifecycle: `Proposed → Confirmed → Played | Postponed → Rejected`.
@@ -58,10 +58,10 @@ Persists across Seasons. Membership (which Teams play in it) is set per-Season.
 Materialised league table per `(Season, Division)`, refreshed on Match result entry. Columns: played, won, drawn, lost, rubbers for, rubbers against, rubber difference, points. Sort: points desc → rubber difference desc → rubbers for desc → head-to-head.
 
 ### Team
-A persistent named roster belonging to one Club (e.g. "Acme Mens 1", "Acme Mixed 2"). Persists across Seasons. Has an inherent gender (`Mens`/`Ladies`/`Mixed`) matching the Divisions it can play in.
+A persistent named roster belonging to one Club (e.g. "Acme Mens 1", "Acme Mixed 2"). Persists across Seasons. Has an inherent gender (`Mens`/`Ladies`/`Mixed`), fixed at creation, matching the Divisions it can play in.
 
 ### Season Entry
-A per-Season assignment placing a Team into a Division for that Season. Lets Teams promote/relegate between Divisions without losing identity.
+A per-Season assignment placing a Team into a Division for that Season. Lets Teams promote/relegate between Divisions without losing identity. A Team is entered in at most one Division per Season; its gender must match the Division's, and its Club must be an Accepted member of the League. Entries are managed only while the Season is `Draft`.
 
 ### Club–League Membership
 A link between a Club and a League with one of five states: `Pending`, `Accepted`, `Declined`, `Withdrawn`, `Expelled`.
@@ -124,4 +124,4 @@ States: `Draft → Scheduling → Proposed → Active → Closed`.
 Blocked dates may be added freely while Season is `Draft` or `Proposed`. From `Active` onward, blocked-date additions are forbidden.
 
 ### Season
-Has a start date, end date, and an **explicit ordered list of Weeks**. Each Week has `(StartDate, EndDate, WeekType)` — a calendar range (typically Mon–Sun) within which Matches scheduled in that week may land on any night. Admin enters the week list when creating the Season; gaps (Christmas, tournaments) are handled by simply omitting weeks from the list.
+Belongs to one League. Has a **Name** (a human handle, e.g. "2025/26", unique within its League), a start date, an end date, and an **explicit ordered list of Weeks**. Week order is derived from each Week's `StartDate` (Weeks never overlap), not a separate ordinal. Each Week has `(StartDate, EndDate, WeekType)` — a calendar range (typically Mon–Sun) within which Matches scheduled in that week may land on any night. Admin enters the week list when creating the Season; gaps (Christmas, tournaments) are handled by simply omitting weeks from the list.

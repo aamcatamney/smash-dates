@@ -8,6 +8,9 @@ public interface IClubLeagueMembershipRepository
     Task<IReadOnlyList<ClubLeagueMembership>> ListByLeagueAsync(Guid leagueId, CancellationToken ct = default);
     Task<IReadOnlyList<ClubLeagueMembership>> ListByClubAsync(Guid clubId, CancellationToken ct = default);
 
+    /// True if the club currently holds an Accepted membership in the league.
+    Task<bool> HasAcceptedMembershipAsync(Guid clubId, Guid leagueId, CancellationToken ct = default);
+
     /// Creates a Pending row. Throws PostgresException SQLSTATE 23505 if a non-terminal
     /// (Pending or Accepted) membership already exists for (club, league).
     Task<Guid> InviteAsync(Guid clubId, Guid leagueId, Guid invitedBy, CancellationToken ct = default);

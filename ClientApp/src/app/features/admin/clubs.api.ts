@@ -45,6 +45,44 @@ export interface UpdateClubRequest {
   notes: string | null;
 }
 
+export type Gender = 'Mens' | 'Ladies' | 'Mixed';
+
+export interface TeamSummary {
+  id: string;
+  clubId: string;
+  name: string;
+  gender: Gender;
+}
+
+export interface VenueSummary {
+  id: string;
+  clubId: string;
+  name: string;
+  capacity: number;
+}
+
+export type BlockedDateScope = 'Club' | 'Venue' | 'Team';
+
+export interface BlockedDateSummary {
+  id: string;
+  clubId: string;
+  scope: BlockedDateScope;
+  venueId: string | null;
+  teamId: string | null;
+  startDate: string;
+  endDate: string;
+  reason: string;
+}
+
+export interface CreateBlockedDateRequest {
+  scope: BlockedDateScope;
+  venueId?: string | null;
+  teamId?: string | null;
+  startDate: string;
+  endDate: string;
+  reason: string;
+}
+
 @Injectable({ providedIn: 'root' })
 export class ClubsApi {
   private readonly http = inject(HttpClient);
@@ -91,5 +129,49 @@ export class ClubsApi {
 
   withdrawMembership(leagueId: string, membershipId: string): Observable<void> {
     return this.http.post<void>(`/api/leagues/${leagueId}/memberships/${membershipId}/withdraw`, {});
+  }
+
+  listTeams(clubId: string): Observable<TeamSummary[]> {
+    return this.http.get<TeamSummary[]>(`/api/clubs/${clubId}/teams`);
+  }
+
+  createTeam(clubId: string, name: string, gender: Gender): Observable<TeamSummary> {
+    return this.http.post<TeamSummary>(`/api/clubs/${clubId}/teams`, { name, gender });
+  }
+
+  renameTeam(clubId: string, teamId: string, name: string): Observable<void> {
+    return this.http.patch<void>(`/api/clubs/${clubId}/teams/${teamId}`, { name });
+  }
+
+  deleteTeam(clubId: string, teamId: string): Observable<void> {
+    return this.http.delete<void>(`/api/clubs/${clubId}/teams/${teamId}`);
+  }
+
+  listVenues(clubId: string): Observable<VenueSummary[]> {
+    return this.http.get<VenueSummary[]>(`/api/clubs/${clubId}/venues`);
+  }
+
+  createVenue(clubId: string, name: string, capacity: number): Observable<VenueSummary> {
+    return this.http.post<VenueSummary>(`/api/clubs/${clubId}/venues`, { name, capacity });
+  }
+
+  updateVenue(clubId: string, venueId: string, name: string, capacity: number): Observable<void> {
+    return this.http.patch<void>(`/api/clubs/${clubId}/venues/${venueId}`, { name, capacity });
+  }
+
+  deleteVenue(clubId: string, venueId: string): Observable<void> {
+    return this.http.delete<void>(`/api/clubs/${clubId}/venues/${venueId}`);
+  }
+
+  listBlockedDates(clubId: string): Observable<BlockedDateSummary[]> {
+    return this.http.get<BlockedDateSummary[]>(`/api/clubs/${clubId}/blocked-dates`);
+  }
+
+  createBlockedDate(clubId: string, req: CreateBlockedDateRequest): Observable<BlockedDateSummary> {
+    return this.http.post<BlockedDateSummary>(`/api/clubs/${clubId}/blocked-dates`, req);
+  }
+
+  deleteBlockedDate(clubId: string, id: string): Observable<void> {
+    return this.http.delete<void>(`/api/clubs/${clubId}/blocked-dates/${id}`);
   }
 }

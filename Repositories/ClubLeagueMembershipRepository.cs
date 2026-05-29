@@ -49,6 +49,18 @@ public sealed class ClubLeagueMembershipRepository : IClubLeagueMembershipReposi
         return rows.Select(r => r.ToModel()).ToList();
     }
 
+    public async Task<bool> HasAcceptedMembershipAsync(Guid clubId, Guid leagueId, CancellationToken ct = default)
+    {
+        using var conn = _factory.Create();
+        return await conn.ExecuteScalarAsync<bool>(
+            new CommandDefinition(
+                @"SELECT EXISTS(
+                    SELECT 1 FROM club_league_memberships
+                    WHERE club_id = @clubId AND league_id = @leagueId AND status = 'Accepted')",
+                new { clubId, leagueId },
+                cancellationToken: ct));
+    }
+
     public async Task<Guid> InviteAsync(Guid clubId, Guid leagueId, Guid invitedBy, CancellationToken ct = default)
     {
         using var conn = _factory.Create();

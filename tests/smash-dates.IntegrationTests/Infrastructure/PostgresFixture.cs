@@ -12,6 +12,9 @@ public sealed class PostgresFixture : IAsyncLifetime
         .WithDatabase("smash_dates")
         .WithUsername("postgres")
         .WithPassword("postgres")
+        // Each test spins up its own WebApplicationFactory (and Npgsql pool); the default
+        // server cap of 100 is exhausted once the whole suite runs back-to-back.
+        .WithCommand("-c", "max_connections=500")
         .Build();
 
     private Respawner? _respawner;
