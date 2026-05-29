@@ -42,3 +42,11 @@ The scheduler runs as an asynchronous background job triggered by the LeagueAdmi
 
 **Mitigation**
 - `IScheduler` interface keeps the door open to plug in OR-Tools later without disturbing callers. The data model (Matches with a status lifecycle) is engine-agnostic.
+
+## Implementation note (phased rollout)
+
+The scheduler is delivered in stages behind the same `IScheduler` boundary:
+
+1. **Done:** Berger double round-robin → derby-first → greedy placement satisfying all **hard** constraints, run **synchronously** (millisecond runtimes at expected scale). Generation persists `Proposed` matches and moves the season to `Proposed`; an unschedulable input returns 422 and changes nothing.
+2. **Done:** incremental re-run — `SchedulerInput.Locked` carries the `Confirmed` fixtures (occupancy seeded, pairings not re-emitted) so the engine re-places only the rest. Triggered manually by the LeagueAdmin (`POST …/rerun`); all-or-nothing.
+3. **Later:** the soft-penalty 2-opt local search and async background-job execution (with the `Scheduling` season state) — layered in without changing callers.

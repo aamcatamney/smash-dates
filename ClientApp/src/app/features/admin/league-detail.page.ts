@@ -8,6 +8,7 @@ import {
   DivisionSummary,
   LeagueDetail,
   LeaguesApi,
+  MatchSummary,
   MembershipSummary,
   SeasonEntrySummary,
   SeasonSummary,
@@ -147,8 +148,8 @@ import { AdminHeaderComponent } from './admin-header.component';
                   <span class="ml-2 text-slate-500">{{ s.startDate }} → {{ s.endDate }}</span>
                   <span class="ml-3 inline-block rounded bg-slate-200 px-2 py-0.5 text-xs">{{ s.status }}</span>
                 </span>
-                @if (s.status === 'Draft') {
-                  <div class="flex gap-2">
+                <div class="flex gap-2">
+                  @if (s.status === 'Draft') {
                     <button
                       type="button"
                       (click)="onEditWeeks(s)"
@@ -165,13 +166,42 @@ import { AdminHeaderComponent } from './admin-header.component';
                     </button>
                     <button
                       type="button"
+                      [disabled]="generatingSeasonId() === s.id"
+                      (click)="onGenerate(s)"
+                      class="rounded-md bg-slate-900 px-3 py-1 text-xs font-medium text-amber-300 hover:bg-slate-800 disabled:opacity-50"
+                    >
+                      {{ generatingSeasonId() === s.id ? 'Generating…' : 'Generate' }}
+                    </button>
+                    <button
+                      type="button"
                       [attr.aria-label]="'Delete season ' + s.name"
                       (click)="onDeleteSeason(s)"
                       class="rounded-md border border-red-300 px-3 py-1 text-xs text-red-700 hover:bg-red-50"
                     >
                       Delete
                     </button>
-                  </div>
+                  } @else {
+                    <button
+                      type="button"
+                      (click)="onToggleFixtures(s)"
+                      class="rounded-md border border-slate-300 px-3 py-1 text-xs text-slate-700 hover:bg-slate-50"
+                    >
+                      {{ fixturesSeasonId() === s.id ? 'Close' : 'Fixtures' }}
+                    </button>
+                    @if (s.status === 'Proposed') {
+                      <button
+                        type="button"
+                        [disabled]="rerunningSeasonId() === s.id"
+                        (click)="onRerun(s)"
+                        class="rounded-md border border-slate-300 px-3 py-1 text-xs text-slate-700 hover:bg-slate-50 disabled:opacity-50"
+                      >
+                        {{ rerunningSeasonId() === s.id ? 'Re-running…' : 'Re-run' }}
+                      </button>
+                    }
+                  }
+                </div>
+                @if (rerunError() && rerunErrorSeasonId() === s.id) {
+                  <p class="mt-1 text-xs text-red-600" role="alert">{{ rerunError() }}</p>
                 }
               </div>
 
@@ -280,6 +310,36 @@ import { AdminHeaderComponent } from './admin-header.component';
                     <p class="text-xs text-red-600" role="alert">{{ entryError() }}</p>
                   }
                 </div>
+              }
+
+              @if (generateError() && generateErrorSeasonId() === s.id) {
+                <p class="mt-2 text-xs text-red-600" role="alert">{{ generateError() }}</p>
+              }
+
+              @if (fixturesSeasonId() === s.id) {
+                <ul class="mt-3 divide-y divide-slate-100 rounded border border-slate-200">
+                  @for (f of fixtures(); track f.id) {
+                    <li class="flex flex-wrap items-center gap-x-3 gap-y-1 px-3 py-2 text-xs">
+                      <span class="font-semibold">{{ f.matchDate }}</span>
+                      <span class="inline-block rounded bg-slate-200 px-1.5 py-0.5">{{ f.divisionName }}</span>
+                      <span>{{ f.homeTeamName }} <span class="text-slate-400">v</span> {{ f.awayTeamName }}</span>
+                      <span class="text-slate-500">@ {{ f.venueName }}</span>
+                      @if (f.status === 'Proposed') {
+                        <span class="text-slate-400">({{ f.homeAccepted ? 'home ✓' : 'home …' }}, {{ f.awayAccepted ? 'away ✓' : 'away …' }})</span>
+                      }
+                      <span class="ml-auto inline-block rounded bg-slate-100 px-1.5 py-0.5 text-slate-600">{{ f.status }}</span>
+                      @if (f.status === 'Proposed') {
+                        <button
+                          type="button"
+                          (click)="onForceConfirm(s, f)"
+                          class="rounded-md border border-slate-300 px-2 py-0.5 text-slate-700 hover:bg-slate-50"
+                        >Force confirm</button>
+                      }
+                    </li>
+                  } @empty {
+                    <li class="px-3 py-2 text-xs text-slate-500">No fixtures.</li>
+                  }
+                </ul>
               }
             </li>
           } @empty {
@@ -400,6 +460,14 @@ export default class LeagueDetailPage {
   protected readonly seasonEntries = signal<SeasonEntrySummary[]>([]);
   protected readonly teamOptions = signal<TeamOption[]>([]);
   protected readonly entryError = signal<string | null>(null);
+  protected readonly generatingSeasonId = signal<string | null>(null);
+  protected readonly generateError = signal<string | null>(null);
+  protected readonly generateErrorSeasonId = signal<string | null>(null);
+  protected readonly fixturesSeasonId = signal<string | null>(null);
+  protected readonly fixtures = signal<MatchSummary[]>([]);
+  protected readonly rerunningSeasonId = signal<string | null>(null);
+  protected readonly rerunError = signal<string | null>(null);
+  protected readonly rerunErrorSeasonId = signal<string | null>(null);
   protected leagueId = '';
 
   protected readonly entryForm = new FormGroup({
@@ -682,6 +750,64 @@ export default class LeagueDetailPage {
   protected onRemoveEntry(s: SeasonSummary, e: SeasonEntrySummary): void {
     this.api.deleteSeasonEntry(this.leagueId, s.id, e.id).subscribe({
       next: () => this.refreshEntries(s.id),
+    });
+  }
+
+  protected onGenerate(s: SeasonSummary): void {
+    this.generatingSeasonId.set(s.id);
+    this.generateError.set(null);
+    this.generateErrorSeasonId.set(null);
+    this.api.generateSchedule(this.leagueId, s.id).subscribe({
+      next: () => {
+        this.generatingSeasonId.set(null);
+        this.refreshSeasons();
+        this.openFixtures(s.id);
+      },
+      error: (err: { error?: { title?: string } }) => {
+        this.generatingSeasonId.set(null);
+        this.generateErrorSeasonId.set(s.id);
+        this.generateError.set(err?.error?.title ?? 'Could not generate a schedule.');
+      },
+    });
+  }
+
+  protected onToggleFixtures(s: SeasonSummary): void {
+    if (this.fixturesSeasonId() === s.id) {
+      this.fixturesSeasonId.set(null);
+      return;
+    }
+    this.openFixtures(s.id);
+  }
+
+  private openFixtures(seasonId: string): void {
+    this.api.listMatches(this.leagueId, seasonId).subscribe({
+      next: (rows) => {
+        this.fixtures.set(rows);
+        this.fixturesSeasonId.set(seasonId);
+      },
+    });
+  }
+
+  protected onForceConfirm(s: SeasonSummary, f: MatchSummary): void {
+    this.api.forceConfirmMatch(f.id).subscribe({
+      next: () => this.openFixtures(s.id),
+    });
+  }
+
+  protected onRerun(s: SeasonSummary): void {
+    this.rerunningSeasonId.set(s.id);
+    this.rerunError.set(null);
+    this.rerunErrorSeasonId.set(null);
+    this.api.rerunSchedule(this.leagueId, s.id).subscribe({
+      next: () => {
+        this.rerunningSeasonId.set(null);
+        this.openFixtures(s.id);
+      },
+      error: (err: { error?: { title?: string } }) => {
+        this.rerunningSeasonId.set(null);
+        this.rerunErrorSeasonId.set(s.id);
+        this.rerunError.set(err?.error?.title ?? 'Could not re-run the schedule.');
+      },
     });
   }
 }

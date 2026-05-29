@@ -222,6 +222,52 @@ Validation: `reason` required, `startDate ≤ endDate`, valid `scope`. Single-da
 
 Frontend additions: the `/admin/clubs/:id` detail page gains a **Blocked dates** section — list (scope · target · dates · reason), create (scope selector revealing a Venue or Team picker, from/to dates, reason), and delete.
 
+## Slice 3 — Scheduler (feasible first cut)
+
+Generates a season's fixtures from all the inputs above (per ADR 0001 — a custom heuristic, no external solver). This first cut produces a **feasible** schedule satisfying every hard constraint; soft-penalty optimisation and the match lifecycle are later slices.
+
+- `POST /api/leagues/{leagueId}/seasons/{seasonId}/generate` *(LeagueAdmin@thisLeague | SystemAdmin)* — `Draft` only (else 409). On success moves the season `Draft → Proposed` and persists the matches as `Proposed`; returns `{ matchCount }`. If the hard constraints can't all be met, persists nothing, leaves the season `Draft`, and returns **422** with the list of unplaceable pairings.
+- `GET  /api/leagues/{leagueId}/seasons/{seasonId}/matches` *(authenticated)* — fixtures with division/team/venue names.
+
+The engine (`Services/Scheduling/`) is pure and unit-tested in isolation:
+
+- `RoundRobin` — Berger/circle-method **double round-robin** (every ordered pair once).
+- `Scheduler : IScheduler` — derby-first ordering, then greedy earliest-slot placement honouring all hard constraints: one match per team per date, venue court capacity, VenueBlocked/ClubBlocked/TeamBlocked dates, week-type ↔ division-gender, home venue drawn from the home club's pool.
+- `ScheduleGenerator` — loads inputs from the repositories, runs `IScheduler`, and on full success persists the matches + season transition in one transaction.
+
+`matches.venue_id` is `ON DELETE RESTRICT`, so this slice also activates the **Venue delete guard** deferred in 2c: `DELETE …/venues/{id}` now returns 409 when the Venue is used by a scheduled match.
+
+**Deferred:** soft-constraint 2-opt optimisation; the match lifecycle (`Proposed → Confirmed → Played | Postponed → Rejected`), force-confirm, and incremental re-run; Standings; Played/Walkover scoring; the async background-job runner.
+
+> **Staging note vs ADR 0001:** the ADR describes an async background job and soft-penalty local search. Generation runs **synchronously** here — at expected scale (4–12 teams/division) the heuristic completes in milliseconds, so the job runner and `Scheduling` polling state are deferred. The `IScheduler` boundary is unchanged, so async and the local-search phase slot in later without touching callers.
+
+Frontend additions: the Season panel on `/admin/leagues/:id` gains a **Generate** button (Draft seasons; surfaces the 422 reason on failure) and a **Fixtures** view (non-Draft seasons) listing matches by date with names and status.
+
+## Slice 4 — Match lifecycle (acceptance)
+
+Moves a `Proposed` match to `Confirmed` or `Rejected`. Actions are flat under `/api/matches/{id}` (club-admin-centric — the handler derives league/season/clubs from the match). Per-side acceptance is tracked by two boolean columns (`home_accepted`, `away_accepted`); a match is `Confirmed` once both are true.
+
+- `GET  /api/matches/{id}` *(authenticated)* — detail with names, status, and the two acceptance flags.
+- `POST /api/matches/{id}/accept` *(ClubAdmin of either club; SystemAdmin)* — records the caller's side(s); confirms when both sides have accepted. A **derby** (one club on both sides) confirms in a single accept.
+- `POST /api/matches/{id}/reject` *(ClubAdmin of either club; SystemAdmin)* — `Proposed → Rejected`.
+- `POST /api/matches/{id}/force-confirm` *(LeagueAdmin@thisLeague | SystemAdmin)* — `Proposed → Confirmed`, breaking a stalemate.
+
+All four act only on a `Proposed` match (else 409). Acceptance flags also surface on the season fixtures list.
+
+**Deferred:** the incremental **re-run** on rejection (re-invoke the scheduler with `Confirmed` matches locked, reshuffle `Proposed`+`Rejected`); **Postpone** (needs the `Active` season transition); **Played**/Walkover scoring and **Standings**.
+
+Frontend additions: the **Fixtures** view shows per-side acceptance progress and a **Force confirm** button on Proposed matches (league-admin audience). A dedicated club-admin "my club's matches" accept/reject screen is deferred (needs a by-club matches endpoint); the accept/reject APIs are usable now.
+
+## Slice 5 — Incremental re-run
+
+Re-generates a `Proposed` season's fixtures **around the matches already `Confirmed`**, so rejections can be re-accommodated without disturbing locked-in fixtures.
+
+- `POST /api/leagues/{leagueId}/seasons/{seasonId}/rerun` *(LeagueAdmin@thisLeague | SystemAdmin)* — `Proposed` only (else 409). Locks every `Confirmed` match, re-places the `Proposed` + `Rejected` ones, and on full success replaces them as fresh `Proposed` (acceptance cleared); `Confirmed` matches are untouched. All-or-nothing: if the non-locked set can't be re-placed around the locked fixtures, persists nothing and returns **422** with the unplaceable pairings.
+
+Engine seam (no caller changes): `SchedulerInput.Locked` carries the `Confirmed` fixtures — the scheduler seeds their `(team, date)` and `(venue, date)` occupancy, skips their pairings, and places only the remainder (locked derbies still constrain their teams' outside fixtures to fall after them). An empty `Locked` is the from-scratch Generate. Trigger is manual (mirrors Generate) rather than automatic on each rejection — see ADR 0001's phased-rollout note.
+
+Frontend additions: the Season panel gains a **Re-run** button on `Proposed` seasons (surfaces the 422 reason on failure, refreshes the fixtures view on success).
+
 ## Adding a migration
 
 Create `Migrations/Scripts/NNNN_description.sql` (zero-padded sequence). The file is automatically included as an embedded resource. DbUp applies scripts in name order on next startup.

@@ -12,14 +12,15 @@ public static class DeleteVenueEndpoint
         return app;
     }
 
-    // Hard delete, guarded by existence + club ownership. Referential guards (409 once a
-    // Venue has hosted a Match) will be added when the matches table lands.
+    // Hard delete, guarded by existence + club ownership, and rejected (409) once the
+    // Venue is referenced by a scheduled Match (see CONTEXT.md guarded delete).
     private static async Task<IResult> Handle(
         Guid clubId,
         Guid id,
         ClaimsPrincipal principal,
         IVenueRepository venues,
         IClubAdminRepository clubAdmins,
+        IMatchRepository matches,
         CancellationToken ct)
     {
         var venue = await venues.GetByIdAsync(id, ct);
@@ -27,6 +28,9 @@ public static class DeleteVenueEndpoint
 
         var authz = await ClubAuthorizer.RequireClubAdminAsync(principal, clubId, clubAdmins, ct);
         if (authz is not null) return authz;
+
+        if (await matches.ExistsForVenueAsync(id, ct))
+            return Results.Problem(statusCode: StatusCodes.Status409Conflict, title: "Venue is used by a scheduled match and cannot be deleted");
 
         await venues.DeleteAsync(id, ct);
         return Results.NoContent();
