@@ -81,6 +81,24 @@ export interface CreateSeasonRequest {
   weeks: WeekInput[];
 }
 
+export type MatchStatus = 'Proposed' | 'Confirmed' | 'Played' | 'Postponed' | 'Rejected';
+
+export interface MatchSummary {
+  id: string;
+  divisionId: string;
+  divisionName: string;
+  homeTeamId: string;
+  homeTeamName: string;
+  awayTeamId: string;
+  awayTeamName: string;
+  venueId: string;
+  venueName: string;
+  matchDate: string;
+  status: MatchStatus;
+  homeAccepted: boolean;
+  awayAccepted: boolean;
+}
+
 export interface SeasonEntrySummary {
   id: string;
   seasonId: string;
@@ -183,5 +201,21 @@ export class LeaguesApi {
 
   deleteSeasonEntry(leagueId: string, seasonId: string, entryId: string): Observable<void> {
     return this.http.delete<void>(`/api/leagues/${leagueId}/seasons/${seasonId}/entries/${entryId}`);
+  }
+
+  generateSchedule(leagueId: string, seasonId: string): Observable<{ matchCount: number }> {
+    return this.http.post<{ matchCount: number }>(`/api/leagues/${leagueId}/seasons/${seasonId}/generate`, null);
+  }
+
+  listMatches(leagueId: string, seasonId: string): Observable<MatchSummary[]> {
+    return this.http.get<MatchSummary[]>(`/api/leagues/${leagueId}/seasons/${seasonId}/matches`);
+  }
+
+  forceConfirmMatch(matchId: string): Observable<{ status: string }> {
+    return this.http.post<{ status: string }>(`/api/matches/${matchId}/force-confirm`, null);
+  }
+
+  rerunSchedule(leagueId: string, seasonId: string): Observable<{ matchCount: number }> {
+    return this.http.post<{ matchCount: number }>(`/api/leagues/${leagueId}/seasons/${seasonId}/rerun`, null);
   }
 }

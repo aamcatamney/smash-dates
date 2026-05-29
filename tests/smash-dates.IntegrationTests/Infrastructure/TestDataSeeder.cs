@@ -207,6 +207,63 @@ public sealed class TestDataSeeder
             new { seasonId, divisionId, teamId });
     }
 
+    public async Task<Guid> CreateMatchAsync(
+        Guid seasonId,
+        Guid divisionId,
+        Guid homeTeamId,
+        Guid awayTeamId,
+        Guid venueId,
+        DateOnly matchDate,
+        MatchStatus status = MatchStatus.Proposed,
+        bool homeAccepted = false,
+        bool awayAccepted = false)
+    {
+        await using var conn = new NpgsqlConnection(_connectionString);
+        await conn.OpenAsync();
+        return await conn.ExecuteScalarAsync<Guid>(
+            @"INSERT INTO matches (season_id, division_id, home_team_id, away_team_id, venue_id, match_date, status, home_accepted, away_accepted)
+              VALUES (@seasonId, @divisionId, @homeTeamId, @awayTeamId, @venueId, @matchDate, @status, @homeAccepted, @awayAccepted)
+              RETURNING id",
+            new { seasonId, divisionId, homeTeamId, awayTeamId, venueId, matchDate, status = status.ToString(), homeAccepted, awayAccepted });
+    }
+
+    public sealed record MatchScenario(
+        Guid LeagueId, Guid SeasonId, Guid DivisionId, Guid MatchId,
+        Guid ClubA, User AdminA, Guid ClubB, User AdminB, Guid TeamA, Guid TeamB);
+
+    // A Proposed match between two clubs, each with its own ClubAdmin. Season is Proposed.
+    // sameClub=true makes it a derby (one club admins both sides).
+    public async Task<MatchScenario> CreateProposedMatchAsync(
+        string adminAEmail,
+        string adminBEmail,
+        string password,
+        MatchStatus status = MatchStatus.Proposed,
+        bool sameClub = false)
+    {
+        var sys = await CreateSystemAdminUserAsync($"sys-{adminAEmail}", password);
+        var leagueId = await CreateLeagueAsync($"L-{adminAEmail}", sys.Id);
+        var seasonId = await CreateSeasonAsync(leagueId, "2025/26", new DateOnly(2025, 9, 1), new DateOnly(2025, 9, 30), SeasonStatus.Proposed);
+        var divisionId = await CreateDivisionAsync(leagueId, "Mens 1", DivisionGender.Mens, 1, 9);
+
+        var clubA = await CreateClubAsync($"Acme-{adminAEmail}", RandomCode());
+        var adminA = await CreateUserAsync(adminAEmail, password);
+        await GrantClubAdminAsync(clubA, adminA.Id, adminA.Id);
+        var teamA = await CreateTeamAsync(clubA, "Acme 1", DivisionGender.Mens);
+        var venueA = await CreateVenueAsync(clubA, "Acme Hall", 1);
+
+        var clubB = sameClub ? clubA : await CreateClubAsync($"Beta-{adminAEmail}", RandomCode());
+        var adminB = sameClub ? adminA : await CreateUserAsync(adminBEmail, password);
+        if (!sameClub) await GrantClubAdminAsync(clubB, adminB.Id, adminB.Id);
+        var teamB = await CreateTeamAsync(clubB, sameClub ? "Acme 2" : "Beta 1", DivisionGender.Mens);
+
+        var matchId = await CreateMatchAsync(seasonId, divisionId, teamA, teamB, venueA, new DateOnly(2025, 9, 3), status);
+
+        return new MatchScenario(leagueId, seasonId, divisionId, matchId, clubA, adminA, clubB, adminB, teamA, teamB);
+    }
+
+    private static int _codeSeq;
+    private static string RandomCode() => $"C{Interlocked.Increment(ref _codeSeq):D3}";
+
     public async Task<Guid> CreateBlockedDateAsync(
         Guid clubId,
         BlockedDateScope scope,

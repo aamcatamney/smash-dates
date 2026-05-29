@@ -40,6 +40,23 @@ public sealed class SeasonEntryRepository : ISeasonEntryRepository
         return rows.Select(r => r.ToView()).ToList();
     }
 
+    public async Task<IReadOnlyList<SchedulingEntry>> ListForSchedulingAsync(Guid seasonId, CancellationToken ct = default)
+    {
+        using var conn = _factory.Create();
+        var rows = await conn.QueryAsync<SchedulingRow>(
+            new CommandDefinition(
+                @"SELECT e.division_id, d.gender, e.team_id, t.club_id
+                  FROM season_entries e
+                  JOIN divisions d ON d.id = e.division_id
+                  JOIN teams t ON t.id = e.team_id
+                  WHERE e.season_id = @seasonId",
+                new { seasonId },
+                cancellationToken: ct));
+        return rows
+            .Select(r => new SchedulingEntry(r.DivisionId, Enum.Parse<Models.DivisionGender>(r.Gender), r.TeamId, r.ClubId))
+            .ToList();
+    }
+
     public async Task<Guid> CreateAsync(Guid seasonId, Guid divisionId, Guid teamId, CancellationToken ct = default)
     {
         using var conn = _factory.Create();
@@ -71,6 +88,14 @@ public sealed class SeasonEntryRepository : ISeasonEntryRepository
                 "SELECT EXISTS(SELECT 1 FROM season_entries WHERE team_id = @teamId)",
                 new { teamId },
                 cancellationToken: ct));
+    }
+
+    private sealed class SchedulingRow
+    {
+        public Guid DivisionId { get; init; }
+        public string Gender { get; init; } = string.Empty;
+        public Guid TeamId { get; init; }
+        public Guid ClubId { get; init; }
     }
 
     private sealed class ViewRow
