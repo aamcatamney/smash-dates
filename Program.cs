@@ -11,10 +11,15 @@ using Microsoft.Extensions.FileProviders;
 using Microsoft.Extensions.Options;
 using smash_dates.Data;
 using smash_dates.Endpoints.Auth;
+using smash_dates.Endpoints.BlockedDates;
 using smash_dates.Endpoints.ClubAdmins;
 using smash_dates.Endpoints.Clubs;
 using smash_dates.Endpoints.Memberships;
 using smash_dates.Endpoints.Divisions;
+using smash_dates.Endpoints.SeasonEntries;
+using smash_dates.Endpoints.Seasons;
+using smash_dates.Endpoints.Teams;
+using smash_dates.Endpoints.Venues;
 using smash_dates.Endpoints.LeagueAdmins;
 using smash_dates.Endpoints.Leagues;
 using smash_dates.Endpoints.Users;
@@ -25,6 +30,8 @@ using smash_dates.Services.DataProtection;
 
 var builder = WebApplication.CreateBuilder(args);
 
+Dapper.SqlMapper.AddTypeHandler(new DateOnlyTypeHandler());
+
 builder.Services.AddSingleton<IDbConnectionFactory, NpgsqlConnectionFactory>();
 builder.Services.AddSingleton<IPasswordHasher, BCryptPasswordHasher>();
 builder.Services.AddScoped<IUserRepository, UserRepository>();
@@ -34,6 +41,11 @@ builder.Services.AddScoped<ILeagueAdminRepository, LeagueAdminRepository>();
 builder.Services.AddScoped<IClubRepository, ClubRepository>();
 builder.Services.AddScoped<IClubAdminRepository, ClubAdminRepository>();
 builder.Services.AddScoped<IClubLeagueMembershipRepository, ClubLeagueMembershipRepository>();
+builder.Services.AddScoped<ITeamRepository, TeamRepository>();
+builder.Services.AddScoped<IVenueRepository, VenueRepository>();
+builder.Services.AddScoped<ISeasonRepository, SeasonRepository>();
+builder.Services.AddScoped<ISeasonEntryRepository, SeasonEntryRepository>();
+builder.Services.AddScoped<IBlockedDateRepository, BlockedDateRepository>();
 
 var connectionString = builder.Configuration.GetConnectionString("Postgres")
     ?? throw new InvalidOperationException("ConnectionStrings:Postgres missing");
@@ -176,6 +188,11 @@ app.MapUserEndpoints();
 app.MapClubEndpoints();
 app.MapClubAdminEndpoints();
 app.MapMembershipEndpoints();
+app.MapTeamEndpoints();
+app.MapVenueEndpoints();
+app.MapSeasonEndpoints();
+app.MapSeasonEntryEndpoints();
+app.MapBlockedDateEndpoints();
 
 if (Directory.Exists(clientAppPath))
 {

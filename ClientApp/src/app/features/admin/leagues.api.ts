@@ -52,6 +52,45 @@ export interface UserLookup {
   displayName: string | null;
 }
 
+export type SeasonStatus = 'Draft' | 'Scheduling' | 'Proposed' | 'Active' | 'Closed';
+export type WeekType = 'Level' | 'Mixed';
+
+export interface WeekInput {
+  startDate: string;
+  endDate: string;
+  weekType: WeekType;
+}
+
+export interface SeasonSummary {
+  id: string;
+  leagueId: string;
+  name: string;
+  startDate: string;
+  endDate: string;
+  status: SeasonStatus;
+}
+
+export interface SeasonDetail extends SeasonSummary {
+  weeks: WeekInput[];
+}
+
+export interface CreateSeasonRequest {
+  name: string;
+  startDate: string;
+  endDate: string;
+  weeks: WeekInput[];
+}
+
+export interface SeasonEntrySummary {
+  id: string;
+  seasonId: string;
+  divisionId: string;
+  divisionName: string;
+  teamId: string;
+  teamName: string;
+  gender: DivisionGender;
+}
+
 export interface MembershipSummary {
   id: string;
   clubId: string;
@@ -112,5 +151,37 @@ export class LeaguesApi {
 
   expel(leagueId: string, membershipId: string): Observable<void> {
     return this.http.post<void>(`/api/leagues/${leagueId}/memberships/${membershipId}/expel`, {});
+  }
+
+  listSeasons(leagueId: string): Observable<SeasonSummary[]> {
+    return this.http.get<SeasonSummary[]>(`/api/leagues/${leagueId}/seasons`);
+  }
+
+  getSeason(leagueId: string, seasonId: string): Observable<SeasonDetail> {
+    return this.http.get<SeasonDetail>(`/api/leagues/${leagueId}/seasons/${seasonId}`);
+  }
+
+  createSeason(leagueId: string, req: CreateSeasonRequest): Observable<SeasonSummary> {
+    return this.http.post<SeasonSummary>(`/api/leagues/${leagueId}/seasons`, req);
+  }
+
+  replaceSeasonWeeks(leagueId: string, seasonId: string, weeks: WeekInput[]): Observable<void> {
+    return this.http.put<void>(`/api/leagues/${leagueId}/seasons/${seasonId}/weeks`, { weeks });
+  }
+
+  deleteSeason(leagueId: string, seasonId: string): Observable<void> {
+    return this.http.delete<void>(`/api/leagues/${leagueId}/seasons/${seasonId}`);
+  }
+
+  listSeasonEntries(leagueId: string, seasonId: string): Observable<SeasonEntrySummary[]> {
+    return this.http.get<SeasonEntrySummary[]>(`/api/leagues/${leagueId}/seasons/${seasonId}/entries`);
+  }
+
+  createSeasonEntry(leagueId: string, seasonId: string, teamId: string, divisionId: string): Observable<unknown> {
+    return this.http.post(`/api/leagues/${leagueId}/seasons/${seasonId}/entries`, { teamId, divisionId });
+  }
+
+  deleteSeasonEntry(leagueId: string, seasonId: string, entryId: string): Observable<void> {
+    return this.http.delete<void>(`/api/leagues/${leagueId}/seasons/${seasonId}/entries/${entryId}`);
   }
 }
