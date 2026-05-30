@@ -4,10 +4,11 @@ import { ActivatedRoute, RouterLink } from '@angular/router';
 import { switchMap, tap } from 'rxjs';
 import { LeagueAdminSummary, LeaguesApi } from './leagues.api';
 import { AdminHeaderComponent } from './admin-header.component';
+import { ModalComponent } from '../../shared/modal.component';
 
 @Component({
   selector: 'app-league-admins-page',
-  imports: [ReactiveFormsModule, RouterLink, AdminHeaderComponent],
+  imports: [ReactiveFormsModule, RouterLink, AdminHeaderComponent, ModalComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <div class="min-h-screen bg-slate-50">
@@ -19,7 +20,16 @@ import { AdminHeaderComponent } from './admin-header.component';
           class="font-mono text-xs uppercase tracking-wider text-slate-500 hover:underline"
           >← back to league</a
         >
-        <h1 class="mt-2 font-mono text-2xl font-semibold text-slate-900">League admins</h1>
+        <div class="mt-2 flex items-center justify-between">
+          <h1 class="font-mono text-2xl font-semibold text-slate-900">League admins</h1>
+          <button
+            type="button"
+            (click)="dialogOpen.set(true)"
+            class="rounded-md bg-slate-900 px-4 py-2 font-mono text-sm font-medium text-amber-300 hover:bg-slate-800"
+          >
+            ＋ Add admin
+          </button>
+        </div>
 
         <ul class="mt-6 divide-y divide-slate-200 rounded-md border border-slate-200 bg-white">
           @for (admin of admins(); track admin.userId) {
@@ -41,31 +51,29 @@ import { AdminHeaderComponent } from './admin-header.component';
           }
         </ul>
 
-        <form
-          [formGroup]="form"
-          (ngSubmit)="onGrant()"
-          class="mt-6 grid gap-3 rounded-md border border-slate-200 bg-white p-4 shadow-sm"
-        >
-          <label class="grid gap-1">
-            <span class="font-mono text-xs uppercase tracking-wider text-slate-600">Add admin by email</span>
-            <input
-              type="email"
-              formControlName="email"
-              class="rounded-md border border-slate-300 px-3 py-2 font-mono text-sm focus:outline-none focus:ring-2 focus:ring-slate-900"
-              required
-            />
-          </label>
-          <button
-            type="submit"
-            [disabled]="submitting() || form.invalid"
-            class="justify-self-start rounded-md bg-slate-900 px-4 py-2 font-mono text-sm font-medium text-amber-300 disabled:opacity-50"
-          >
-            {{ submitting() ? 'Granting…' : 'Grant admin' }}
-          </button>
-          @if (error()) {
-            <p class="font-mono text-sm text-red-600" role="alert">{{ error() }}</p>
-          }
-        </form>
+        <app-modal [open]="dialogOpen()" title="Add league admin" (closed)="dialogOpen.set(false)">
+          <form [formGroup]="form" (ngSubmit)="onGrant()" class="grid gap-3">
+            <label class="grid gap-1">
+              <span class="font-mono text-xs uppercase tracking-wider text-slate-600">Add admin by email</span>
+              <input
+                type="email"
+                formControlName="email"
+                class="rounded-md border border-slate-300 px-3 py-2 font-mono text-sm focus:outline-none focus:ring-2 focus:ring-slate-900"
+                required
+              />
+            </label>
+            <button
+              type="submit"
+              [disabled]="submitting() || form.invalid"
+              class="justify-self-start rounded-md bg-slate-900 px-4 py-2 font-mono text-sm font-medium text-amber-300 disabled:opacity-50"
+            >
+              {{ submitting() ? 'Granting…' : 'Grant admin' }}
+            </button>
+            @if (error()) {
+              <p class="font-mono text-sm text-red-600" role="alert">{{ error() }}</p>
+            }
+          </form>
+        </app-modal>
       </main>
     </div>
   `,
@@ -78,6 +86,7 @@ export default class LeagueAdminsPage {
   protected readonly admins = signal<LeagueAdminSummary[]>([]);
   protected readonly submitting = signal(false);
   protected readonly error = signal<string | null>(null);
+  protected readonly dialogOpen = signal(false);
 
   protected readonly form = new FormGroup({
     email: new FormControl('', {
@@ -109,6 +118,7 @@ export default class LeagueAdminsPage {
           next: () => {
             this.submitting.set(false);
             this.form.reset({ email: '' });
+            this.dialogOpen.set(false);
             this.refresh();
           },
           error: (err: { error?: { title?: string } }) => {

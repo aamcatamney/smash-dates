@@ -16,10 +16,11 @@ import {
 } from './clubs.api';
 import { LeaguesApi } from './leagues.api';
 import { AdminHeaderComponent } from './admin-header.component';
+import { ModalComponent } from '../../shared/modal.component';
 
 @Component({
   selector: 'app-club-detail-page',
-  imports: [ReactiveFormsModule, RouterLink, AdminHeaderComponent],
+  imports: [ReactiveFormsModule, RouterLink, AdminHeaderComponent, ModalComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <div class="min-h-screen bg-slate-50">
@@ -42,7 +43,16 @@ import { AdminHeaderComponent } from './admin-header.component';
           }
         }
 
-        <h2 class="mt-8 font-mono text-lg font-semibold text-slate-900">Club admins</h2>
+        <div class="mt-8 flex items-center justify-between">
+          <h2 class="font-mono text-lg font-semibold text-slate-900">Club admins</h2>
+          <button
+            type="button"
+            (click)="adminDialogOpen.set(true)"
+            class="rounded-md border border-slate-300 px-3 py-1 font-mono text-xs text-slate-700 hover:bg-slate-50"
+          >
+            ＋ Add admin
+          </button>
+        </div>
         <ul class="mt-3 divide-y divide-slate-200 rounded-md border border-slate-200 bg-white">
           @for (admin of admins(); track admin.userId) {
             <li class="flex items-center justify-between px-4 py-3 font-mono text-sm">
@@ -64,11 +74,8 @@ import { AdminHeaderComponent } from './admin-header.component';
           }
         </ul>
 
-        <form
-          [formGroup]="adminForm"
-          (ngSubmit)="onGrant()"
-          class="mt-4 grid gap-3 rounded-md border border-slate-200 bg-white p-4 shadow-sm"
-        >
+        <app-modal [open]="adminDialogOpen()" title="Add club admin" (closed)="adminDialogOpen.set(false)">
+        <form [formGroup]="adminForm" (ngSubmit)="onGrant()" class="grid gap-3">
           <label class="grid gap-1">
             <span class="font-mono text-xs uppercase tracking-wider text-slate-600">Add admin by email</span>
             <input
@@ -89,6 +96,7 @@ import { AdminHeaderComponent } from './admin-header.component';
             <p class="font-mono text-sm text-red-600" role="alert">{{ adminError() }}</p>
           }
         </form>
+        </app-modal>
 
         <h2 class="mt-10 font-mono text-lg font-semibold text-slate-900">League memberships</h2>
         <ul class="mt-3 divide-y divide-slate-200 rounded-md border border-slate-200 bg-white">
@@ -125,7 +133,16 @@ import { AdminHeaderComponent } from './admin-header.component';
           }
         </ul>
 
-        <h2 class="mt-10 font-mono text-lg font-semibold text-slate-900">Teams</h2>
+        <div class="mt-10 flex items-center justify-between">
+          <h2 class="font-mono text-lg font-semibold text-slate-900">Teams</h2>
+          <button
+            type="button"
+            (click)="teamDialogOpen.set(true)"
+            class="rounded-md border border-slate-300 px-3 py-1 font-mono text-xs text-slate-700 hover:bg-slate-50"
+          >
+            ＋ Add team
+          </button>
+        </div>
         <ul class="mt-3 divide-y divide-slate-200 rounded-md border border-slate-200 bg-white">
           @for (t of teams(); track t.id) {
             <li class="flex items-center justify-between px-4 py-3 font-mono text-sm">
@@ -147,11 +164,8 @@ import { AdminHeaderComponent } from './admin-header.component';
           }
         </ul>
 
-        <form
-          [formGroup]="teamForm"
-          (ngSubmit)="onCreateTeam()"
-          class="mt-4 grid gap-3 rounded-md border border-slate-200 bg-white p-4 shadow-sm sm:grid-cols-[1fr_auto_auto] sm:items-end"
-        >
+        <app-modal [open]="teamDialogOpen()" title="Add team" (closed)="teamDialogOpen.set(false)">
+        <form [formGroup]="teamForm" (ngSubmit)="onCreateTeam()" class="grid gap-3">
           <label class="grid gap-1">
             <span class="font-mono text-xs uppercase tracking-wider text-slate-600">Team name</span>
             <input
@@ -180,11 +194,21 @@ import { AdminHeaderComponent } from './admin-header.component';
             {{ teamBusy() ? 'Adding…' : 'Add team' }}
           </button>
           @if (teamError()) {
-            <p class="font-mono text-sm text-red-600 sm:col-span-3" role="alert">{{ teamError() }}</p>
+            <p class="font-mono text-sm text-red-600" role="alert">{{ teamError() }}</p>
           }
         </form>
+        </app-modal>
 
-        <h2 class="mt-10 font-mono text-lg font-semibold text-slate-900">Venues</h2>
+        <div class="mt-10 flex items-center justify-between">
+          <h2 class="font-mono text-lg font-semibold text-slate-900">Venues</h2>
+          <button
+            type="button"
+            (click)="venueDialogOpen.set(true)"
+            class="rounded-md border border-slate-300 px-3 py-1 font-mono text-xs text-slate-700 hover:bg-slate-50"
+          >
+            ＋ Add venue
+          </button>
+        </div>
         <ul class="mt-3 divide-y divide-slate-200 rounded-md border border-slate-200 bg-white">
           @for (v of venues(); track v.id) {
             <li class="flex items-center justify-between px-4 py-3 font-mono text-sm">
@@ -208,11 +232,8 @@ import { AdminHeaderComponent } from './admin-header.component';
           }
         </ul>
 
-        <form
-          [formGroup]="venueForm"
-          (ngSubmit)="onCreateVenue()"
-          class="mt-4 grid gap-3 rounded-md border border-slate-200 bg-white p-4 shadow-sm sm:grid-cols-[1fr_auto_auto] sm:items-end"
-        >
+        <app-modal [open]="venueDialogOpen()" title="Add venue" (closed)="venueDialogOpen.set(false)">
+        <form [formGroup]="venueForm" (ngSubmit)="onCreateVenue()" class="grid gap-3">
           <label class="grid gap-1">
             <span class="font-mono text-xs uppercase tracking-wider text-slate-600">Venue name</span>
             <input
@@ -240,9 +261,10 @@ import { AdminHeaderComponent } from './admin-header.component';
             {{ venueBusy() ? 'Adding…' : 'Add venue' }}
           </button>
           @if (venueError()) {
-            <p class="font-mono text-sm text-red-600 sm:col-span-3" role="alert">{{ venueError() }}</p>
+            <p class="font-mono text-sm text-red-600" role="alert">{{ venueError() }}</p>
           }
         </form>
+        </app-modal>
 
         <h2 class="mt-10 font-mono text-lg font-semibold text-slate-900">Matches</h2>
         <ul class="mt-3 divide-y divide-slate-200 rounded-md border border-slate-200 bg-white">
@@ -287,7 +309,16 @@ import { AdminHeaderComponent } from './admin-header.component';
           }
         </ul>
 
-        <h2 class="mt-10 font-mono text-lg font-semibold text-slate-900">Blocked dates</h2>
+        <div class="mt-10 flex items-center justify-between">
+          <h2 class="font-mono text-lg font-semibold text-slate-900">Blocked dates</h2>
+          <button
+            type="button"
+            (click)="blockDialogOpen.set(true)"
+            class="rounded-md border border-slate-300 px-3 py-1 font-mono text-xs text-slate-700 hover:bg-slate-50"
+          >
+            ＋ Add blocked date
+          </button>
+        </div>
         <ul class="mt-3 divide-y divide-slate-200 rounded-md border border-slate-200 bg-white">
           @for (b of blockedDates(); track b.id) {
             <li class="flex items-center justify-between px-4 py-3 font-mono text-sm">
@@ -312,10 +343,11 @@ import { AdminHeaderComponent } from './admin-header.component';
           }
         </ul>
 
+        <app-modal [open]="blockDialogOpen()" title="Add blocked date" (closed)="blockDialogOpen.set(false)">
         <form
           [formGroup]="blockForm"
           (ngSubmit)="onCreateBlockedDate()"
-          class="mt-4 grid gap-3 rounded-md border border-slate-200 bg-white p-4 shadow-sm"
+          class="grid gap-3"
         >
           <div class="flex flex-wrap items-end gap-3">
             <label class="grid gap-1">
@@ -397,6 +429,7 @@ import { AdminHeaderComponent } from './admin-header.component';
             <p class="font-mono text-sm text-red-600" role="alert">{{ blockError() }}</p>
           }
         </form>
+        </app-modal>
       </main>
     </div>
   `,
@@ -429,6 +462,10 @@ export default class ClubDetailPage {
   protected readonly venueError = signal<string | null>(null);
   protected readonly blockBusy = signal(false);
   protected readonly blockError = signal<string | null>(null);
+  protected readonly adminDialogOpen = signal(false);
+  protected readonly teamDialogOpen = signal(false);
+  protected readonly venueDialogOpen = signal(false);
+  protected readonly blockDialogOpen = signal(false);
 
   protected readonly adminForm = new FormGroup({
     email: new FormControl('', {
@@ -498,6 +535,7 @@ export default class ClubDetailPage {
           next: () => {
             this.adminBusy.set(false);
             this.adminForm.reset({ email: '' });
+            this.adminDialogOpen.set(false);
             this.refreshAdmins();
           },
           error: (err: { error?: { title?: string } }) => {
@@ -549,6 +587,7 @@ export default class ClubDetailPage {
       next: () => {
         this.teamBusy.set(false);
         this.teamForm.reset({ name: '', gender: 'Mens' });
+        this.teamDialogOpen.set(false);
         this.refreshTeams();
       },
       error: (err: { error?: { title?: string } }) => {
@@ -572,6 +611,7 @@ export default class ClubDetailPage {
       next: () => {
         this.venueBusy.set(false);
         this.venueForm.reset({ name: '', capacity: 1 });
+        this.venueDialogOpen.set(false);
         this.refreshVenues();
       },
       error: (err: { error?: { title?: string } }) => {
@@ -625,6 +665,7 @@ export default class ClubDetailPage {
         next: () => {
           this.blockBusy.set(false);
           this.blockForm.reset({ scope: 'Club', venueId: '', teamId: '', startDate: '', endDate: '', reason: '' });
+          this.blockDialogOpen.set(false);
           this.refreshBlockedDates();
         },
         error: (err: { error?: { title?: string } }) => {
