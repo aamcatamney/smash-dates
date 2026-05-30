@@ -10,6 +10,7 @@ public static class MatchEndpoints
         group.MapGenerateScheduleEndpoint();
         group.MapRerunScheduleEndpoint();
         group.MapListMatchesEndpoint();
+        group.MapStandingsEndpoint();
         return app;
     }
 }

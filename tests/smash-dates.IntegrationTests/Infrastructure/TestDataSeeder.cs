@@ -216,15 +216,18 @@ public sealed class TestDataSeeder
         DateOnly matchDate,
         MatchStatus status = MatchStatus.Proposed,
         bool homeAccepted = false,
-        bool awayAccepted = false)
+        bool awayAccepted = false,
+        int? homeScore = null,
+        int? awayScore = null,
+        bool isWalkover = false)
     {
         await using var conn = new NpgsqlConnection(_connectionString);
         await conn.OpenAsync();
         return await conn.ExecuteScalarAsync<Guid>(
-            @"INSERT INTO matches (season_id, division_id, home_team_id, away_team_id, venue_id, match_date, status, home_accepted, away_accepted)
-              VALUES (@seasonId, @divisionId, @homeTeamId, @awayTeamId, @venueId, @matchDate, @status, @homeAccepted, @awayAccepted)
+            @"INSERT INTO matches (season_id, division_id, home_team_id, away_team_id, venue_id, match_date, status, home_accepted, away_accepted, home_score, away_score, is_walkover)
+              VALUES (@seasonId, @divisionId, @homeTeamId, @awayTeamId, @venueId, @matchDate, @status, @homeAccepted, @awayAccepted, @homeScore, @awayScore, @isWalkover)
               RETURNING id",
-            new { seasonId, divisionId, homeTeamId, awayTeamId, venueId, matchDate, status = status.ToString(), homeAccepted, awayAccepted });
+            new { seasonId, divisionId, homeTeamId, awayTeamId, venueId, matchDate, status = status.ToString(), homeAccepted, awayAccepted, homeScore, awayScore, isWalkover });
     }
 
     public sealed record MatchScenario(

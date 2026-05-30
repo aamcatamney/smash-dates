@@ -15,6 +15,8 @@ public static class MatchActionEndpoints
         group.MapAcceptMatchEndpoint();
         group.MapRejectMatchEndpoint();
         group.MapForceConfirmMatchEndpoint();
+        group.MapRecordResultEndpoint();
+        group.MapRecordWalkoverEndpoint();
         return app;
     }
 

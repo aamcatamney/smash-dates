@@ -17,7 +17,10 @@ public static class ListMatchesEndpoint
         DateOnly MatchDate,
         string Status,
         bool HomeAccepted,
-        bool AwayAccepted);
+        bool AwayAccepted,
+        int? HomeScore,
+        int? AwayScore,
+        bool IsWalkover);
 
     public static IEndpointRouteBuilder MapListMatchesEndpoint(this IEndpointRouteBuilder app)
     {
@@ -32,7 +35,7 @@ public static class ListMatchesEndpoint
             .Select(m => new MatchSummary(
                 m.Id, m.DivisionId, m.DivisionName, m.HomeTeamId, m.HomeTeamName,
                 m.AwayTeamId, m.AwayTeamName, m.VenueId, m.VenueName, m.MatchDate, m.Status.ToString(),
-                m.HomeAccepted, m.AwayAccepted))
+                m.HomeAccepted, m.AwayAccepted, m.HomeScore, m.AwayScore, m.IsWalkover))
             .ToArray());
     }
 }

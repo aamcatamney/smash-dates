@@ -7,6 +7,7 @@ import {
   DivisionGender,
   DivisionSummary,
   LeagueDetail,
+  DivisionTable,
   LeaguesApi,
   MatchSummary,
   MembershipSummary,
@@ -198,6 +199,13 @@ import { AdminHeaderComponent } from './admin-header.component';
                         {{ rerunningSeasonId() === s.id ? 'Re-running…' : 'Re-run' }}
                       </button>
                     }
+                    <button
+                      type="button"
+                      (click)="onToggleStandings(s)"
+                      class="rounded-md border border-slate-300 px-3 py-1 text-xs text-slate-700 hover:bg-slate-50"
+                    >
+                      {{ standingsSeasonId() === s.id ? 'Close' : 'Table' }}
+                    </button>
                   }
                 </div>
                 @if (rerunError() && rerunErrorSeasonId() === s.id) {
@@ -322,7 +330,16 @@ import { AdminHeaderComponent } from './admin-header.component';
                     <li class="flex flex-wrap items-center gap-x-3 gap-y-1 px-3 py-2 text-xs">
                       <span class="font-semibold">{{ f.matchDate }}</span>
                       <span class="inline-block rounded bg-slate-200 px-1.5 py-0.5">{{ f.divisionName }}</span>
-                      <span>{{ f.homeTeamName }} <span class="text-slate-400">v</span> {{ f.awayTeamName }}</span>
+                      <span>
+                        {{ f.homeTeamName }}
+                        @if (f.status === 'Played') {
+                          <span class="font-semibold">{{ f.homeScore }}–{{ f.awayScore }}</span>
+                        } @else {
+                          <span class="text-slate-400">v</span>
+                        }
+                        {{ f.awayTeamName }}
+                      </span>
+                      @if (f.isWalkover) { <span class="rounded bg-amber-200 px-1 text-amber-800">w/o</span> }
                       <span class="text-slate-500">@ {{ f.venueName }}</span>
                       @if (f.status === 'Proposed') {
                         <span class="text-slate-400">({{ f.homeAccepted ? 'home ✓' : 'home …' }}, {{ f.awayAccepted ? 'away ✓' : 'away …' }})</span>
@@ -335,11 +352,60 @@ import { AdminHeaderComponent } from './admin-header.component';
                           class="rounded-md border border-slate-300 px-2 py-0.5 text-slate-700 hover:bg-slate-50"
                         >Force confirm</button>
                       }
+                      @if (f.status === 'Confirmed') {
+                        <button type="button" (click)="onOpenResult(f)" class="rounded-md border border-slate-300 px-2 py-0.5 text-slate-700 hover:bg-slate-50">Result</button>
+                        <button type="button" (click)="onWalkover(s, f, 'Home')" class="rounded-md border border-slate-300 px-2 py-0.5 text-slate-700 hover:bg-slate-50">W/O home</button>
+                        <button type="button" (click)="onWalkover(s, f, 'Away')" class="rounded-md border border-slate-300 px-2 py-0.5 text-slate-700 hover:bg-slate-50">W/O away</button>
+                      }
+
+                      @if (resultMatchId() === f.id) {
+                        <form [formGroup]="resultForm" (ngSubmit)="onSaveResult(s, f)" class="flex w-full items-center gap-2 pt-1">
+                          <input type="number" formControlName="homeScore" min="0" aria-label="Home score" class="w-16 rounded-md border border-slate-300 px-2 py-1" />
+                          <span class="text-slate-400">–</span>
+                          <input type="number" formControlName="awayScore" min="0" aria-label="Away score" class="w-16 rounded-md border border-slate-300 px-2 py-1" />
+                          <button type="submit" class="rounded-md bg-slate-900 px-2 py-1 font-medium text-amber-300">Save</button>
+                          @if (resultError()) { <span class="text-red-600" role="alert">{{ resultError() }}</span> }
+                        </form>
+                      }
                     </li>
                   } @empty {
                     <li class="px-3 py-2 text-xs text-slate-500">No fixtures.</li>
                   }
                 </ul>
+              }
+
+              @if (standingsSeasonId() === s.id) {
+                @for (t of standings(); track t.divisionId) {
+                  <div class="mt-3">
+                    <h4 class="font-mono text-xs font-semibold text-slate-700">{{ t.divisionName }}</h4>
+                    <table class="mt-1 w-full border border-slate-200 text-xs">
+                      <thead class="bg-slate-100 text-slate-600">
+                        <tr>
+                          <th class="px-2 py-1 text-left">Team</th>
+                          <th class="px-2 py-1">P</th><th class="px-2 py-1">W</th><th class="px-2 py-1">D</th><th class="px-2 py-1">L</th>
+                          <th class="px-2 py-1">RF</th><th class="px-2 py-1">RA</th><th class="px-2 py-1">+/-</th><th class="px-2 py-1">Pts</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        @for (r of t.rows; track r.teamId) {
+                          <tr class="border-t border-slate-100">
+                            <td class="px-2 py-1 text-left">{{ r.teamName }}</td>
+                            <td class="px-2 py-1 text-center">{{ r.played }}</td>
+                            <td class="px-2 py-1 text-center">{{ r.won }}</td>
+                            <td class="px-2 py-1 text-center">{{ r.drawn }}</td>
+                            <td class="px-2 py-1 text-center">{{ r.lost }}</td>
+                            <td class="px-2 py-1 text-center">{{ r.rubbersFor }}</td>
+                            <td class="px-2 py-1 text-center">{{ r.rubbersAgainst }}</td>
+                            <td class="px-2 py-1 text-center">{{ r.rubberDifference }}</td>
+                            <td class="px-2 py-1 text-center font-semibold">{{ r.points }}</td>
+                          </tr>
+                        }
+                      </tbody>
+                    </table>
+                  </div>
+                } @empty {
+                  <p class="mt-3 text-xs text-slate-500">No standings yet.</p>
+                }
               }
             </li>
           } @empty {
@@ -468,7 +534,16 @@ export default class LeagueDetailPage {
   protected readonly rerunningSeasonId = signal<string | null>(null);
   protected readonly rerunError = signal<string | null>(null);
   protected readonly rerunErrorSeasonId = signal<string | null>(null);
+  protected readonly standingsSeasonId = signal<string | null>(null);
+  protected readonly standings = signal<DivisionTable[]>([]);
+  protected readonly resultMatchId = signal<string | null>(null);
+  protected readonly resultError = signal<string | null>(null);
   protected leagueId = '';
+
+  protected readonly resultForm = new FormGroup({
+    homeScore: new FormControl(0, { nonNullable: true, validators: [Validators.required, Validators.min(0)] }),
+    awayScore: new FormControl(0, { nonNullable: true, validators: [Validators.required, Validators.min(0)] }),
+  });
 
   protected readonly entryForm = new FormGroup({
     teamId: new FormControl('', { nonNullable: true, validators: [Validators.required] }),
@@ -790,6 +865,44 @@ export default class LeagueDetailPage {
 
   protected onForceConfirm(s: SeasonSummary, f: MatchSummary): void {
     this.api.forceConfirmMatch(f.id).subscribe({
+      next: () => this.openFixtures(s.id),
+    });
+  }
+
+  protected onToggleStandings(s: SeasonSummary): void {
+    if (this.standingsSeasonId() === s.id) {
+      this.standingsSeasonId.set(null);
+      return;
+    }
+    this.api.listStandings(this.leagueId, s.id).subscribe({
+      next: (tables) => {
+        this.standings.set(tables);
+        this.standingsSeasonId.set(s.id);
+      },
+    });
+  }
+
+  protected onOpenResult(f: MatchSummary): void {
+    this.resultError.set(null);
+    this.resultForm.reset({ homeScore: 0, awayScore: 0 });
+    this.resultMatchId.set(this.resultMatchId() === f.id ? null : f.id);
+  }
+
+  protected onSaveResult(s: SeasonSummary, f: MatchSummary): void {
+    const { homeScore, awayScore } = this.resultForm.getRawValue();
+    this.resultError.set(null);
+    this.api.recordResult(f.id, Number(homeScore), Number(awayScore), f.matchDate).subscribe({
+      next: () => {
+        this.resultMatchId.set(null);
+        this.openFixtures(s.id);
+      },
+      error: (err: { error?: { title?: string } }) =>
+        this.resultError.set(err?.error?.title ?? 'Could not record result.'),
+    });
+  }
+
+  protected onWalkover(s: SeasonSummary, f: MatchSummary, winner: 'Home' | 'Away'): void {
+    this.api.recordWalkover(f.id, winner).subscribe({
       next: () => this.openFixtures(s.id),
     });
   }

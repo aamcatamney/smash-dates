@@ -28,4 +28,8 @@ public interface IMatchRepository
 
     // Proposed → Confirmed (LeagueAdmin override). Returns false if the match was not Proposed.
     Task<bool> ForceConfirmAsync(Guid id, CancellationToken ct = default);
+
+    // Confirmed → Played with a score. isWalkover marks a conceded match (UI annotation only).
+    // Returns false if the match was not Confirmed.
+    Task<bool> RecordResultAsync(Guid id, int homeScore, int awayScore, DateOnly playedOn, bool isWalkover, CancellationToken ct = default);
 }
