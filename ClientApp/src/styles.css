@@ -1,3 +1,23 @@
 /* You can add global styles to this file, and also import other style files */
 
 @import "tailwindcss";
+
+/* Manual (class-based) dark mode: dark: utilities apply when <html> (or an ancestor)
+   carries the `dark` class. ThemeService toggles it; an inline script in index.html
+   sets it before first paint. */
+@custom-variant dark (&:where(.dark, .dark *));
+
+/* Tell the browser which scheme is active so native controls (date pickers, scrollbars,
+   form fields) render to match. */
+:root {
+  color-scheme: light;
+}
+.dark {
+  color-scheme: dark;
+}
+
+@layer base {
+  body {
+    @apply bg-slate-50 text-slate-900 dark:bg-slate-950 dark:text-slate-100;
+  }
+}

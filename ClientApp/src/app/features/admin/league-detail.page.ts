@@ -32,40 +32,40 @@ import { StatusColorPipe } from '../../shared/status-color.pipe';
   imports: [ReactiveFormsModule, RouterLink, AdminHeaderComponent, ModalComponent, ConfirmComponent, StatusColorPipe],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
-    <div class="min-h-screen bg-slate-50">
+    <div class="min-h-screen bg-slate-50 dark:bg-slate-950">
       <app-admin-header />
 
       <main class="mx-auto w-full max-w-5xl px-4 py-10">
         @if (league(); as l) {
-          <h1 class="font-mono text-2xl font-semibold text-slate-900">{{ l.name }}</h1>
+          <h1 class="font-mono text-2xl font-semibold text-slate-900 dark:text-slate-100">{{ l.name }}</h1>
           @if (l.description) {
-            <p class="mt-1 font-mono text-sm text-slate-500">{{ l.description }}</p>
+            <p class="mt-1 font-mono text-sm text-slate-500 dark:text-slate-400">{{ l.description }}</p>
           }
           <a
             [routerLink]="['/admin/leagues', leagueId, 'admins']"
-            class="mt-2 inline-block font-mono text-xs uppercase tracking-wider text-slate-500 hover:underline"
+            class="mt-2 inline-block font-mono text-xs uppercase tracking-wider text-slate-500 dark:text-slate-400 hover:underline"
             >manage admins →</a
           >
         }
 
         <div class="mt-8 flex items-center justify-between">
-          <h2 class="font-mono text-lg font-semibold text-slate-900">Divisions</h2>
+          <h2 class="font-mono text-lg font-semibold text-slate-900 dark:text-slate-100">Divisions</h2>
           <button
             type="button"
             (click)="divisionDialogOpen.set(true)"
-            class="rounded-md border border-slate-300 px-3 py-1 font-mono text-xs text-slate-700 hover:bg-slate-50"
+            class="rounded-md border border-slate-300 dark:border-slate-700 px-3 py-1 font-mono text-xs text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800"
           >
             ＋ Add division
           </button>
         </div>
-        <ul class="mt-3 divide-y divide-slate-200 rounded-md border border-slate-200 bg-white">
+        <ul class="mt-3 divide-y divide-slate-200 rounded-md border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900">
           @for (d of divisions(); track d.id) {
-            <li class="px-4 py-3 font-mono text-sm text-slate-900">
+            <li class="px-4 py-3 font-mono text-sm text-slate-900 dark:text-slate-100">
               {{ d.name }} — {{ d.gender }} #{{ d.rank }} · rubbers/match {{ d.rubbersPerMatch }} ·
               points {{ d.winPoints }}/{{ d.drawPoints }}/{{ d.lossPoints }}
             </li>
           } @empty {
-            <li class="px-4 py-3 font-mono text-sm text-slate-500">No divisions yet.</li>
+            <li class="px-4 py-3 font-mono text-sm text-slate-500 dark:text-slate-400">No divisions yet.</li>
           }
         </ul>
 
@@ -76,19 +76,19 @@ import { StatusColorPipe } from '../../shared/status-color.pipe';
           class="grid gap-3"
         >
           <label class="grid gap-1">
-            <span class="font-mono text-xs uppercase tracking-wider text-slate-600">Name</span>
+            <span class="font-mono text-xs uppercase tracking-wider text-slate-600 dark:text-slate-400">Name</span>
             <input
               type="text"
               formControlName="name"
-              class="rounded-md border border-slate-300 px-3 py-2 font-mono text-sm focus:outline-none focus:ring-2 focus:ring-slate-900"
+              class="rounded-md border border-slate-300 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 px-3 py-2 font-mono text-sm focus:outline-none focus:ring-2 focus:ring-slate-900 dark:focus:ring-slate-100"
               required
             />
           </label>
           <label class="grid gap-1">
-            <span class="font-mono text-xs uppercase tracking-wider text-slate-600">Gender</span>
+            <span class="font-mono text-xs uppercase tracking-wider text-slate-600 dark:text-slate-400">Gender</span>
             <select
               formControlName="gender"
-              class="rounded-md border border-slate-300 px-3 py-2 font-mono text-sm focus:outline-none focus:ring-2 focus:ring-slate-900"
+              class="rounded-md border border-slate-300 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 px-3 py-2 font-mono text-sm focus:outline-none focus:ring-2 focus:ring-slate-900 dark:focus:ring-slate-100"
             >
               <option value="Mens">Mens</option>
               <option value="Ladies">Ladies</option>
@@ -97,80 +97,80 @@ import { StatusColorPipe } from '../../shared/status-color.pipe';
           </label>
           <div class="grid grid-cols-2 gap-3">
             <label class="grid gap-1">
-              <span class="font-mono text-xs uppercase tracking-wider text-slate-600">Rank</span>
+              <span class="font-mono text-xs uppercase tracking-wider text-slate-600 dark:text-slate-400">Rank</span>
               <input
                 type="number"
                 formControlName="rank"
                 min="1"
-                class="rounded-md border border-slate-300 px-3 py-2 font-mono text-sm focus:outline-none focus:ring-2 focus:ring-slate-900"
+                class="rounded-md border border-slate-300 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 px-3 py-2 font-mono text-sm focus:outline-none focus:ring-2 focus:ring-slate-900 dark:focus:ring-slate-100"
               />
             </label>
             <label class="grid gap-1">
-              <span class="font-mono text-xs uppercase tracking-wider text-slate-600">Rubbers/match</span>
+              <span class="font-mono text-xs uppercase tracking-wider text-slate-600 dark:text-slate-400">Rubbers/match</span>
               <input
                 type="number"
                 formControlName="rubbersPerMatch"
                 min="1"
-                class="rounded-md border border-slate-300 px-3 py-2 font-mono text-sm focus:outline-none focus:ring-2 focus:ring-slate-900"
+                class="rounded-md border border-slate-300 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 px-3 py-2 font-mono text-sm focus:outline-none focus:ring-2 focus:ring-slate-900 dark:focus:ring-slate-100"
               />
             </label>
           </div>
           <div class="grid grid-cols-3 gap-3">
             <label class="grid gap-1">
-              <span class="font-mono text-xs uppercase tracking-wider text-slate-600">Win pts</span>
+              <span class="font-mono text-xs uppercase tracking-wider text-slate-600 dark:text-slate-400">Win pts</span>
               <input
                 type="number"
                 formControlName="winPoints"
-                class="rounded-md border border-slate-300 px-3 py-2 font-mono text-sm focus:outline-none focus:ring-2 focus:ring-slate-900"
+                class="rounded-md border border-slate-300 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 px-3 py-2 font-mono text-sm focus:outline-none focus:ring-2 focus:ring-slate-900 dark:focus:ring-slate-100"
               />
             </label>
             <label class="grid gap-1">
-              <span class="font-mono text-xs uppercase tracking-wider text-slate-600">Draw pts</span>
+              <span class="font-mono text-xs uppercase tracking-wider text-slate-600 dark:text-slate-400">Draw pts</span>
               <input
                 type="number"
                 formControlName="drawPoints"
-                class="rounded-md border border-slate-300 px-3 py-2 font-mono text-sm focus:outline-none focus:ring-2 focus:ring-slate-900"
+                class="rounded-md border border-slate-300 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 px-3 py-2 font-mono text-sm focus:outline-none focus:ring-2 focus:ring-slate-900 dark:focus:ring-slate-100"
               />
             </label>
             <label class="grid gap-1">
-              <span class="font-mono text-xs uppercase tracking-wider text-slate-600">Loss pts</span>
+              <span class="font-mono text-xs uppercase tracking-wider text-slate-600 dark:text-slate-400">Loss pts</span>
               <input
                 type="number"
                 formControlName="lossPoints"
-                class="rounded-md border border-slate-300 px-3 py-2 font-mono text-sm focus:outline-none focus:ring-2 focus:ring-slate-900"
+                class="rounded-md border border-slate-300 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 px-3 py-2 font-mono text-sm focus:outline-none focus:ring-2 focus:ring-slate-900 dark:focus:ring-slate-100"
               />
             </label>
           </div>
           <button
             type="submit"
             [disabled]="submitting() || form.invalid"
-            class="justify-self-start rounded-md bg-slate-900 px-4 py-2 font-mono text-sm font-medium text-amber-300 disabled:opacity-50"
+            class="justify-self-start rounded-md bg-slate-900 dark:bg-amber-400 px-4 py-2 font-mono text-sm font-medium text-amber-300 dark:text-slate-900 disabled:opacity-50"
           >
             {{ submitting() ? 'Adding…' : 'Add division' }}
           </button>
           @if (error()) {
-            <p class="font-mono text-sm text-red-600" role="alert">{{ error() }}</p>
+            <p class="font-mono text-sm text-red-600 dark:text-red-400" role="alert">{{ error() }}</p>
           }
         </form>
         </app-modal>
 
         <div class="mt-10 flex items-center justify-between">
-          <h2 class="font-mono text-lg font-semibold text-slate-900">Seasons</h2>
+          <h2 class="font-mono text-lg font-semibold text-slate-900 dark:text-slate-100">Seasons</h2>
           <button
             type="button"
             (click)="seasonDialogOpen.set(true)"
-            class="rounded-md border border-slate-300 px-3 py-1 font-mono text-xs text-slate-700 hover:bg-slate-50"
+            class="rounded-md border border-slate-300 dark:border-slate-700 px-3 py-1 font-mono text-xs text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800"
           >
             ＋ Add season
           </button>
         </div>
-        <ul class="mt-3 divide-y divide-slate-200 rounded-md border border-slate-200 bg-white">
+        <ul class="mt-3 divide-y divide-slate-200 rounded-md border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900">
           @for (s of seasons(); track s.id) {
             <li class="px-4 py-3 font-mono text-sm">
               <div class="flex items-center justify-between">
                 <span>
                   {{ s.name }}
-                  <span class="ml-2 text-slate-500">{{ s.startDate }} → {{ s.endDate }}</span>
+                  <span class="ml-2 text-slate-500 dark:text-slate-400">{{ s.startDate }} → {{ s.endDate }}</span>
                   <span [class]="'ml-3 inline-block rounded px-2 py-0.5 text-xs ' + (s.status | statusColor)">{{ s.status }}</span>
                 </span>
                 <div class="flex gap-2">
@@ -178,14 +178,14 @@ import { StatusColorPipe } from '../../shared/status-color.pipe';
                     <button
                       type="button"
                       (click)="onEditWeeks(s)"
-                      class="rounded-md border border-slate-300 px-3 py-1 text-xs text-slate-700 hover:bg-slate-50"
+                      class="rounded-md border border-slate-300 dark:border-slate-700 px-3 py-1 text-xs text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800"
                     >
                       {{ editingSeasonId() === s.id ? 'Close' : 'Weeks' }}
                     </button>
                     <button
                       type="button"
                       (click)="onManageEntries(s)"
-                      class="rounded-md border border-slate-300 px-3 py-1 text-xs text-slate-700 hover:bg-slate-50"
+                      class="rounded-md border border-slate-300 dark:border-slate-700 px-3 py-1 text-xs text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800"
                     >
                       {{ entriesSeasonId() === s.id ? 'Close' : 'Teams' }}
                     </button>
@@ -193,7 +193,7 @@ import { StatusColorPipe } from '../../shared/status-color.pipe';
                       type="button"
                       [disabled]="generatingSeasonId() === s.id"
                       (click)="onGenerate(s)"
-                      class="rounded-md bg-slate-900 px-3 py-1 text-xs font-medium text-amber-300 hover:bg-slate-800 disabled:opacity-50"
+                      class="rounded-md bg-slate-900 dark:bg-amber-400 px-3 py-1 text-xs font-medium text-amber-300 dark:text-slate-900 hover:bg-slate-800 dark:hover:bg-amber-300 disabled:opacity-50"
                     >
                       {{ generatingSeasonId() === s.id ? 'Generating…' : 'Generate' }}
                     </button>
@@ -201,7 +201,7 @@ import { StatusColorPipe } from '../../shared/status-color.pipe';
                       type="button"
                       [attr.aria-label]="'Delete season ' + s.name"
                       (click)="askDeleteSeason(s)"
-                      class="rounded-md border border-red-300 px-3 py-1 text-xs text-red-700 hover:bg-red-50"
+                      class="rounded-md border border-red-300 dark:border-red-800 px-3 py-1 text-xs text-red-700 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950"
                     >
                       Delete
                     </button>
@@ -209,7 +209,7 @@ import { StatusColorPipe } from '../../shared/status-color.pipe';
                     <button
                       type="button"
                       (click)="onToggleFixtures(s)"
-                      class="rounded-md border border-slate-300 px-3 py-1 text-xs text-slate-700 hover:bg-slate-50"
+                      class="rounded-md border border-slate-300 dark:border-slate-700 px-3 py-1 text-xs text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800"
                     >
                       {{ fixturesSeasonId() === s.id ? 'Close' : 'Fixtures' }}
                     </button>
@@ -218,34 +218,34 @@ import { StatusColorPipe } from '../../shared/status-color.pipe';
                         type="button"
                         [disabled]="rerunningSeasonId() === s.id"
                         (click)="onRerun(s)"
-                        class="rounded-md border border-slate-300 px-3 py-1 text-xs text-slate-700 hover:bg-slate-50 disabled:opacity-50"
+                        class="rounded-md border border-slate-300 dark:border-slate-700 px-3 py-1 text-xs text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 disabled:opacity-50"
                       >
                         {{ rerunningSeasonId() === s.id ? 'Re-running…' : 'Re-run' }}
                       </button>
                       <button
                         type="button"
                         (click)="onActivate(s)"
-                        class="rounded-md bg-slate-900 px-3 py-1 text-xs font-medium text-amber-300 hover:bg-slate-800"
+                        class="rounded-md bg-slate-900 dark:bg-amber-400 px-3 py-1 text-xs font-medium text-amber-300 dark:text-slate-900 hover:bg-slate-800 dark:hover:bg-amber-300"
                       >Activate</button>
                     }
                     @if (s.status === 'Active') {
                       <button
                         type="button"
                         (click)="onCloseSeason(s)"
-                        class="rounded-md border border-red-300 px-3 py-1 text-xs text-red-700 hover:bg-red-50"
+                        class="rounded-md border border-red-300 dark:border-red-800 px-3 py-1 text-xs text-red-700 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950"
                       >Close season</button>
                     }
                     <button
                       type="button"
                       (click)="onToggleStandings(s)"
-                      class="rounded-md border border-slate-300 px-3 py-1 text-xs text-slate-700 hover:bg-slate-50"
+                      class="rounded-md border border-slate-300 dark:border-slate-700 px-3 py-1 text-xs text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800"
                     >
                       {{ standingsSeasonId() === s.id ? 'Close' : 'Table' }}
                     </button>
                   }
                 </div>
                 @if (rerunError() && rerunErrorSeasonId() === s.id) {
-                  <p class="mt-1 text-xs text-red-600" role="alert">{{ rerunError() }}</p>
+                  <p class="mt-1 text-xs text-red-600 dark:text-red-400" role="alert">{{ rerunError() }}</p>
                 }
               </div>
 
@@ -258,19 +258,19 @@ import { StatusColorPipe } from '../../shared/status-color.pipe';
                           type="date"
                           formControlName="startDate"
                           aria-label="Week start date"
-                          class="rounded-md border border-slate-300 px-2 py-1 text-xs focus:outline-none focus:ring-2 focus:ring-slate-900"
+                          class="rounded-md border border-slate-300 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 px-2 py-1 text-xs focus:outline-none focus:ring-2 focus:ring-slate-900 dark:focus:ring-slate-100"
                         />
-                        <span class="text-slate-400">→</span>
+                        <span class="text-slate-400 dark:text-slate-500">→</span>
                         <input
                           type="date"
                           formControlName="endDate"
                           aria-label="Week end date"
-                          class="rounded-md border border-slate-300 px-2 py-1 text-xs focus:outline-none focus:ring-2 focus:ring-slate-900"
+                          class="rounded-md border border-slate-300 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 px-2 py-1 text-xs focus:outline-none focus:ring-2 focus:ring-slate-900 dark:focus:ring-slate-100"
                         />
                         <select
                           formControlName="weekType"
                           aria-label="Week type"
-                          class="rounded-md border border-slate-300 px-2 py-1 text-xs focus:outline-none focus:ring-2 focus:ring-slate-900"
+                          class="rounded-md border border-slate-300 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 px-2 py-1 text-xs focus:outline-none focus:ring-2 focus:ring-slate-900 dark:focus:ring-slate-100"
                         >
                           <option value="Level">Level</option>
                           <option value="Mixed">Mixed</option>
@@ -279,55 +279,55 @@ import { StatusColorPipe } from '../../shared/status-color.pipe';
                           type="button"
                           (click)="removeWeek($index)"
                           aria-label="Remove week"
-                          class="rounded-md border border-red-300 px-2 py-1 text-xs text-red-700 hover:bg-red-50"
+                          class="rounded-md border border-red-300 dark:border-red-800 px-2 py-1 text-xs text-red-700 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950"
                         >✕</button>
                       </div>
                     } @empty {
-                      <p class="text-xs text-slate-500">No weeks. Add one below.</p>
+                      <p class="text-xs text-slate-500 dark:text-slate-400">No weeks. Add one below.</p>
                     }
                   </div>
                   <div class="flex gap-2">
                     <button
                       type="button"
                       (click)="addWeek()"
-                      class="rounded-md border border-slate-300 px-3 py-1 text-xs text-slate-700 hover:bg-slate-50"
+                      class="rounded-md border border-slate-300 dark:border-slate-700 px-3 py-1 text-xs text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800"
                     >+ Add week</button>
                     <button
                       type="submit"
                       [disabled]="weeksSaving() || weeksForm.invalid"
-                      class="rounded-md bg-slate-900 px-3 py-1 text-xs font-medium text-amber-300 disabled:opacity-50"
+                      class="rounded-md bg-slate-900 dark:bg-amber-400 px-3 py-1 text-xs font-medium text-amber-300 dark:text-slate-900 disabled:opacity-50"
                     >
                       {{ weeksSaving() ? 'Saving…' : 'Save weeks' }}
                     </button>
                   </div>
                   @if (weeksError()) {
-                    <p class="text-xs text-red-600" role="alert">{{ weeksError() }}</p>
+                    <p class="text-xs text-red-600 dark:text-red-400" role="alert">{{ weeksError() }}</p>
                   }
                 </form>
               }
 
               @if (entriesSeasonId() === s.id) {
                 <div class="mt-3 grid gap-2">
-                  <ul class="divide-y divide-slate-100 rounded border border-slate-200">
+                  <ul class="divide-y divide-slate-100 rounded border border-slate-200 dark:border-slate-800">
                     @for (e of seasonEntries(); track e.id) {
                       <li class="flex items-center justify-between px-3 py-2 text-xs">
-                        <span>{{ e.teamName }} <span class="text-slate-400">→</span> {{ e.divisionName }}</span>
+                        <span>{{ e.teamName }} <span class="text-slate-400 dark:text-slate-500">→</span> {{ e.divisionName }}</span>
                         <button
                           type="button"
                           [attr.aria-label]="'Remove ' + e.teamName"
                           (click)="onRemoveEntry(s, e)"
-                          class="rounded-md border border-red-300 px-2 py-0.5 text-red-700 hover:bg-red-50"
+                          class="rounded-md border border-red-300 dark:border-red-800 px-2 py-0.5 text-red-700 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950"
                         >✕</button>
                       </li>
                     } @empty {
-                      <li class="px-3 py-2 text-xs text-slate-500">No teams assigned.</li>
+                      <li class="px-3 py-2 text-xs text-slate-500 dark:text-slate-400">No teams assigned.</li>
                     }
                   </ul>
                   <form [formGroup]="entryForm" (ngSubmit)="onAddEntry(s)" class="flex flex-wrap items-center gap-2">
                     <select
                       formControlName="teamId"
                       aria-label="Team"
-                      class="rounded-md border border-slate-300 px-2 py-1 text-xs focus:outline-none focus:ring-2 focus:ring-slate-900"
+                      class="rounded-md border border-slate-300 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 px-2 py-1 text-xs focus:outline-none focus:ring-2 focus:ring-slate-900 dark:focus:ring-slate-100"
                     >
                       <option value="">-- team --</option>
                       @for (t of teamOptions(); track t.id) {
@@ -337,7 +337,7 @@ import { StatusColorPipe } from '../../shared/status-color.pipe';
                     <select
                       formControlName="divisionId"
                       aria-label="Division"
-                      class="rounded-md border border-slate-300 px-2 py-1 text-xs focus:outline-none focus:ring-2 focus:ring-slate-900"
+                      class="rounded-md border border-slate-300 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 px-2 py-1 text-xs focus:outline-none focus:ring-2 focus:ring-slate-900 dark:focus:ring-slate-100"
                     >
                       <option value="">-- division --</option>
                       @for (d of divisions(); track d.id) {
@@ -347,68 +347,68 @@ import { StatusColorPipe } from '../../shared/status-color.pipe';
                     <button
                       type="submit"
                       [disabled]="entryForm.invalid"
-                      class="rounded-md bg-slate-900 px-3 py-1 text-xs font-medium text-amber-300 disabled:opacity-50"
+                      class="rounded-md bg-slate-900 dark:bg-amber-400 px-3 py-1 text-xs font-medium text-amber-300 dark:text-slate-900 disabled:opacity-50"
                     >Assign</button>
                   </form>
                   @if (entryError()) {
-                    <p class="text-xs text-red-600" role="alert">{{ entryError() }}</p>
+                    <p class="text-xs text-red-600 dark:text-red-400" role="alert">{{ entryError() }}</p>
                   }
                 </div>
               }
 
               @if (generateError() && generateErrorSeasonId() === s.id) {
-                <p class="mt-2 text-xs text-red-600" role="alert">{{ generateError() }}</p>
+                <p class="mt-2 text-xs text-red-600 dark:text-red-400" role="alert">{{ generateError() }}</p>
               }
 
               @if (fixturesSeasonId() === s.id) {
-                <ul class="mt-3 divide-y divide-slate-100 rounded border border-slate-200">
+                <ul class="mt-3 divide-y divide-slate-100 rounded border border-slate-200 dark:border-slate-800">
                   @for (f of fixtures(); track f.id) {
                     <li class="flex flex-wrap items-center gap-x-3 gap-y-1 px-3 py-2 text-xs">
                       <span class="font-semibold">{{ f.matchDate }}</span>
-                      <span class="inline-block rounded bg-slate-200 px-1.5 py-0.5">{{ f.divisionName }}</span>
+                      <span class="inline-block rounded bg-slate-200 dark:bg-slate-700 px-1.5 py-0.5">{{ f.divisionName }}</span>
                       <span>
                         {{ f.homeTeamName }}
                         @if (f.status === 'Played') {
                           <span class="font-semibold">{{ f.homeScore }}–{{ f.awayScore }}</span>
                         } @else {
-                          <span class="text-slate-400">v</span>
+                          <span class="text-slate-400 dark:text-slate-500">v</span>
                         }
                         {{ f.awayTeamName }}
                       </span>
-                      @if (f.isWalkover) { <span class="rounded bg-amber-200 px-1 text-amber-800">w/o</span> }
-                      <span class="text-slate-500">@ {{ f.venueName }}</span>
+                      @if (f.isWalkover) { <span class="rounded bg-amber-200 dark:bg-amber-900 px-1 text-amber-800 dark:text-amber-200">w/o</span> }
+                      <span class="text-slate-500 dark:text-slate-400">@ {{ f.venueName }}</span>
                       @if (f.status === 'Proposed') {
-                        <span class="text-slate-400">({{ f.homeAccepted ? 'home ✓' : 'home …' }}, {{ f.awayAccepted ? 'away ✓' : 'away …' }})</span>
+                        <span class="text-slate-400 dark:text-slate-500">({{ f.homeAccepted ? 'home ✓' : 'home …' }}, {{ f.awayAccepted ? 'away ✓' : 'away …' }})</span>
                       }
                       <span [class]="'ml-auto inline-block rounded px-1.5 py-0.5 ' + (f.status | statusColor)">{{ f.status }}</span>
                       @if (f.status === 'Proposed') {
                         <button
                           type="button"
                           (click)="onForceConfirm(s, f)"
-                          class="rounded-md border border-slate-300 px-2 py-0.5 text-slate-700 hover:bg-slate-50"
+                          class="rounded-md border border-slate-300 dark:border-slate-700 px-2 py-0.5 text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800"
                         >Force confirm</button>
                       }
                       @if (f.status === 'Confirmed') {
-                        <button type="button" (click)="onOpenResult(f)" class="rounded-md border border-slate-300 px-2 py-0.5 text-slate-700 hover:bg-slate-50">Result</button>
-                        <button type="button" (click)="onWalkover(s, f, 'Home')" class="rounded-md border border-slate-300 px-2 py-0.5 text-slate-700 hover:bg-slate-50">W/O home</button>
-                        <button type="button" (click)="onWalkover(s, f, 'Away')" class="rounded-md border border-slate-300 px-2 py-0.5 text-slate-700 hover:bg-slate-50">W/O away</button>
+                        <button type="button" (click)="onOpenResult(f)" class="rounded-md border border-slate-300 dark:border-slate-700 px-2 py-0.5 text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800">Result</button>
+                        <button type="button" (click)="onWalkover(s, f, 'Home')" class="rounded-md border border-slate-300 dark:border-slate-700 px-2 py-0.5 text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800">W/O home</button>
+                        <button type="button" (click)="onWalkover(s, f, 'Away')" class="rounded-md border border-slate-300 dark:border-slate-700 px-2 py-0.5 text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800">W/O away</button>
                         @if (s.status === 'Active') {
-                          <button type="button" (click)="onPostpone(s, f)" class="rounded-md border border-amber-300 px-2 py-0.5 text-amber-700 hover:bg-amber-50">Postpone</button>
+                          <button type="button" (click)="onPostpone(s, f)" class="rounded-md border border-amber-300 dark:border-amber-800 px-2 py-0.5 text-amber-700 dark:text-amber-400 hover:bg-amber-50 dark:hover:bg-amber-950">Postpone</button>
                         }
                       }
 
                       @if (resultMatchId() === f.id) {
                         <form [formGroup]="resultForm" (ngSubmit)="onSaveResult(s, f)" class="flex w-full items-center gap-2 pt-1">
-                          <input type="number" formControlName="homeScore" min="0" aria-label="Home score" class="w-16 rounded-md border border-slate-300 px-2 py-1" />
-                          <span class="text-slate-400">–</span>
-                          <input type="number" formControlName="awayScore" min="0" aria-label="Away score" class="w-16 rounded-md border border-slate-300 px-2 py-1" />
-                          <button type="submit" class="rounded-md bg-slate-900 px-2 py-1 font-medium text-amber-300">Save</button>
-                          @if (resultError()) { <span class="text-red-600" role="alert">{{ resultError() }}</span> }
+                          <input type="number" formControlName="homeScore" min="0" aria-label="Home score" class="w-16 rounded-md border border-slate-300 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 px-2 py-1" />
+                          <span class="text-slate-400 dark:text-slate-500">–</span>
+                          <input type="number" formControlName="awayScore" min="0" aria-label="Away score" class="w-16 rounded-md border border-slate-300 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 px-2 py-1" />
+                          <button type="submit" class="rounded-md bg-slate-900 dark:bg-amber-400 px-2 py-1 font-medium text-amber-300 dark:text-slate-900">Save</button>
+                          @if (resultError()) { <span class="text-red-600 dark:text-red-400" role="alert">{{ resultError() }}</span> }
                         </form>
                       }
                     </li>
                   } @empty {
-                    <li class="px-3 py-2 text-xs text-slate-500">No fixtures.</li>
+                    <li class="px-3 py-2 text-xs text-slate-500 dark:text-slate-400">No fixtures.</li>
                   }
                 </ul>
               }
@@ -416,9 +416,9 @@ import { StatusColorPipe } from '../../shared/status-color.pipe';
               @if (standingsSeasonId() === s.id) {
                 @for (t of standings(); track t.divisionId) {
                   <div class="mt-3">
-                    <h4 class="font-mono text-xs font-semibold text-slate-700">{{ t.divisionName }}</h4>
-                    <table class="mt-1 w-full border border-slate-200 text-xs">
-                      <thead class="bg-slate-100 text-slate-600">
+                    <h4 class="font-mono text-xs font-semibold text-slate-700 dark:text-slate-300">{{ t.divisionName }}</h4>
+                    <table class="mt-1 w-full border border-slate-200 dark:border-slate-800 text-xs">
+                      <thead class="bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400">
                         <tr>
                           <th class="px-2 py-1 text-left">Team</th>
                           <th class="px-2 py-1">P</th><th class="px-2 py-1">W</th><th class="px-2 py-1">D</th><th class="px-2 py-1">L</th>
@@ -427,7 +427,7 @@ import { StatusColorPipe } from '../../shared/status-color.pipe';
                       </thead>
                       <tbody>
                         @for (r of t.rows; track r.teamId) {
-                          <tr class="border-t border-slate-100">
+                          <tr class="border-t border-slate-100 dark:border-slate-800">
                             <td class="px-2 py-1 text-left">{{ r.teamName }}</td>
                             <td class="px-2 py-1 text-center">{{ r.played }}</td>
                             <td class="px-2 py-1 text-center">{{ r.won }}</td>
@@ -443,12 +443,12 @@ import { StatusColorPipe } from '../../shared/status-color.pipe';
                     </table>
                   </div>
                 } @empty {
-                  <p class="mt-3 text-xs text-slate-500">No standings yet.</p>
+                  <p class="mt-3 text-xs text-slate-500 dark:text-slate-400">No standings yet.</p>
                 }
               }
             </li>
           } @empty {
-            <li class="px-4 py-3 font-mono text-sm text-slate-500">No seasons yet.</li>
+            <li class="px-4 py-3 font-mono text-sm text-slate-500 dark:text-slate-400">No seasons yet.</li>
           }
         </ul>
 
@@ -459,54 +459,54 @@ import { StatusColorPipe } from '../../shared/status-color.pipe';
           class="grid gap-3"
         >
           <label class="grid gap-1">
-            <span class="font-mono text-xs uppercase tracking-wider text-slate-600">Season name</span>
+            <span class="font-mono text-xs uppercase tracking-wider text-slate-600 dark:text-slate-400">Season name</span>
             <input
               type="text"
               formControlName="name"
-              class="rounded-md border border-slate-300 px-3 py-2 font-mono text-sm focus:outline-none focus:ring-2 focus:ring-slate-900"
+              class="rounded-md border border-slate-300 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 px-3 py-2 font-mono text-sm focus:outline-none focus:ring-2 focus:ring-slate-900 dark:focus:ring-slate-100"
               required
             />
           </label>
           <label class="grid gap-1">
-            <span class="font-mono text-xs uppercase tracking-wider text-slate-600">Start</span>
+            <span class="font-mono text-xs uppercase tracking-wider text-slate-600 dark:text-slate-400">Start</span>
             <input
               type="date"
               formControlName="startDate"
-              class="rounded-md border border-slate-300 px-3 py-2 font-mono text-sm focus:outline-none focus:ring-2 focus:ring-slate-900"
+              class="rounded-md border border-slate-300 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 px-3 py-2 font-mono text-sm focus:outline-none focus:ring-2 focus:ring-slate-900 dark:focus:ring-slate-100"
             />
           </label>
           <label class="grid gap-1">
-            <span class="font-mono text-xs uppercase tracking-wider text-slate-600">End</span>
+            <span class="font-mono text-xs uppercase tracking-wider text-slate-600 dark:text-slate-400">End</span>
             <input
               type="date"
               formControlName="endDate"
-              class="rounded-md border border-slate-300 px-3 py-2 font-mono text-sm focus:outline-none focus:ring-2 focus:ring-slate-900"
+              class="rounded-md border border-slate-300 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 px-3 py-2 font-mono text-sm focus:outline-none focus:ring-2 focus:ring-slate-900 dark:focus:ring-slate-100"
             />
           </label>
           <button
             type="submit"
             [disabled]="seasonSubmitting() || seasonForm.invalid"
-            class="rounded-md bg-slate-900 px-4 py-2 font-mono text-sm font-medium text-amber-300 disabled:opacity-50"
+            class="rounded-md bg-slate-900 dark:bg-amber-400 px-4 py-2 font-mono text-sm font-medium text-amber-300 dark:text-slate-900 disabled:opacity-50"
           >
             {{ seasonSubmitting() ? 'Adding…' : 'Add season' }}
           </button>
           @if (seasonError()) {
-            <p class="font-mono text-sm text-red-600" role="alert">{{ seasonError() }}</p>
+            <p class="font-mono text-sm text-red-600 dark:text-red-400" role="alert">{{ seasonError() }}</p>
           }
         </form>
         </app-modal>
 
         <div class="mt-10 flex items-center justify-between">
-          <h2 class="font-mono text-lg font-semibold text-slate-900">Member clubs</h2>
+          <h2 class="font-mono text-lg font-semibold text-slate-900 dark:text-slate-100">Member clubs</h2>
           <button
             type="button"
             (click)="inviteDialogOpen.set(true)"
-            class="rounded-md border border-slate-300 px-3 py-1 font-mono text-xs text-slate-700 hover:bg-slate-50"
+            class="rounded-md border border-slate-300 dark:border-slate-700 px-3 py-1 font-mono text-xs text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800"
           >
             ＋ Invite club
           </button>
         </div>
-        <ul class="mt-3 divide-y divide-slate-200 rounded-md border border-slate-200 bg-white">
+        <ul class="mt-3 divide-y divide-slate-200 rounded-md border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900">
           @for (m of memberships(); track m.id) {
             <li class="flex items-center justify-between px-4 py-3 font-mono text-sm">
               <span>
@@ -517,12 +517,12 @@ import { StatusColorPipe } from '../../shared/status-color.pipe';
                 <button
                   type="button"
                   (click)="askExpel(m)"
-                  class="rounded-md border border-red-300 px-3 py-1 text-xs text-red-700 hover:bg-red-50"
+                  class="rounded-md border border-red-300 dark:border-red-800 px-3 py-1 text-xs text-red-700 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950"
                 >Expel</button>
               }
             </li>
           } @empty {
-            <li class="px-4 py-3 font-mono text-sm text-slate-500">No member clubs.</li>
+            <li class="px-4 py-3 font-mono text-sm text-slate-500 dark:text-slate-400">No member clubs.</li>
           }
         </ul>
 
@@ -533,10 +533,10 @@ import { StatusColorPipe } from '../../shared/status-color.pipe';
           class="grid gap-3"
         >
           <label class="grid gap-1">
-            <span class="font-mono text-xs uppercase tracking-wider text-slate-600">Invite club</span>
+            <span class="font-mono text-xs uppercase tracking-wider text-slate-600 dark:text-slate-400">Invite club</span>
             <select
               formControlName="clubId"
-              class="rounded-md border border-slate-300 px-3 py-2 font-mono text-sm focus:outline-none focus:ring-2 focus:ring-slate-900"
+              class="rounded-md border border-slate-300 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 px-3 py-2 font-mono text-sm focus:outline-none focus:ring-2 focus:ring-slate-900 dark:focus:ring-slate-100"
             >
               <option value="">-- choose a club --</option>
               @for (c of availableClubs(); track c.id) {
@@ -547,7 +547,7 @@ import { StatusColorPipe } from '../../shared/status-color.pipe';
           <button
             type="submit"
             [disabled]="inviteForm.invalid"
-            class="justify-self-start rounded-md bg-slate-900 px-4 py-2 font-mono text-sm font-medium text-amber-300 disabled:opacity-50"
+            class="justify-self-start rounded-md bg-slate-900 dark:bg-amber-400 px-4 py-2 font-mono text-sm font-medium text-amber-300 dark:text-slate-900 disabled:opacity-50"
           >
             Send invite
           </button>
@@ -556,16 +556,16 @@ import { StatusColorPipe } from '../../shared/status-color.pipe';
 
         @if (schedulingConfig(); as c) {
           <div class="mt-10 flex items-center justify-between">
-            <h2 class="font-mono text-lg font-semibold text-slate-900">Scheduler tuning</h2>
+            <h2 class="font-mono text-lg font-semibold text-slate-900 dark:text-slate-100">Scheduler tuning</h2>
             <button
               type="button"
               (click)="onEditConfig()"
-              class="rounded-md border border-slate-300 px-3 py-1 font-mono text-xs text-slate-700 hover:bg-slate-50"
+              class="rounded-md border border-slate-300 dark:border-slate-700 px-3 py-1 font-mono text-xs text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800"
             >
               Edit
             </button>
           </div>
-          <div class="mt-3 rounded-md border border-slate-200 bg-white px-4 py-3 font-mono text-sm text-slate-700">
+          <div class="mt-3 rounded-md border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 px-4 py-3 font-mono text-sm text-slate-700 dark:text-slate-300">
             spread weight {{ c.spreadWeight }} · leg weight {{ c.legWeight }} · min gap {{ c.minGapDays }}d ·
             target gap {{ c.targetGapDays === null ? 'auto (½ season)' : c.targetGapDays + 'd' }}
           </div>
@@ -574,25 +574,25 @@ import { StatusColorPipe } from '../../shared/status-color.pipe';
         <app-modal [open]="configDialogOpen()" title="Scheduler tuning" (closed)="configDialogOpen.set(false)">
           <form [formGroup]="configForm" (ngSubmit)="onSaveConfig()" class="grid gap-3">
             <label class="grid gap-1">
-              <span class="font-mono text-xs uppercase tracking-wider text-slate-600">Spread weight (closely-spaced matches)</span>
-              <input type="number" formControlName="spreadWeight" min="0" class="rounded-md border border-slate-300 px-3 py-2 font-mono text-sm focus:outline-none focus:ring-2 focus:ring-slate-900" />
+              <span class="font-mono text-xs uppercase tracking-wider text-slate-600 dark:text-slate-400">Spread weight (closely-spaced matches)</span>
+              <input type="number" formControlName="spreadWeight" min="0" class="rounded-md border border-slate-300 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 px-3 py-2 font-mono text-sm focus:outline-none focus:ring-2 focus:ring-slate-900 dark:focus:ring-slate-100" />
             </label>
             <label class="grid gap-1">
-              <span class="font-mono text-xs uppercase tracking-wider text-slate-600">Leg-gap weight (home/away spacing)</span>
-              <input type="number" formControlName="legWeight" min="0" class="rounded-md border border-slate-300 px-3 py-2 font-mono text-sm focus:outline-none focus:ring-2 focus:ring-slate-900" />
+              <span class="font-mono text-xs uppercase tracking-wider text-slate-600 dark:text-slate-400">Leg-gap weight (home/away spacing)</span>
+              <input type="number" formControlName="legWeight" min="0" class="rounded-md border border-slate-300 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 px-3 py-2 font-mono text-sm focus:outline-none focus:ring-2 focus:ring-slate-900 dark:focus:ring-slate-100" />
             </label>
             <label class="grid gap-1">
-              <span class="font-mono text-xs uppercase tracking-wider text-slate-600">Minimum gap (days)</span>
-              <input type="number" formControlName="minGapDays" min="0" class="rounded-md border border-slate-300 px-3 py-2 font-mono text-sm focus:outline-none focus:ring-2 focus:ring-slate-900" />
+              <span class="font-mono text-xs uppercase tracking-wider text-slate-600 dark:text-slate-400">Minimum gap (days)</span>
+              <input type="number" formControlName="minGapDays" min="0" class="rounded-md border border-slate-300 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 px-3 py-2 font-mono text-sm focus:outline-none focus:ring-2 focus:ring-slate-900 dark:focus:ring-slate-100" />
             </label>
             <label class="grid gap-1">
-              <span class="font-mono text-xs uppercase tracking-wider text-slate-600">Target home/away gap (days, blank = ½ season)</span>
-              <input type="number" formControlName="targetGapDays" min="0" class="rounded-md border border-slate-300 px-3 py-2 font-mono text-sm focus:outline-none focus:ring-2 focus:ring-slate-900" />
+              <span class="font-mono text-xs uppercase tracking-wider text-slate-600 dark:text-slate-400">Target home/away gap (days, blank = ½ season)</span>
+              <input type="number" formControlName="targetGapDays" min="0" class="rounded-md border border-slate-300 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 px-3 py-2 font-mono text-sm focus:outline-none focus:ring-2 focus:ring-slate-900 dark:focus:ring-slate-100" />
             </label>
             <button
               type="submit"
               [disabled]="configForm.invalid"
-              class="justify-self-start rounded-md bg-slate-900 px-4 py-2 font-mono text-sm font-medium text-amber-300 disabled:opacity-50"
+              class="justify-self-start rounded-md bg-slate-900 dark:bg-amber-400 px-4 py-2 font-mono text-sm font-medium text-amber-300 dark:text-slate-900 disabled:opacity-50"
             >
               Save
             </button>

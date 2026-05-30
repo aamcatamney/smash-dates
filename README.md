@@ -39,6 +39,9 @@ The whole thing ships as a single container: a .NET 10 API that also serves the 
 **Notifications**
 - Domain events (invites, membership responses, match confirmations/rejections/postponements) are written to an **outbox** and delivered by a background sender (logging sender by default; real SMTP is a config swap).
 
+**Interface**
+- **Light / dark theme** — follows the OS preference by default, with a toggle that persists an explicit choice (no flash on load).
+
 ---
 
 ## Tech stack

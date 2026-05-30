@@ -2,10 +2,23 @@
 <html lang="en">
 <head>
   <meta charset="utf-8">
-  <title>ClauseStarter</title>
+  <title>smash-dates</title>
   <base href="/">
   <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light dark">
   <link rel="icon" type="image/x-icon" href="favicon.ico">
+  <script>
+    // Apply the saved/system theme before first paint to avoid a flash of the wrong one.
+    // Mirrors ThemeService's logic; ThemeService takes over once Angular boots.
+    (function () {
+      try {
+        var t = localStorage.getItem('theme');
+        if (t === 'dark' || (!t && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+          document.documentElement.classList.add('dark');
+        }
+      } catch (e) { /* storage blocked: fall back to light */ }
+    })();
+  </script>
 </head>
 <body>
   <app-root></app-root>
