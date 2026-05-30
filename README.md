@@ -113,6 +113,22 @@ cd ClientApp && npm test   # frontend
 
 Create `Migrations/Scripts/NNNN_description.sql` (zero-padded sequence). It's picked up as an embedded resource and applied in name order on next startup.
 
+### Versioning & releases
+
+Releases are **CalVer**: `vYYYY.M.MICRO` (e.g. `v2026.5.0`), where `MICRO` is a per-month counter that resets at the start of each month.
+
+Every merge to `main` runs the `Release` workflow, which:
+
+1. computes the next version from existing tags,
+2. builds and pushes the container image to GHCR — tagged `:YYYY.M.MICRO`, `:YYYY.M`, and `:latest`, with build provenance + SBOM attestation,
+3. creates the git tag and a GitHub Release with auto-generated notes.
+
+Put `[skip release]` in the merge commit message to skip a release.
+
+```bash
+docker pull ghcr.io/aamcatamney/smash-dates:latest
+```
+
 ---
 
 ## Screenshots
