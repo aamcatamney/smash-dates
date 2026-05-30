@@ -26,10 +26,12 @@ import { AdminHeaderComponent } from './admin-header.component';
 import { ModalComponent } from '../../shared/modal.component';
 import { ConfirmComponent } from '../../shared/confirm.component';
 import { StatusColorPipe } from '../../shared/status-color.pipe';
+import { CsvImportComponent } from '../../shared/csv-import.component';
+import { ImportResult } from '../../shared/import-result';
 
 @Component({
   selector: 'app-league-detail-page',
-  imports: [ReactiveFormsModule, RouterLink, AdminHeaderComponent, ModalComponent, ConfirmComponent, StatusColorPipe],
+  imports: [ReactiveFormsModule, RouterLink, AdminHeaderComponent, ModalComponent, ConfirmComponent, StatusColorPipe, CsvImportComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <div class="min-h-screen bg-slate-50 dark:bg-slate-950">
@@ -188,6 +190,13 @@ import { StatusColorPipe } from '../../shared/status-color.pipe';
                       class="rounded-md border border-slate-300 dark:border-slate-700 px-3 py-1 text-xs text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800"
                     >
                       {{ entriesSeasonId() === s.id ? 'Close' : 'Teams' }}
+                    </button>
+                    <button
+                      type="button"
+                      (click)="openImport(s)"
+                      class="rounded-md border border-slate-300 dark:border-slate-700 px-3 py-1 text-xs text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800"
+                    >
+                      Import
                     </button>
                     <button
                       type="button"
@@ -604,6 +613,17 @@ import { StatusColorPipe } from '../../shared/status-color.pipe';
           (confirmed)="runPending()"
           (cancelled)="pending.set(null)"
         />
+
+        <app-csv-import
+          [open]="importSeasonId() !== null"
+          title="Import season entries"
+          [columns]="entryImportColumns"
+          sample="Riverside 1st,Mens Division 1"
+          [result]="importResult()"
+          [busy]="importBusy()"
+          (submit)="onImportEntries($event)"
+          (closed)="closeImport()"
+        />
       </main>
     </div>
   `,
@@ -623,6 +643,10 @@ export default class LeagueDetailPage {
   protected readonly divisionDialogOpen = signal(false);
   protected readonly seasonDialogOpen = signal(false);
   protected readonly inviteDialogOpen = signal(false);
+  protected readonly importSeasonId = signal<string | null>(null);
+  protected readonly importBusy = signal(false);
+  protected readonly importResult = signal<ImportResult | null>(null);
+  protected readonly entryImportColumns = ['team', 'division'];
   protected readonly pending = signal<{ message: string; action: () => void } | null>(null);
   protected readonly seasonError = signal<string | null>(null);
   protected readonly seasonSubmitting = signal(false);
@@ -918,6 +942,33 @@ export default class LeagueDetailPage {
   private refreshEntries(seasonId: string): void {
     this.api.listSeasonEntries(this.leagueId, seasonId).subscribe({
       next: (rows) => this.seasonEntries.set(rows),
+    });
+  }
+
+  protected openImport(s: SeasonSummary): void {
+    this.importResult.set(null);
+    this.importSeasonId.set(s.id);
+  }
+
+  protected closeImport(): void {
+    this.importSeasonId.set(null);
+    this.importResult.set(null);
+  }
+
+  protected onImportEntries(csv: string): void {
+    const seasonId = this.importSeasonId();
+    if (seasonId === null) return;
+    this.importBusy.set(true);
+    this.api.importSeasonEntries(this.leagueId, seasonId, csv).subscribe({
+      next: (result) => {
+        this.importBusy.set(false);
+        this.importResult.set(result);
+        if (this.entriesSeasonId() === seasonId) this.refreshEntries(seasonId);
+      },
+      error: () => {
+        this.importBusy.set(false);
+        this.importResult.set({ created: 0, updated: 0, errors: [{ row: 0, message: 'Import failed.' }] });
+      },
     });
   }
 

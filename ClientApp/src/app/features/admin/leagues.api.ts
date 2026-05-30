@@ -1,6 +1,7 @@
 import { HttpClient, HttpParams } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
 import { Observable } from 'rxjs';
+import { ImportResult } from '../../shared/import-result';
 
 export type DivisionGender = 'Mens' | 'Ladies' | 'Mixed';
 
@@ -226,6 +227,10 @@ export class LeaguesApi {
 
   createSeasonEntry(leagueId: string, seasonId: string, teamId: string, divisionId: string): Observable<unknown> {
     return this.http.post(`/api/leagues/${leagueId}/seasons/${seasonId}/entries`, { teamId, divisionId });
+  }
+
+  importSeasonEntries(leagueId: string, seasonId: string, csv: string): Observable<ImportResult> {
+    return this.http.post<ImportResult>(`/api/leagues/${leagueId}/seasons/${seasonId}/entries/import`, { csv });
   }
 
   deleteSeasonEntry(leagueId: string, seasonId: string, entryId: string): Observable<void> {

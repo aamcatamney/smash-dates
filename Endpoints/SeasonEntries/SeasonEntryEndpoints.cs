@@ -8,6 +8,7 @@ public static class SeasonEntryEndpoints
             .RequireAuthorization();
 
         group.MapCreateSeasonEntryEndpoint();
+        group.MapImportSeasonEntriesEndpoint();
         group.MapListSeasonEntriesEndpoint();
         group.MapDeleteSeasonEntryEndpoint();
         return app;

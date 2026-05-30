@@ -18,6 +18,7 @@ The whole thing ships as a single container: a .NET 10 API that also serves the 
 - **Leagues** and **Divisions** (gender, rank, rubbers-per-match, configurable points scheme).
 - **Clubs** (open registry with short codes), **Teams** (fixed gender) and **Venues** (court capacity).
 - **Club ↔ League memberships** with a full lifecycle: invite → accept / decline → withdraw / expel, with mid-season locks.
+- **Bulk CSV import** for clubs, teams, venues and season entries — partial import with a per-row report, upsert on match, and a downloadable template per importer.
 
 **Seasons**
 - **Seasons** with an explicit ordered list of **Weeks** (Level vs Mixed), validated for non-overlap and in-range.
@@ -160,6 +161,16 @@ Confirm, reject or record results on fixtures; standings update live with colour
 Manage a club's teams, venues, blocked dates and its matches in one place.
 
 ![Club detail](docs/screenshots/club-detail.png)
+
+### Bulk CSV import
+Import clubs, teams, venues or season entries from a CSV — partial import with a per-row result and a downloadable template.
+
+![CSV import with per-row result](docs/screenshots/csv-import.png)
+
+### Light & dark themes
+Every screen supports light and dark, following the OS preference with a persisted toggle.
+
+![Dark theme](docs/screenshots/dark-mode.png)
 
 ---
 

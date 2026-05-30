@@ -8,6 +8,7 @@ public static class VenueEndpoints
             .RequireAuthorization();
 
         group.MapCreateVenueEndpoint();
+        group.MapImportVenuesEndpoint();
         group.MapListVenuesEndpoint();
         group.MapUpdateVenueEndpoint();
         group.MapDeleteVenueEndpoint();

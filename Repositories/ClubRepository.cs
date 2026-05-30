@@ -27,6 +27,16 @@ public sealed class ClubRepository : IClubRepository
                 cancellationToken: ct));
     }
 
+    public async Task<Club?> GetByShortCodeAsync(string shortCode, CancellationToken ct = default)
+    {
+        using var conn = _factory.Create();
+        return await conn.QuerySingleOrDefaultAsync<Club>(
+            new CommandDefinition(
+                $"SELECT {SelectColumns} FROM clubs WHERE short_code = @shortCode",
+                new { shortCode },
+                cancellationToken: ct));
+    }
+
     public async Task<IReadOnlyList<Club>> ListAsync(CancellationToken ct = default)
     {
         using var conn = _factory.Create();

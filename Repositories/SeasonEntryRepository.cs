@@ -69,6 +69,20 @@ public sealed class SeasonEntryRepository : ISeasonEntryRepository
                 cancellationToken: ct));
     }
 
+    public async Task<bool> UpsertAsync(Guid seasonId, Guid divisionId, Guid teamId, CancellationToken ct = default)
+    {
+        using var conn = _factory.Create();
+        // xmax = 0 on the returned row means the row was freshly inserted (not updated).
+        return await conn.ExecuteScalarAsync<bool>(
+            new CommandDefinition(
+                @"INSERT INTO season_entries (season_id, division_id, team_id)
+                  VALUES (@seasonId, @divisionId, @teamId)
+                  ON CONFLICT (season_id, team_id) DO UPDATE SET division_id = EXCLUDED.division_id
+                  RETURNING (xmax = 0)",
+                new { seasonId, divisionId, teamId },
+                cancellationToken: ct));
+    }
+
     public async Task<bool> DeleteAsync(Guid id, CancellationToken ct = default)
     {
         using var conn = _factory.Create();

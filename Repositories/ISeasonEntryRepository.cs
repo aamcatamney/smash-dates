@@ -12,6 +12,11 @@ public interface ISeasonEntryRepository
     Task<IReadOnlyList<SeasonEntryView>> ListBySeasonAsync(Guid seasonId, CancellationToken ct = default);
     Task<IReadOnlyList<SchedulingEntry>> ListForSchedulingAsync(Guid seasonId, CancellationToken ct = default);
     Task<Guid> CreateAsync(Guid seasonId, Guid divisionId, Guid teamId, CancellationToken ct = default);
+
+    // Inserts the entry, or moves the team to a different division if already entered.
+    // Returns true when a new entry was created, false when an existing one was updated.
+    Task<bool> UpsertAsync(Guid seasonId, Guid divisionId, Guid teamId, CancellationToken ct = default);
+
     Task<bool> DeleteAsync(Guid id, CancellationToken ct = default);
     Task<bool> ExistsForTeamAsync(Guid teamId, CancellationToken ct = default);
 

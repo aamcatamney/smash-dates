@@ -11,5 +11,7 @@ Screenshots embedded in the root `README.md`, captured from a seeded demo league
 | `match-actions.png` | Confirm / reject / record-result controls on fixtures |
 | `standings.png` | Division standings table |
 | `club-detail.png` | Club detail — teams, venues, blocked dates, matches |
+| `csv-import.png` | Bulk CSV import dialog with a per-row result |
+| `dark-mode.png` | League detail in the dark theme |
 
 Suggested width ~1400px, PNG.

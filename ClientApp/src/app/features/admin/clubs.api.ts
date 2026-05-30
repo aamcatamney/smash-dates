@@ -1,6 +1,7 @@
 import { HttpClient } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
 import { Observable } from 'rxjs';
+import { ImportResult } from '../../shared/import-result';
 
 export interface ClubSummary {
   id: string;
@@ -116,6 +117,18 @@ export class ClubsApi {
 
   create(req: CreateClubRequest): Observable<ClubSummary> {
     return this.http.post<ClubSummary>('/api/clubs', req);
+  }
+
+  importClubs(csv: string): Observable<ImportResult> {
+    return this.http.post<ImportResult>('/api/clubs/import', { csv });
+  }
+
+  importTeams(clubId: string, csv: string): Observable<ImportResult> {
+    return this.http.post<ImportResult>(`/api/clubs/${clubId}/teams/import`, { csv });
+  }
+
+  importVenues(clubId: string, csv: string): Observable<ImportResult> {
+    return this.http.post<ImportResult>(`/api/clubs/${clubId}/venues/import`, { csv });
   }
 
   update(id: string, req: UpdateClubRequest): Observable<void> {
