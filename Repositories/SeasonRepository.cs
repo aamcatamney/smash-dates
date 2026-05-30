@@ -40,6 +40,17 @@ public sealed class SeasonRepository : ISeasonRepository
         return rows.Select(r => r.ToSeason()).ToList();
     }
 
+    public async Task<IReadOnlyList<Season>> ListByStatusAsync(SeasonStatus status, CancellationToken ct = default)
+    {
+        using var conn = _factory.Create();
+        var rows = await conn.QueryAsync<SeasonRow>(
+            new CommandDefinition(
+                $"SELECT {SeasonColumns} FROM seasons WHERE status = @status",
+                new { status = status.ToString() },
+                cancellationToken: ct));
+        return rows.Select(r => r.ToSeason()).ToList();
+    }
+
     public async Task<IReadOnlyList<SeasonWeek>> ListWeeksAsync(Guid seasonId, CancellationToken ct = default)
     {
         using var conn = _factory.Create();

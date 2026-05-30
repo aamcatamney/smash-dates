@@ -6,6 +6,7 @@ public interface ISeasonRepository
 {
     Task<Season?> GetByIdAsync(Guid id, CancellationToken ct = default);
     Task<IReadOnlyList<Season>> ListByLeagueAsync(Guid leagueId, CancellationToken ct = default);
+    Task<IReadOnlyList<Season>> ListByStatusAsync(SeasonStatus status, CancellationToken ct = default);
     Task<IReadOnlyList<SeasonWeek>> ListWeeksAsync(Guid seasonId, CancellationToken ct = default);
 
     // Creates the season and its weeks in a single transaction.
