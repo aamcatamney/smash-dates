@@ -57,6 +57,8 @@ builder.Services.AddScoped<smash_dates.Services.Notifications.INotificationServi
 builder.Services.AddSingleton<smash_dates.Services.Notifications.INotificationSender, smash_dates.Services.Notifications.LoggingNotificationSender>();
 builder.Services.AddScoped<smash_dates.Services.Notifications.NotificationDrainer>();
 builder.Services.AddHostedService<smash_dates.Services.Notifications.NotificationDrainerHostedService>();
+builder.Services.AddScoped<smash_dates.Services.Seasons.SeasonTransitioner>();
+builder.Services.AddHostedService<smash_dates.Services.Seasons.SeasonTransitionHostedService>();
 
 var connectionString = builder.Configuration.GetConnectionString("Postgres")
     ?? throw new InvalidOperationException("ConnectionStrings:Postgres missing");

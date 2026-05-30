@@ -159,6 +159,16 @@ public sealed class MatchRepository : IMatchRepository
                 cancellationToken: ct));
     }
 
+    public async Task<DateOnly?> EarliestMatchDateAsync(Guid seasonId, CancellationToken ct = default)
+    {
+        using var conn = _factory.Create();
+        return await conn.ExecuteScalarAsync<DateOnly?>(
+            new CommandDefinition(
+                "SELECT MIN(match_date) FROM matches WHERE season_id = @seasonId",
+                new { seasonId },
+                cancellationToken: ct));
+    }
+
     public async Task<bool> ApplyAcceptAsync(Guid id, bool acceptHome, bool acceptAway, CancellationToken ct = default)
     {
         using var conn = _factory.Create();

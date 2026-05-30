@@ -7,6 +7,7 @@ public interface IMatchRepository
 {
     Task<IReadOnlyList<MatchView>> ListBySeasonAsync(Guid seasonId, CancellationToken ct = default);
     Task<IReadOnlyList<MatchView>> ListByClubAsync(Guid clubId, CancellationToken ct = default);
+    Task<DateOnly?> EarliestMatchDateAsync(Guid seasonId, CancellationToken ct = default);
     Task<Match?> GetByIdAsync(Guid id, CancellationToken ct = default);
     Task<MatchView?> GetViewByIdAsync(Guid id, CancellationToken ct = default);
 

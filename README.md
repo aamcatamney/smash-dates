@@ -308,7 +308,7 @@ Season transitions (manual, LeagueAdmin@thisLeague | SystemAdmin):
 - `POST /api/leagues/{leagueId}/seasons/{seasonId}/activate` — `Proposed → Active` (else 409).
 - `POST /api/leagues/{leagueId}/seasons/{seasonId}/close` — `Active → Closed` (else 409).
 
-Auto-activation on the first match date and auto-close on the end date are deferred — they need a scheduled job (same family as the deferred async scheduler runner).
+Auto-activation on the first match date and auto-close on the end date are handled by a background service (see Slice 12); the manual endpoints remain as an admin override.
 
 Postpone (LeagueAdmin-executed):
 
@@ -324,6 +324,14 @@ Frontend additions: the Season panel gains **Activate** (Proposed) and **Close s
 ## Slice 8 — Head-to-head tiebreak
 
 Completes the standings sort (resolves the slice 6 deferral). `StandingsCalculator` now splits teams level on points → rubber-diff → rubbers-for by a **head-to-head mini-league**: from only the matches *between* the tied teams, order by head-to-head points, then head-to-head rubber difference, then team name as the final stable fallback. Handles 2-team and 3+-team ties uniformly; pure and unit-tested, no API or schema change.
+
+## Slice 12 — Automatic season transitions
+
+A background service advances seasons by the calendar, removing the manual activate/close step (the manual endpoints from Slice 7 remain as an admin override). Resolves the Slice 7 deferral.
+
+- `SeasonTransitioner` (pure-ish scoped service, `today` passed in for deterministic testing): `Proposed → Active` once `today` reaches the season's **earliest match date**; `Active → Closed` once `today` is past the **end date**. Transitions are guarded (idempotent).
+- `SeasonTransitionHostedService` (`BackgroundService`, hourly) runs it with `today = UtcNow`, in a fresh DI scope per tick — the same pattern as the notification drainer.
+- Repos gained `ISeasonRepository.ListByStatusAsync` and `IMatchRepository.EarliestMatchDateAsync`.
 
 ## Slice 11 — Notifications (outbox)
 
