@@ -327,15 +327,16 @@ Completes the standings sort (resolves the slice 6 deferral). `StandingsCalculat
 
 ## Slice 11 — Notifications (outbox)
 
-Records notifications for domain events to a `notifications` outbox table (recipient, subject, body, `sent_at`). Delivery itself (SMTP) is deferred — a sender drains unsent rows and ties into the deferred async job runner.
+Records notifications for domain events to a `notifications` outbox table (recipient, subject, body, `sent_at`), then drains and delivers them.
 
 - `NotificationService` resolves recipients per event and enqueues rows. Triggers:
   - membership **invite** → invited Club's `ContactEmail`;
   - membership **accept** / **decline** → the League's admins (their user emails);
   - match **Confirmed** (accept-both / force-confirm), **Rejected**, **Postponed** (→ Proposed) → both Clubs' `ContactEmail` (a derby's single contact isn't notified twice).
 - `GET /api/notifications` *(SystemAdmin)* — the outbox, newest first (operational/debug view).
+- **Delivery**: a `NotificationDrainerHostedService` (`BackgroundService`, 30s interval) drains unsent rows via `INotificationSender` and stamps `sent_at`; idempotent so concurrent drains are safe. The default `LoggingNotificationSender` logs each message — a real SMTP/provider implementation is a config-swap (no provider/secret in this environment). `NotificationDrainer` is a plain service so the drain can also be invoked/tested directly.
 
-Deferred: actual email delivery; the *"only when no ClubAdmin is signed in"* presence condition (no presence tracking yet) — notifications always go to the contact for now; per-generate bulk "matches proposed" summaries.
+Deferred: a real SMTP sender; the *"only when no ClubAdmin is signed in"* presence condition (no presence tracking yet) — notifications always go to the contact for now; per-generate bulk "matches proposed" summaries.
 
 ## Slice 9 — Club "my matches" screen
 
