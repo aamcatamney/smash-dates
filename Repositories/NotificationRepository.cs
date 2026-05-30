@@ -37,4 +37,29 @@ public sealed class NotificationRepository : INotificationRepository
                 cancellationToken: ct));
         return rows.AsList();
     }
+
+    public async Task<IReadOnlyList<Notification>> ListUnsentAsync(int limit = 100, CancellationToken ct = default)
+    {
+        using var conn = _factory.Create();
+        var rows = await conn.QueryAsync<Notification>(
+            new CommandDefinition(
+                @"SELECT id, recipient_email, subject, body, created_at, sent_at
+                  FROM notifications
+                  WHERE sent_at IS NULL
+                  ORDER BY created_at
+                  LIMIT @limit",
+                new { limit },
+                cancellationToken: ct));
+        return rows.AsList();
+    }
+
+    public async Task MarkSentAsync(Guid id, CancellationToken ct = default)
+    {
+        using var conn = _factory.Create();
+        await conn.ExecuteAsync(
+            new CommandDefinition(
+                "UPDATE notifications SET sent_at = now() WHERE id = @id AND sent_at IS NULL",
+                new { id },
+                cancellationToken: ct));
+    }
 }

@@ -54,6 +54,9 @@ builder.Services.AddSingleton<smash_dates.Services.Scheduling.IScheduler, smash_
 builder.Services.AddScoped<smash_dates.Services.Scheduling.IScheduleGenerator, smash_dates.Services.Scheduling.ScheduleGenerator>();
 builder.Services.AddScoped<INotificationRepository, NotificationRepository>();
 builder.Services.AddScoped<smash_dates.Services.Notifications.INotificationService, smash_dates.Services.Notifications.NotificationService>();
+builder.Services.AddSingleton<smash_dates.Services.Notifications.INotificationSender, smash_dates.Services.Notifications.LoggingNotificationSender>();
+builder.Services.AddScoped<smash_dates.Services.Notifications.NotificationDrainer>();
+builder.Services.AddHostedService<smash_dates.Services.Notifications.NotificationDrainerHostedService>();
 
 var connectionString = builder.Configuration.GetConnectionString("Postgres")
     ?? throw new InvalidOperationException("ConnectionStrings:Postgres missing");
