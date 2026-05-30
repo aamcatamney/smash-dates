@@ -11,6 +11,7 @@ import {
   LeaguesApi,
   MatchSummary,
   MembershipSummary,
+  SchedulingConfig,
   SeasonEntrySummary,
   SeasonSummary,
   WeekType,
@@ -552,6 +553,51 @@ import { ConfirmComponent } from '../../shared/confirm.component';
         </form>
         </app-modal>
 
+        @if (schedulingConfig(); as c) {
+          <div class="mt-10 flex items-center justify-between">
+            <h2 class="font-mono text-lg font-semibold text-slate-900">Scheduler tuning</h2>
+            <button
+              type="button"
+              (click)="onEditConfig()"
+              class="rounded-md border border-slate-300 px-3 py-1 font-mono text-xs text-slate-700 hover:bg-slate-50"
+            >
+              Edit
+            </button>
+          </div>
+          <div class="mt-3 rounded-md border border-slate-200 bg-white px-4 py-3 font-mono text-sm text-slate-700">
+            spread weight {{ c.spreadWeight }} · leg weight {{ c.legWeight }} · min gap {{ c.minGapDays }}d ·
+            target gap {{ c.targetGapDays === null ? 'auto (½ season)' : c.targetGapDays + 'd' }}
+          </div>
+        }
+
+        <app-modal [open]="configDialogOpen()" title="Scheduler tuning" (closed)="configDialogOpen.set(false)">
+          <form [formGroup]="configForm" (ngSubmit)="onSaveConfig()" class="grid gap-3">
+            <label class="grid gap-1">
+              <span class="font-mono text-xs uppercase tracking-wider text-slate-600">Spread weight (closely-spaced matches)</span>
+              <input type="number" formControlName="spreadWeight" min="0" class="rounded-md border border-slate-300 px-3 py-2 font-mono text-sm focus:outline-none focus:ring-2 focus:ring-slate-900" />
+            </label>
+            <label class="grid gap-1">
+              <span class="font-mono text-xs uppercase tracking-wider text-slate-600">Leg-gap weight (home/away spacing)</span>
+              <input type="number" formControlName="legWeight" min="0" class="rounded-md border border-slate-300 px-3 py-2 font-mono text-sm focus:outline-none focus:ring-2 focus:ring-slate-900" />
+            </label>
+            <label class="grid gap-1">
+              <span class="font-mono text-xs uppercase tracking-wider text-slate-600">Minimum gap (days)</span>
+              <input type="number" formControlName="minGapDays" min="0" class="rounded-md border border-slate-300 px-3 py-2 font-mono text-sm focus:outline-none focus:ring-2 focus:ring-slate-900" />
+            </label>
+            <label class="grid gap-1">
+              <span class="font-mono text-xs uppercase tracking-wider text-slate-600">Target home/away gap (days, blank = ½ season)</span>
+              <input type="number" formControlName="targetGapDays" min="0" class="rounded-md border border-slate-300 px-3 py-2 font-mono text-sm focus:outline-none focus:ring-2 focus:ring-slate-900" />
+            </label>
+            <button
+              type="submit"
+              [disabled]="configForm.invalid"
+              class="justify-self-start rounded-md bg-slate-900 px-4 py-2 font-mono text-sm font-medium text-amber-300 disabled:opacity-50"
+            >
+              Save
+            </button>
+          </form>
+        </app-modal>
+
         <app-confirm
           [message]="pending()?.message ?? null"
           (confirmed)="runPending()"
@@ -598,7 +644,16 @@ export default class LeagueDetailPage {
   protected readonly standings = signal<DivisionTable[]>([]);
   protected readonly resultMatchId = signal<string | null>(null);
   protected readonly resultError = signal<string | null>(null);
+  protected readonly schedulingConfig = signal<SchedulingConfig | null>(null);
+  protected readonly configDialogOpen = signal(false);
   protected leagueId = '';
+
+  protected readonly configForm = new FormGroup({
+    spreadWeight: new FormControl(2, { nonNullable: true, validators: [Validators.required, Validators.min(0)] }),
+    legWeight: new FormControl(1, { nonNullable: true, validators: [Validators.required, Validators.min(0)] }),
+    minGapDays: new FormControl(7, { nonNullable: true, validators: [Validators.required, Validators.min(0)] }),
+    targetGapDays: new FormControl<number | null>(null, { validators: [Validators.min(0)] }),
+  });
 
   protected readonly resultForm = new FormGroup({
     homeScore: new FormControl(0, { nonNullable: true, validators: [Validators.required, Validators.min(0)] }),
@@ -658,6 +713,7 @@ export default class LeagueDetailPage {
           this.refreshMemberships();
           this.refreshAvailableClubs();
           this.refreshSeasons();
+          this.loadConfig();
         }),
         switchMap((l) => this.api.listDivisions(l.id)),
       )
@@ -1001,6 +1057,33 @@ export default class LeagueDetailPage {
 
   protected onCloseSeason(s: SeasonSummary): void {
     this.api.closeSeason(this.leagueId, s.id).subscribe({ next: () => this.refreshSeasons() });
+  }
+
+  private loadConfig(): void {
+    if (!this.leagueId) return;
+    this.api.getSchedulingConfig(this.leagueId).subscribe({ next: (c) => this.schedulingConfig.set(c) });
+  }
+
+  protected onEditConfig(): void {
+    const c = this.schedulingConfig();
+    if (c) this.configForm.reset({ spreadWeight: c.spreadWeight, legWeight: c.legWeight, minGapDays: c.minGapDays, targetGapDays: c.targetGapDays });
+    this.configDialogOpen.set(true);
+  }
+
+  protected onSaveConfig(): void {
+    const v = this.configForm.getRawValue();
+    const config: SchedulingConfig = {
+      spreadWeight: Number(v.spreadWeight),
+      legWeight: Number(v.legWeight),
+      minGapDays: Number(v.minGapDays),
+      targetGapDays: v.targetGapDays === null || v.targetGapDays === undefined ? null : Number(v.targetGapDays),
+    };
+    this.api.updateSchedulingConfig(this.leagueId, config).subscribe({
+      next: () => {
+        this.configDialogOpen.set(false);
+        this.loadConfig();
+      },
+    });
   }
 
   protected onRerun(s: SeasonSummary): void {

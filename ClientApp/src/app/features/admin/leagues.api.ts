@@ -81,6 +81,13 @@ export interface CreateSeasonRequest {
   weeks: WeekInput[];
 }
 
+export interface SchedulingConfig {
+  spreadWeight: number;
+  legWeight: number;
+  minGapDays: number;
+  targetGapDays: number | null;
+}
+
 export type MatchStatus = 'Proposed' | 'Confirmed' | 'Played' | 'Postponed' | 'Rejected';
 
 export interface MatchSummary {
@@ -263,5 +270,13 @@ export class LeaguesApi {
 
   postponeMatch(matchId: string): Observable<{ status: string }> {
     return this.http.post<{ status: string }>(`/api/matches/${matchId}/postpone`, null);
+  }
+
+  getSchedulingConfig(leagueId: string): Observable<SchedulingConfig> {
+    return this.http.get<SchedulingConfig>(`/api/leagues/${leagueId}/scheduling-config`);
+  }
+
+  updateSchedulingConfig(leagueId: string, config: SchedulingConfig): Observable<void> {
+    return this.http.patch<void>(`/api/leagues/${leagueId}/scheduling-config`, config);
   }
 }
