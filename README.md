@@ -1,382 +1,149 @@
-# smash-dates
+# Smash Dates
 
-.NET 10 web app serving an Angular client. Backend uses Dapper + Npgsql against PostgreSQL with SQL migrations applied on startup via DbUp.
+**Automatic fixture scheduling for badminton leagues.**
 
-## Stack
+Smash Dates is a web application for running multi-club badminton leagues end to end: set up clubs, teams, venues and divisions; configure seasons and playing weeks; then let the built-in scheduler generate a complete home-and-away fixture list that respects every real-world constraint — venue availability, blocked dates, derby-first rules and gender/week-type matching. Clubs confirm or reject their fixtures, results roll up into live standings, and a calendar-driven background service moves seasons through their lifecycle automatically.
 
-- .NET 10 (single project, `smash-dates.csproj`)
-- PostgreSQL
-- Dapper + Npgsql (repository pattern, no EF Core)
-- DbUp for migrations (embedded `Migrations/Scripts/*.sql`)
-- BCrypt.Net-Next for password hashing
-- Cookie authentication (ASP.NET Core), Data Protection keys persisted in Postgres
-- Angular 21 client in `ClientApp/`, served as static files
+The whole thing ships as a single container: a .NET 10 API that also serves the Angular client, backed by PostgreSQL.
 
-## Prerequisites
+---
 
-- .NET 10 SDK
-- Docker (or a local Postgres instance)
-- Node.js + npm (for the Angular client)
+## Features
 
-## Configuration
+**Access & roles**
+- Email/password accounts with cookie authentication; the first registered user becomes the **SystemAdmin**.
+- Three role scopes: **SystemAdmin** (bootstrap), **LeagueAdmin@League** and **ClubAdmin@Club** — granted per league/club, with last-admin protection.
 
-Connection string is read from `ConnectionStrings:Postgres`. Default in `appsettings.json` points at `localhost:5432` as `postgres` / `postgres`. Override via env var:
+**League setup**
+- **Leagues** and **Divisions** (gender, rank, rubbers-per-match, configurable points scheme).
+- **Clubs** (open registry with short codes), **Teams** (fixed gender) and **Venues** (court capacity).
+- **Club ↔ League memberships** with a full lifecycle: invite → accept / decline → withdraw / expel, with mid-season locks.
 
-```
-ConnectionStrings__Postgres=Host=db;Port=5432;Database=smash_dates;Username=...;Password=...
-```
+**Seasons**
+- **Seasons** with an explicit ordered list of **Weeks** (Level vs Mixed), validated for non-overlap and in-range.
+- **Season entries** assign teams to divisions per season (promotion/relegation without losing identity), gated by gender match and accepted membership.
+- Lifecycle `Draft → Proposed → Active → Closed`, with **automatic date-driven transitions** (and manual admin overrides).
+- **Blocked dates** at Venue, Club or Team scope, locked once a season is Active.
 
-## Running locally
+**The scheduler**
+- Custom heuristic engine (no external solver): **Berger double round-robin → derby-first ordering → greedy placement** honouring all hard constraints (one match per team per date, venue capacity, blocked dates, week-type ↔ division gender, home venue from the home club's pool).
+- **2-opt soft-constraint optimisation** to spread out each team's matches and balance the gap between home and away legs — with **per-league tunable** weights.
+- **Incremental re-run** that locks Confirmed fixtures and reshuffles only the rest.
 
-Start Postgres via Docker Compose:
+**Match lifecycle**
+- `Proposed → Confirmed` once both clubs accept (LeagueAdmin can force-confirm), or `→ Rejected`.
+- **Postpone** a Confirmed match back into the pool for re-scheduling.
+- Record **results** and **walkovers**; **standings** are derived live per division (played/won/drawn/lost, rubbers for/against/diff, points) with a head-to-head tiebreak.
+- Club admins get a "my club's matches" view to act on their own fixtures.
 
-```powershell
+**Notifications**
+- Domain events (invites, membership responses, match confirmations/rejections/postponements) are written to an **outbox** and delivered by a background sender (logging sender by default; real SMTP is a config swap).
+
+---
+
+## Tech stack
+
+| Layer | Choice |
+|-------|--------|
+| Backend | **.NET 10**, ASP.NET Core **Minimal APIs** (one endpoint per file) |
+| Data | **PostgreSQL** via **Dapper + Npgsql** (repository pattern, no EF Core) |
+| Migrations | **DbUp** — embedded SQL scripts applied idempotently on startup |
+| Auth | Cookie authentication + antiforgery; **BCrypt** password hashing; Data Protection keys persisted in Postgres |
+| Background work | `BackgroundService` hosted services (season transitions, notification delivery) |
+| Frontend | **Angular 21** (standalone components, signals, reactive forms) + **Tailwind CSS**, served same-origin as static files |
+| Tests | **xUnit v3** + **Testcontainers** (integration, real Postgres) for the backend; **Vitest** for the frontend |
+| Packaging | Single multi-stage **Docker** image (Angular production bundle + .NET publish) |
+
+Architecture decisions are recorded in [docs/adr/](docs/adr/) and the domain language in [CONTEXT.md](CONTEXT.md).
+
+---
+
+## Quick start
+
+### Run with Docker (recommended)
+
+Start PostgreSQL:
+
+```bash
 docker compose up -d
 ```
 
-Tear down (keep data):
+Build and run the app image (serves API + client on **:8080**, applies all migrations on startup):
 
-```powershell
-docker compose down
-```
-
-Tear down and wipe the volume:
-
-```powershell
-docker compose down -v
-```
-
-Install Angular dependencies (first run):
-
-```powershell
-cd ClientApp
-npm install
-cd ..
-```
-
-### Dev loop
-
-Two terminals, both same-origin (Angular output served from `wwwroot` by .NET â€” no `ng serve`, no proxy):
-
-```powershell
-# Terminal 1 â€” rebuild Angular on change into dist/
-cd ClientApp
-npm run watch
-
-# Terminal 2 â€” run API (also serves the Angular bundle and SPA fallback)
-dotnet run
-```
-
-On startup the app ensures the database exists, then DbUp applies any pending scripts from `Migrations/Scripts/` and tracks them in the `schemaversions` table. Re-running is idempotent.
-
-### Production build
-
-```powershell
-cd ClientApp
-npm run build
-cd ..
-dotnet run
-```
-
-### Container deployment
-
-The `Dockerfile` builds a single image (Angular production bundle + .NET publish) that serves the SPA and API on port **8080**. It runs migrations on startup (DbUp, idempotent) and creates the database if missing.
-
-```powershell
+```bash
 docker build -t smash-dates .
-docker run -p 8080:8080 -e "ConnectionStrings__Postgres=Host=...;Port=5432;Database=smash_dates;Username=...;Password=..." smash-dates
+docker run -p 8080:8080 \
+  -e "ConnectionStrings__Postgres=Host=host.docker.internal;Port=5432;Database=smash_dates;Username=postgres;Password=postgres" \
+  smash-dates
 ```
 
-In `Production` the auth and antiforgery cookies are `Secure`, so the app **must** be reached over HTTPS. The container is designed to sit behind a **TLS-terminating reverse proxy / ingress**: it honours `X-Forwarded-Proto` / `X-Forwarded-For` (via `UseForwardedHeaders`), so the proxy must forward those headers. Reached over plain HTTP, cookie-issuing endpoints (e.g. register/login) return 500 by design.
+Open <http://localhost:8080> and register — the first account becomes the SystemAdmin.
+
+> **HTTPS in production:** auth/antiforgery cookies are `Secure`, so a production deployment must be reached over HTTPS. The container is built to sit behind a TLS-terminating reverse proxy / ingress and honours `X-Forwarded-Proto` / `X-Forwarded-For` (`UseForwardedHeaders`). Over plain HTTP, cookie-issuing endpoints (register/login) return 500 by design.
+
+### Run locally (dev loop)
+
+Prerequisites: **.NET 10 SDK**, **Node.js + npm**, **Docker** (for Postgres / integration tests).
+
+```bash
+docker compose up -d                 # Postgres on localhost:5432
+cd ClientApp && npm install && cd ..  # first run only
+```
+
+Two terminals, same origin (no `ng serve`, no proxy):
+
+```bash
+# Terminal 1 — rebuild the Angular bundle on change
+cd ClientApp && npm run watch
+
+# Terminal 2 — run the API (also serves the client + SPA fallback)
+dotnet run
+```
+
+The connection string is read from `ConnectionStrings:Postgres` (default `localhost:5432`, `postgres`/`postgres`); override with the `ConnectionStrings__Postgres` env var.
 
 ### Tests
 
-```powershell
-# Backend (integration tests need Docker running for Testcontainers)
-dotnet test
-
-# Frontend
-cd ClientApp
-npm test
+```bash
+dotnet test            # backend (integration tests need Docker for Testcontainers)
+cd ClientApp && npm test   # frontend
 ```
 
-## Foundation slice
+### Adding a migration
 
-The first vertical slice exposes the bootstrap admin surface for the league-scheduling domain:
+Create `Migrations/Scripts/NNNN_description.sql` (zero-padded sequence). It's picked up as an embedded resource and applied in name order on next startup.
 
-- `POST /api/auth/register` — first registered user is automatically promoted to **SystemAdmin** (other users default to non-admin).
-- `POST /api/leagues` *(SystemAdmin)* — create a League.
-- `GET  /api/leagues` *(authenticated)* — list Leagues.
-- `GET  /api/leagues/{id}` *(authenticated)* — get one League.
-- `POST /api/leagues/{leagueId}/divisions` *(LeagueAdmin@thisLeague | SystemAdmin)* — create a Division (with `gender`, `rank`, `rubbersPerMatch`, `winPoints`/`drawPoints`/`lossPoints`). (Originally SystemAdmin-only; broadened in slice 2a.)
-- `GET  /api/leagues/{leagueId}/divisions` *(authenticated)* — list Divisions.
+---
 
-Frontend routes (Angular, lazy-loaded under `/admin`, gated by `systemAdminGuard`):
+## Screenshots
 
-- `/admin/leagues` — list + create form.
-- `/admin/leagues/:id` — detail with divisions list + create form.
+> Images live in [`docs/screenshots/`](docs/screenshots/).
 
-Subsequent slices will add Clubs, Teams, Venues, Seasons, Weeks, Blocked Dates, the LeagueAdmin/ClubAdmin role grants, and the auto-scheduler.
+### Leagues & divisions
+The admin entry point: leagues with their divisions, admins and seasons.
 
-The domain glossary lives in [CONTEXT.md](CONTEXT.md); architectural decisions are recorded under [docs/adr/](docs/adr/).
+![Leagues list](docs/screenshots/leagues.png)
+![League detail — divisions, seasons, member clubs](docs/screenshots/league-detail.png)
 
-## Slice 2a — League admin grants
+### Season setup & scheduling
+Configure a season's weeks, assign teams to divisions, then generate the fixture list.
 
-- `POST /api/leagues` *(SystemAdmin)* — body now requires `firstLeagueAdminUserId`. League + first admin grant are created atomically.
-- `GET  /api/leagues/{id}/admins` *(authenticated)*
-- `POST /api/leagues/{id}/admins` *(LeagueAdmin@thisLeague | SystemAdmin)* — body `{ userId }`. Idempotent.
-- `DELETE /api/leagues/{id}/admins/{userId}` *(LeagueAdmin@thisLeague | SystemAdmin)* — last-admin removal returns 409 unless caller is SystemAdmin.
-- `POST /api/leagues/{leagueId}/divisions` *(LeagueAdmin@thisLeague | SystemAdmin)* — previously SystemAdmin-only.
-- `GET  /api/users/lookup?email=...` *(authenticated)* — resolves email → userId for granter UIs.
+![Season weeks & team entries](docs/screenshots/season-setup.png)
+![Generated fixtures](docs/screenshots/fixtures.png)
 
-Frontend route added: `/admin/leagues/:id/admins`. Create-league form now also requires the first admin's email.
+### Match lifecycle & standings
+Confirm, reject or record results on fixtures; standings update live with colour-coded statuses.
 
-## Slice 2b — Clubs + ClubAdmin + Memberships
+![Match results & confirmation](docs/screenshots/match-actions.png)
+![Division standings](docs/screenshots/standings.png)
 
-- `POST   /api/clubs` *(SystemAdmin)* — atomically creates a Club and the first ClubAdmin grant. Body: `name`, `shortCode` (3-5 chars), `contactEmail`, optional `notes`, `firstClubAdminUserId`.
-- `GET    /api/clubs` *(authenticated)* — open registry.
-- `GET    /api/clubs/{id}` *(authenticated)*.
-- `PATCH  /api/clubs/{id}` *(ClubAdmin@thisClub | SystemAdmin)*.
-- `GET    /api/clubs/{id}/admins` *(authenticated)*.
-- `POST   /api/clubs/{id}/admins` *(ClubAdmin@thisClub | SystemAdmin)* — body `{ userId }`. Idempotent.
-- `DELETE /api/clubs/{id}/admins/{userId}` *(ClubAdmin@thisClub | SystemAdmin)* — last-admin rule mirrors LeagueAdmin.
-- `POST   /api/leagues/{leagueId}/memberships` *(LeagueAdmin@thisLeague | SystemAdmin)* — body `{ clubId }`. Creates Pending.
-- `GET    /api/leagues/{leagueId}/memberships` *(authenticated)*.
-- `GET    /api/clubs/{clubId}/memberships` *(authenticated)*.
-- `POST   /api/leagues/{leagueId}/memberships/{id}/accept` *(ClubAdmin@thatClub)*.
-- `POST   /api/leagues/{leagueId}/memberships/{id}/decline` *(ClubAdmin@thatClub)*.
-- `POST   /api/leagues/{leagueId}/memberships/{id}/withdraw` *(ClubAdmin@thatClub)*.
-- `POST   /api/leagues/{leagueId}/memberships/{id}/expel` *(LeagueAdmin@thisLeague | SystemAdmin)*.
+### Clubs
+Manage a club's teams, venues, blocked dates and its matches in one place.
 
-Frontend additions: `/admin/clubs` (list + create when SystemAdmin), `/admin/clubs/:id` (detail with admin management + memberships). League detail gains a member-clubs section with invite + expel. The `/admin` route's `systemAdminGuard` is loosened to plain `authGuard` so ClubAdmins can reach their own pages; per-action authorisation remains server-enforced.
+![Club detail](docs/screenshots/club-detail.png)
 
-The mid-season Withdraw/Expel block (per CONTEXT.md) is **deferred** until Seasons + Season Entries land.
-
-## Slice 2c — Teams + Venues
-
-Club-owned assets, both nested under a Club. Reads are open to any authenticated user (Clubs are an open registry); writes require `ClubAdmin@thisClub | SystemAdmin`.
-
-Teams:
-
-- `POST   /api/clubs/{clubId}/teams` *(ClubAdmin@thisClub | SystemAdmin)* — body `{ name, gender }` (`Mens`|`Ladies`|`Mixed`). Name unique per Club (case-insensitive).
-- `GET    /api/clubs/{clubId}/teams` *(authenticated)*.
-- `PATCH  /api/clubs/{clubId}/teams/{id}` *(ClubAdmin@thisClub | SystemAdmin)* — body `{ name }`. **Gender is immutable** after creation.
-- `DELETE /api/clubs/{clubId}/teams/{id}` *(ClubAdmin@thisClub | SystemAdmin)*.
-
-Venues:
-
-- `POST   /api/clubs/{clubId}/venues` *(ClubAdmin@thisClub | SystemAdmin)* — body `{ name, capacity }` (`capacity` 1 or 2, defaults to 1). Name unique per Club (case-insensitive).
-- `GET    /api/clubs/{clubId}/venues` *(authenticated)*.
-- `PATCH  /api/clubs/{clubId}/venues/{id}` *(ClubAdmin@thisClub | SystemAdmin)* — body `{ name, capacity }`.
-- `DELETE /api/clubs/{clubId}/venues/{id}` *(ClubAdmin@thisClub | SystemAdmin)*.
-
-Delete is a **guarded hard delete**: allowed while unreferenced. Referential guards (409 once a Team has a Season Entry / a Venue has hosted a Match) will be added when those tables land.
-
-Venue **unavailable dates** (the `VenueBlocked` scope) are **deferred** to the Blocked Dates slice — see CONTEXT.md.
-
-Frontend additions: the `/admin/clubs/:id` detail page gains **Teams** and **Venues** sections (list + create + delete), matching the existing admin/membership management style.
-
-## Slice 2d — Seasons + Weeks
-
-A Season belongs to a League and owns an ordered list of Weeks. This slice covers **Draft-state CRUD only**; lifecycle transitions (`Scheduling`, `Proposed`, `Active`, `Closed`) arrive with the scheduler. Reads are open to any authenticated user; writes require `LeagueAdmin@thisLeague | SystemAdmin`.
-
-- `POST   /api/leagues/{leagueId}/seasons` *(LeagueAdmin@thisLeague | SystemAdmin)* — creates a Season (status `Draft`) **and its Weeks atomically**. Body: `name` (unique per League, case-insensitive), `startDate`, `endDate`, `weeks` (may be empty).
-- `GET    /api/leagues/{leagueId}/seasons` *(authenticated)*.
-- `GET    /api/leagues/{leagueId}/seasons/{id}` *(authenticated)* — includes the Week list, ordered by start date.
-- `PUT    /api/leagues/{leagueId}/seasons/{id}/weeks` *(LeagueAdmin@thisLeague | SystemAdmin)* — **replaces** the whole Week list. Allowed only while `Draft` (else 409).
-- `DELETE /api/leagues/{leagueId}/seasons/{id}` *(LeagueAdmin@thisLeague | SystemAdmin)* — allowed only while `Draft` (else 409).
-
-Each Week is `{ startDate, endDate, weekType }` with `weekType` ∈ `{ Level, Mixed }`. Week validation (enforced on create and replace): `startDate ≤ endDate`, weeks within the Season's date range, and **non-overlapping**. Gaps are allowed (omit weeks). Week order is derived from `startDate`, not stored — see [docs/adr/0002](docs/adr/0002-weeks-ordered-by-date.md).
-
-`DateOnly` is bound through a Dapper `TypeHandler` registered at startup (`Data/DateOnlyTypeHandler.cs`), since this Dapper version won't bind `DateOnly` parameters directly.
-
-Frontend additions: the `/admin/leagues/:id` detail page gains a **Seasons** section — list (name · dates · status), create (name + start + end), delete (Draft), and an inline **Weeks** editor (add/remove rows, save = replace-all) for Draft seasons.
-
-## Slice 2e — Season Entries
-
-A Season Entry assigns a Team to a Division for a Season (the per-Season placement that lets Teams promote/relegate without losing identity). Writes are `Draft`-only and require `LeagueAdmin@thisLeague | SystemAdmin`; reads are open to any authenticated user.
-
-- `POST   /api/leagues/{leagueId}/seasons/{seasonId}/entries` *(LeagueAdmin@thisLeague | SystemAdmin)* — body `{ teamId, divisionId }`.
-- `GET    /api/leagues/{leagueId}/seasons/{seasonId}/entries` *(authenticated)* — includes division + team names.
-- `DELETE /api/leagues/{leagueId}/seasons/{seasonId}/entries/{id}` *(LeagueAdmin@thisLeague | SystemAdmin)*.
-
-Validation on create:
-
-- Season must be `Draft` (else 409) — `Draft` is the team-assignment phase.
-- Division must belong to the Season's League (else 404).
-- Team's gender must match the Division's gender (else 400).
-- The Team's Club must hold an **Accepted** membership in the League (else 409).
-- A Team may be entered in at most one Division per Season — `UNIQUE (season_id, team_id)`, dup → 409.
-- "Change division" = delete + re-create; there is no PATCH.
-
-This slice also activates the **Team delete guard** deferred in slice 2c: `season_entries.team_id` is `ON DELETE RESTRICT` and `DELETE /api/clubs/{clubId}/teams/{id}` now returns 409 when the Team is assigned to any Season.
-
-Frontend additions: the Season panel on `/admin/leagues/:id` gains a **Teams** toggle — list current entries (team → division), assign (team picker drawn from the league's Accepted-member clubs + division picker), and remove.
-
-## Slice 2f — Blocked Dates
-
-A Blocked Date is a `(startDate, endDate, reason)` range during which one scope can't host or play. All three scopes are owned by the Club admin, so they live in one collection under the Club. Writes require `ClubAdmin@thisClub | SystemAdmin`; reads are open to any authenticated user.
-
-- `POST   /api/clubs/{clubId}/blocked-dates` *(ClubAdmin@thisClub | SystemAdmin)* — body `{ scope, venueId?, teamId?, startDate, endDate, reason }`.
-- `GET    /api/clubs/{clubId}/blocked-dates` *(authenticated)* — every scope for the club.
-- `DELETE /api/clubs/{clubId}/blocked-dates/{id}` *(ClubAdmin@thisClub | SystemAdmin)*.
-
-`scope` ∈ `{ Club, Venue, Team }`:
-
-- **Club** — no Team of the Club plays (AGM, social night). No `venueId`/`teamId`.
-- **Venue** — a Venue is unavailable. `venueId` required; the Venue must belong to the Club (else 404).
-- **Team** — a Team can't play. `teamId` required; the Team must belong to the Club (else 404).
-
-Validation: `reason` required, `startDate ≤ endDate`, valid `scope`. Single-day blocks use `startDate == endDate`. Overlaps are allowed. A DB CHECK ties exactly the matching FK to each scope. Edit = delete + re-create (no PATCH).
-
-**Deferred:** the lifecycle lock (CONTEXT.md: blocks forbidden once a Season is `Active`) is **not** enforced yet. Blocked Dates are Club/Venue/Team calendar facts with no Season anchor — a Club can be in many Leagues at once, so "which Season's Active state gates this block" has no clean answer until the scheduler and Active transitions exist. This mirrors the deferral of the mid-season Withdraw/Expel block.
-
-Frontend additions: the `/admin/clubs/:id` detail page gains a **Blocked dates** section — list (scope · target · dates · reason), create (scope selector revealing a Venue or Team picker, from/to dates, reason), and delete.
-
-## Slice 3 — Scheduler (feasible first cut)
-
-Generates a season's fixtures from all the inputs above (per ADR 0001 — a custom heuristic, no external solver). This first cut produces a **feasible** schedule satisfying every hard constraint; soft-penalty optimisation and the match lifecycle are later slices.
-
-- `POST /api/leagues/{leagueId}/seasons/{seasonId}/generate` *(LeagueAdmin@thisLeague | SystemAdmin)* — `Draft` only (else 409). On success moves the season `Draft → Proposed` and persists the matches as `Proposed`; returns `{ matchCount }`. If the hard constraints can't all be met, persists nothing, leaves the season `Draft`, and returns **422** with the list of unplaceable pairings.
-- `GET  /api/leagues/{leagueId}/seasons/{seasonId}/matches` *(authenticated)* — fixtures with division/team/venue names.
-
-The engine (`Services/Scheduling/`) is pure and unit-tested in isolation:
-
-- `RoundRobin` — Berger/circle-method **double round-robin** (every ordered pair once).
-- `Scheduler : IScheduler` — derby-first ordering, then greedy earliest-slot placement honouring all hard constraints: one match per team per date, venue court capacity, VenueBlocked/ClubBlocked/TeamBlocked dates, week-type ↔ division-gender, home venue drawn from the home club's pool.
-- `ScheduleGenerator` — loads inputs from the repositories, runs `IScheduler`, and on full success persists the matches + season transition in one transaction.
-
-`matches.venue_id` is `ON DELETE RESTRICT`, so this slice also activates the **Venue delete guard** deferred in 2c: `DELETE …/venues/{id}` now returns 409 when the Venue is used by a scheduled match.
-
-**Deferred:** soft-constraint 2-opt optimisation; the match lifecycle (`Proposed → Confirmed → Played | Postponed → Rejected`), force-confirm, and incremental re-run; Standings; Played/Walkover scoring; the async background-job runner.
-
-> **Staging note vs ADR 0001:** the ADR describes an async background job and soft-penalty local search. Generation runs **synchronously** here — at expected scale (4–12 teams/division) the heuristic completes in milliseconds, so the job runner and `Scheduling` polling state are deferred. The `IScheduler` boundary is unchanged, so async and the local-search phase slot in later without touching callers.
-
-Frontend additions: the Season panel on `/admin/leagues/:id` gains a **Generate** button (Draft seasons; surfaces the 422 reason on failure) and a **Fixtures** view (non-Draft seasons) listing matches by date with names and status.
-
-## Slice 4 — Match lifecycle (acceptance)
-
-Moves a `Proposed` match to `Confirmed` or `Rejected`. Actions are flat under `/api/matches/{id}` (club-admin-centric — the handler derives league/season/clubs from the match). Per-side acceptance is tracked by two boolean columns (`home_accepted`, `away_accepted`); a match is `Confirmed` once both are true.
-
-- `GET  /api/matches/{id}` *(authenticated)* — detail with names, status, and the two acceptance flags.
-- `POST /api/matches/{id}/accept` *(ClubAdmin of either club; SystemAdmin)* — records the caller's side(s); confirms when both sides have accepted. A **derby** (one club on both sides) confirms in a single accept.
-- `POST /api/matches/{id}/reject` *(ClubAdmin of either club; SystemAdmin)* — `Proposed → Rejected`.
-- `POST /api/matches/{id}/force-confirm` *(LeagueAdmin@thisLeague | SystemAdmin)* — `Proposed → Confirmed`, breaking a stalemate.
-
-All four act only on a `Proposed` match (else 409). Acceptance flags also surface on the season fixtures list.
-
-**Deferred:** the incremental **re-run** on rejection (re-invoke the scheduler with `Confirmed` matches locked, reshuffle `Proposed`+`Rejected`); **Postpone** (needs the `Active` season transition); **Played**/Walkover scoring and **Standings**.
-
-Frontend additions: the **Fixtures** view shows per-side acceptance progress and a **Force confirm** button on Proposed matches (league-admin audience). A dedicated club-admin "my club's matches" accept/reject screen is deferred (needs a by-club matches endpoint); the accept/reject APIs are usable now.
-
-## Slice 5 — Incremental re-run
-
-Re-generates a `Proposed` season's fixtures **around the matches already `Confirmed`**, so rejections can be re-accommodated without disturbing locked-in fixtures.
-
-- `POST /api/leagues/{leagueId}/seasons/{seasonId}/rerun` *(LeagueAdmin@thisLeague | SystemAdmin)* — `Proposed` only (else 409). Locks every `Confirmed` match, re-places the `Proposed` + `Rejected` ones, and on full success replaces them as fresh `Proposed` (acceptance cleared); `Confirmed` matches are untouched. All-or-nothing: if the non-locked set can't be re-placed around the locked fixtures, persists nothing and returns **422** with the unplaceable pairings.
-
-Engine seam (no caller changes): `SchedulerInput.Locked` carries the `Confirmed` fixtures — the scheduler seeds their `(team, date)` and `(venue, date)` occupancy, skips their pairings, and places only the remainder (locked derbies still constrain their teams' outside fixtures to fall after them). An empty `Locked` is the from-scratch Generate. Trigger is manual (mirrors Generate) rather than automatic on each rejection — see ADR 0001's phased-rollout note.
-
-Frontend additions: the Season panel gains a **Re-run** button on `Proposed` seasons (surfaces the 422 reason on failure, refreshes the fixtures view on success).
-
-## Slice 6 — Played + Walkover → Standings
-
-Records match results and derives the league table.
-
-- `POST /api/matches/{id}/result` *(ClubAdmin of either club | SystemAdmin)* — `Confirmed → Played` with `{ homeScore, awayScore, playedOn }`. Scores must be non-negative and sum to the Division's `RubbersPerMatch`; `playedOn` must be on/after the scheduled date. 400 otherwise; 409 if not `Confirmed`.
-- `POST /api/matches/{id}/walkover` *(ClubAdmin of either club | SystemAdmin)* — `{ winner: "Home" | "Away" }` → `Played` with the winner on the max score and the loser on 0, `isWalkover = true` (standings treat it as a normal win; the flag is a UI marker). Recorded on the scheduled date.
-- `GET /api/leagues/{leagueId}/seasons/{seasonId}/standings` *(authenticated)* — one table per Division that has entered teams.
-
-The table is built by a pure, unit-tested `Services/Standings/StandingsCalculator` from played results + the Division's `PointsScheme`. Columns: played / won / drawn / lost / rubbers for / rubbers against / rubber difference / points. Sort: points → rubber difference → rubbers-for → team name.
-
-Two documented choices:
-- **Computed-on-read** (not materialised, despite CONTEXT's wording): `GET …/standings` derives the table each call — trivially cheap at this scale, and no stored table to keep in sync on every result/walkover/re-run. Can materialise later behind the same endpoint.
-- ~~**Head-to-head tiebreak deferred**~~: now implemented (see Slice 8). Teams level on points / rubber-diff / rubbers-for are split by a head-to-head mini-league before the team-name fallback.
-
-`matches` gains `home_score` / `away_score` / `played_on` / `is_walkover`.
-
-**Deferred:** Postpone (needs the `Active` season transition); the head-to-head tiebreak; a club-admin "my club's matches" result-entry screen (the result/walkover APIs work now).
-
-Frontend additions: the **Fixtures** view shows the score (and a `w/o` marker) on Played matches, and **Result** / **W/O home** / **W/O away** controls on Confirmed matches; the Season panel gains a **Table** view rendering the per-division standings.
-
-## Slice 7 — Active lifecycle, Postpone & the Active-gated locks
-
-Completes the season lifecycle and wires the cross-aggregate rules that were deferred until Seasons + Season Entries existed.
-
-Season transitions (manual, LeagueAdmin@thisLeague | SystemAdmin):
-
-- `POST /api/leagues/{leagueId}/seasons/{seasonId}/activate` — `Proposed → Active` (else 409).
-- `POST /api/leagues/{leagueId}/seasons/{seasonId}/close` — `Active → Closed` (else 409).
-
-Auto-activation on the first match date and auto-close on the end date are handled by a background service (see Slice 12); the manual endpoints remain as an admin override.
-
-Postpone (LeagueAdmin-executed):
-
-- `POST /api/matches/{id}/postpone` *(LeagueAdmin@thisLeague | SystemAdmin)* — a `Confirmed` match in an `Active` season returns to `Proposed` with acceptance cleared, so `/rerun` can re-place it (409 if the season isn't Active or the match isn't Confirmed). The three-party agreement is confirmed by the LeagueAdmin out-of-band; the full request→approve→approve flow is deferred.
-
-Active-gated locks now enforced:
-
-- **Blocked dates** — `POST`/`DELETE …/blocked-dates` return 409 once the club has a team entered in an **Active** season (CONTEXT.md: blocked-date edits forbidden from Active onward). *(resolves the slice 2f deferral)*
-- **Mid-season Withdraw/Expel** — `…/memberships/{id}/withdraw` and `/expel` return 409 while the club has a team entered in a non-`Closed` season of the league. *(resolves the slice 2b deferral)*
-
-Frontend additions: the Season panel gains **Activate** (Proposed) and **Close season** (Active) buttons; the Fixtures view gains a **Postpone** action on Confirmed matches in an Active season.
-
-## Slice 8 — Head-to-head tiebreak
-
-Completes the standings sort (resolves the slice 6 deferral). `StandingsCalculator` now splits teams level on points → rubber-diff → rubbers-for by a **head-to-head mini-league**: from only the matches *between* the tied teams, order by head-to-head points, then head-to-head rubber difference, then team name as the final stable fallback. Handles 2-team and 3+-team ties uniformly; pure and unit-tested, no API or schema change.
-
-## Slice 12 — Automatic season transitions
-
-A background service advances seasons by the calendar, removing the manual activate/close step (the manual endpoints from Slice 7 remain as an admin override). Resolves the Slice 7 deferral.
-
-- `SeasonTransitioner` (pure-ish scoped service, `today` passed in for deterministic testing): `Proposed → Active` once `today` reaches the season's **earliest match date**; `Active → Closed` once `today` is past the **end date**. Transitions are guarded (idempotent).
-- `SeasonTransitionHostedService` (`BackgroundService`, hourly) runs it with `today = UtcNow`, in a fresh DI scope per tick — the same pattern as the notification drainer.
-- Repos gained `ISeasonRepository.ListByStatusAsync` and `IMatchRepository.EarliestMatchDateAsync`.
-
-## Slice 11 — Notifications (outbox)
-
-Records notifications for domain events to a `notifications` outbox table (recipient, subject, body, `sent_at`), then drains and delivers them.
-
-- `NotificationService` resolves recipients per event and enqueues rows. Triggers:
-  - membership **invite** → invited Club's `ContactEmail`;
-  - membership **accept** / **decline** → the League's admins (their user emails);
-  - match **Confirmed** (accept-both / force-confirm), **Rejected**, **Postponed** (→ Proposed) → both Clubs' `ContactEmail` (a derby's single contact isn't notified twice).
-- `GET /api/notifications` *(SystemAdmin)* — the outbox, newest first (operational/debug view).
-- **Delivery**: a `NotificationDrainerHostedService` (`BackgroundService`, 30s interval) drains unsent rows via `INotificationSender` and stamps `sent_at`; idempotent so concurrent drains are safe. The default `LoggingNotificationSender` logs each message — a real SMTP/provider implementation is a config-swap (no provider/secret in this environment). `NotificationDrainer` is a plain service so the drain can also be invoked/tested directly.
-
-Deferred: a real SMTP sender; the *"only when no ClubAdmin is signed in"* presence condition (no presence tracking yet) — notifications always go to the contact for now; per-generate bulk "matches proposed" summaries.
-
-## Slice 9 — Club "my matches" screen
-
-Gives club admins one place to see and act on their club's fixtures (resolves the deferral from the match-lifecycle slices).
-
-- `GET /api/clubs/{clubId}/matches` *(authenticated)* — every match where the club is home **or** away (across seasons), with division/team/venue names, status, acceptance flags and scores. Reuses the flat `/api/matches/{id}` actions (`accept` / `reject` / `result` / `walkover`), which resolve the caller's side.
-
-Frontend additions: the `/admin/clubs/:id` detail page gains a **Matches** section — fixtures with the score (and `w/o` marker) on Played, **Accept** / **Reject** on Proposed (with per-side acceptance state), and **Result** / **W/O home** / **W/O away** on Confirmed.
-
-## Slice 13 — Per-League scheduler tuning
-
-Makes the 2-opt soft-penalty weights configurable per League (resolves the Slice 10 deferral); they were hardcoded constants.
-
-- `leagues` gains `spread_weight` / `leg_weight` / `min_gap_days` (defaults 2 / 1 / 7) and a nullable `target_gap_days` (null = derive ~half-season).
-- `SchedulerWeights` carries them into `SchedulerInput`; `SchedulerCost` reads them (defaults preserved when unset, so prior behaviour/tests are unchanged). `ScheduleGenerator` loads the season's League config into the input.
-- `GET /api/leagues/{id}/scheduling-config` *(authenticated)* and `PATCH …/scheduling-config` *(LeagueAdmin@thisLeague | SystemAdmin)*; non-negative validation.
-
-Frontend: a **Scheduler tuning** panel on `/admin/leagues/:id` shows the current values with an Edit dialog (blank target gap = ½-season auto).
-
-## Slice 10 — Scheduler soft optimisation (2-opt)
-
-Lifts schedule *quality* (ADR 0001 phase 3) — the feasible greedy schedule is improved against the soft constraints before it's persisted. Pure engine, unit-tested; no API, schema or frontend change (`IScheduler` and `/generate` / `/rerun` are unchanged).
-
-- `SchedulerCost` (pure) — soft-penalty cost: a **team-spread** penalty for closely-spaced matches (gap below `MinGapDays`) plus a **leg-gap** penalty for the two legs of a pairing deviating from ~half the season. Weights are per-League configurable (see Slice 13).
-- `SchedulerHardConstraints.IsFeasible` (pure) — full-schedule validator (one match/team/date, venue capacity + ownership, Venue/Club/Team blocks, week-type ↔ gender, derby-first).
-- `ScheduleOptimizer.Optimize` — deterministic 2-opt: repeatedly swaps two matches' dates (each kept at its home venue) when the swap stays feasible and lowers cost; fixed pass budget, no RNG. `Scheduler.Build` runs it after greedy placement on full success.
-
-## Adding a migration
-
-Create `Migrations/Scripts/NNNN_description.sql` (zero-padded sequence). The file is automatically included as an embedded resource. DbUp applies scripts in name order on next startup.
+---
 
 ## License
 
-MIT â€” see [LICENSE](LICENSE).
-
+MIT — see [LICENSE](LICENSE).
