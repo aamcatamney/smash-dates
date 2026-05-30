@@ -12,66 +12,66 @@ import { ConfirmComponent } from '../../shared/confirm.component';
   imports: [ReactiveFormsModule, RouterLink, AdminHeaderComponent, ModalComponent, ConfirmComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
-    <div class="min-h-screen bg-slate-50">
+    <div class="min-h-screen bg-slate-50 dark:bg-slate-950">
       <app-admin-header />
 
       <main class="mx-auto w-full max-w-5xl px-4 py-10">
         <a
           [routerLink]="['/admin/leagues', leagueId()]"
-          class="font-mono text-xs uppercase tracking-wider text-slate-500 hover:underline"
+          class="font-mono text-xs uppercase tracking-wider text-slate-500 dark:text-slate-400 hover:underline"
           >← back to league</a
         >
         <div class="mt-2 flex items-center justify-between">
-          <h1 class="font-mono text-2xl font-semibold text-slate-900">League admins</h1>
+          <h1 class="font-mono text-2xl font-semibold text-slate-900 dark:text-slate-100">League admins</h1>
           <button
             type="button"
             (click)="dialogOpen.set(true)"
-            class="rounded-md bg-slate-900 px-4 py-2 font-mono text-sm font-medium text-amber-300 hover:bg-slate-800"
+            class="rounded-md bg-slate-900 dark:bg-amber-400 px-4 py-2 font-mono text-sm font-medium text-amber-300 dark:text-slate-900 hover:bg-slate-800 dark:hover:bg-amber-300"
           >
             ＋ Add admin
           </button>
         </div>
 
-        <ul class="mt-6 divide-y divide-slate-200 rounded-md border border-slate-200 bg-white">
+        <ul class="mt-6 divide-y divide-slate-200 rounded-md border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900">
           @for (admin of admins(); track admin.userId) {
             <li class="flex items-center justify-between px-4 py-3 font-mono text-sm">
               <span>
                 {{ admin.displayName ?? admin.email }}
-                <span class="ml-2 text-slate-500">{{ admin.email }}</span>
+                <span class="ml-2 text-slate-500 dark:text-slate-400">{{ admin.email }}</span>
               </span>
               <button
                 type="button"
                 (click)="askRevoke(admin)"
-                class="rounded-md border border-red-300 px-3 py-1 text-xs text-red-700 hover:bg-red-50"
+                class="rounded-md border border-red-300 dark:border-red-800 px-3 py-1 text-xs text-red-700 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950"
               >
                 Revoke
               </button>
             </li>
           } @empty {
-            <li class="px-4 py-3 font-mono text-sm text-slate-500">No admins.</li>
+            <li class="px-4 py-3 font-mono text-sm text-slate-500 dark:text-slate-400">No admins.</li>
           }
         </ul>
 
         <app-modal [open]="dialogOpen()" title="Add league admin" (closed)="dialogOpen.set(false)">
           <form [formGroup]="form" (ngSubmit)="onGrant()" class="grid gap-3">
             <label class="grid gap-1">
-              <span class="font-mono text-xs uppercase tracking-wider text-slate-600">Add admin by email</span>
+              <span class="font-mono text-xs uppercase tracking-wider text-slate-600 dark:text-slate-400">Add admin by email</span>
               <input
                 type="email"
                 formControlName="email"
-                class="rounded-md border border-slate-300 px-3 py-2 font-mono text-sm focus:outline-none focus:ring-2 focus:ring-slate-900"
+                class="rounded-md border border-slate-300 dark:border-slate-700 px-3 py-2 font-mono text-sm focus:outline-none focus:ring-2 focus:ring-slate-900 dark:focus:ring-slate-100 dark:bg-slate-800 dark:text-slate-100"
                 required
               />
             </label>
             <button
               type="submit"
               [disabled]="submitting() || form.invalid"
-              class="justify-self-start rounded-md bg-slate-900 px-4 py-2 font-mono text-sm font-medium text-amber-300 disabled:opacity-50"
+              class="justify-self-start rounded-md bg-slate-900 dark:bg-amber-400 px-4 py-2 font-mono text-sm font-medium text-amber-300 dark:text-slate-900 disabled:opacity-50"
             >
               {{ submitting() ? 'Granting…' : 'Grant admin' }}
             </button>
             @if (error()) {
-              <p class="font-mono text-sm text-red-600" role="alert">{{ error() }}</p>
+              <p class="font-mono text-sm text-red-600 dark:text-red-400" role="alert">{{ error() }}</p>
             }
           </form>
         </app-modal>

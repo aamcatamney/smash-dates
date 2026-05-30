@@ -11,17 +11,17 @@ import { ModalComponent } from '../../shared/modal.component';
   imports: [ReactiveFormsModule, RouterLink, AdminHeaderComponent, ModalComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
-    <div class="min-h-screen bg-slate-50">
+    <div class="min-h-screen bg-slate-50 dark:bg-slate-950">
       <app-admin-header />
 
       <main class="mx-auto w-full max-w-5xl px-4 py-10">
         <div class="flex items-center justify-between">
-          <h1 class="font-mono text-2xl font-semibold text-slate-900">Leagues</h1>
+          <h1 class="font-mono text-2xl font-semibold text-slate-900 dark:text-slate-100">Leagues</h1>
           @if (canCreate()) {
             <button
               type="button"
               (click)="dialogOpen.set(true)"
-              class="rounded-md bg-slate-900 px-4 py-2 font-mono text-sm font-medium text-amber-300 hover:bg-slate-800"
+              class="rounded-md bg-slate-900 px-4 py-2 font-mono text-sm font-medium text-amber-300 hover:bg-slate-800 dark:bg-amber-400 dark:text-slate-900 dark:hover:bg-amber-300"
             >
               ＋ Create league
             </button>
@@ -35,61 +35,61 @@ import { ModalComponent } from '../../shared/modal.component';
           class="grid gap-3"
         >
           <label class="grid gap-1">
-            <span class="font-mono text-xs uppercase tracking-wider text-slate-600">Name</span>
+            <span class="font-mono text-xs uppercase tracking-wider text-slate-600 dark:text-slate-400">Name</span>
             <input
               type="text"
               formControlName="name"
-              class="rounded-md border border-slate-300 px-3 py-2 font-mono text-sm focus:outline-none focus:ring-2 focus:ring-slate-900"
+              class="rounded-md border border-slate-300 px-3 py-2 font-mono text-sm focus:outline-none focus:ring-2 focus:ring-slate-900 dark:border-slate-700 dark:focus:ring-slate-100 dark:bg-slate-800 dark:text-slate-100"
               required
             />
           </label>
           <label class="grid gap-1">
-            <span class="font-mono text-xs uppercase tracking-wider text-slate-600">Description</span>
+            <span class="font-mono text-xs uppercase tracking-wider text-slate-600 dark:text-slate-400">Description</span>
             <input
               type="text"
               formControlName="description"
-              class="rounded-md border border-slate-300 px-3 py-2 font-mono text-sm focus:outline-none focus:ring-2 focus:ring-slate-900"
+              class="rounded-md border border-slate-300 px-3 py-2 font-mono text-sm focus:outline-none focus:ring-2 focus:ring-slate-900 dark:border-slate-700 dark:focus:ring-slate-100 dark:bg-slate-800 dark:text-slate-100"
             />
           </label>
           <label class="grid gap-1">
-            <span class="font-mono text-xs uppercase tracking-wider text-slate-600">First admin email</span>
+            <span class="font-mono text-xs uppercase tracking-wider text-slate-600 dark:text-slate-400">First admin email</span>
             <input
               type="email"
               formControlName="firstAdminEmail"
-              class="rounded-md border border-slate-300 px-3 py-2 font-mono text-sm focus:outline-none focus:ring-2 focus:ring-slate-900"
+              class="rounded-md border border-slate-300 px-3 py-2 font-mono text-sm focus:outline-none focus:ring-2 focus:ring-slate-900 dark:border-slate-700 dark:focus:ring-slate-100 dark:bg-slate-800 dark:text-slate-100"
               required
             />
           </label>
           <button
             type="submit"
             [disabled]="submitting() || form.invalid"
-            class="justify-self-start rounded-md bg-slate-900 px-4 py-2 font-mono text-sm font-medium text-amber-300 disabled:opacity-50"
+            class="justify-self-start rounded-md bg-slate-900 px-4 py-2 font-mono text-sm font-medium text-amber-300 disabled:opacity-50 dark:bg-amber-400 dark:text-slate-900"
           >
             {{ submitting() ? 'Creating…' : 'Create league' }}
           </button>
           @if (error()) {
-            <p class="font-mono text-sm text-red-600" role="alert">{{ error() }}</p>
+            <p class="font-mono text-sm text-red-600 dark:text-red-400" role="alert">{{ error() }}</p>
           }
         </form>
         </app-modal>
 
-        <ul class="mt-8 divide-y divide-slate-200 rounded-md border border-slate-200 bg-white">
+        <ul class="mt-8 divide-y divide-slate-200 rounded-md border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900">
           @if (loading()) {
-            <li class="px-4 py-3 font-mono text-sm text-slate-400">Loading…</li>
+            <li class="px-4 py-3 font-mono text-sm text-slate-400 dark:text-slate-500">Loading…</li>
           } @else {
             @for (league of leagues(); track league.id) {
               <li class="px-4 py-3">
                 <a
                   [routerLink]="['/admin/leagues', league.id]"
-                  class="font-mono text-sm font-medium text-slate-900 hover:underline"
+                  class="font-mono text-sm font-medium text-slate-900 hover:underline dark:text-slate-100"
                   >{{ league.name }}</a
                 >
                 @if (league.description) {
-                  <span class="ml-2 font-mono text-sm text-slate-500">— {{ league.description }}</span>
+                  <span class="ml-2 font-mono text-sm text-slate-500 dark:text-slate-400">— {{ league.description }}</span>
                 }
               </li>
             } @empty {
-              <li class="px-4 py-3 font-mono text-sm text-slate-500">No leagues yet.</li>
+              <li class="px-4 py-3 font-mono text-sm text-slate-500 dark:text-slate-400">No leagues yet.</li>
             }
           }
         </ul>

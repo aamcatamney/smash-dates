@@ -10,12 +10,12 @@ import { ModalComponent } from './modal.component';
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <app-modal [open]="message() !== null" title="Are you sure?" (closed)="cancelled.emit()">
-      <p class="font-mono text-sm text-slate-700">{{ message() }}</p>
+      <p class="font-mono text-sm text-slate-700 dark:text-slate-300">{{ message() }}</p>
       <div class="mt-4 flex justify-end gap-2">
         <button
           type="button"
           (click)="cancelled.emit()"
-          class="rounded-md border border-slate-300 px-4 py-2 font-mono text-sm text-slate-700 hover:bg-slate-50"
+          class="rounded-md border border-slate-300 px-4 py-2 font-mono text-sm text-slate-700 hover:bg-slate-50 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800"
         >
           Cancel
         </button>
