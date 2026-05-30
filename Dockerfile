@@ -27,6 +27,13 @@ RUN dotnet publish smash-dates.csproj \
 # Stage 3: runtime
 FROM mcr.microsoft.com/dotnet/aspnet:10.0 AS runtime
 WORKDIR /app
+
+# Npgsql probes for GSSAPI (Kerberos) at connection time; without this library it logs a
+# noisy "cannot load libgssapi_krb5.so.2" error before falling back. Install it to silence.
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends libgssapi-krb5-2 \
+    && rm -rf /var/lib/apt/lists/*
+
 ENV ASPNETCORE_URLS=http://+:8080 \
     ASPNETCORE_ENVIRONMENT=Production \
     DOTNET_RUNNING_IN_CONTAINER=true
