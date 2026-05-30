@@ -354,11 +354,21 @@ Gives club admins one place to see and act on their club's fixtures (resolves th
 
 Frontend additions: the `/admin/clubs/:id` detail page gains a **Matches** section — fixtures with the score (and `w/o` marker) on Played, **Accept** / **Reject** on Proposed (with per-side acceptance state), and **Result** / **W/O home** / **W/O away** on Confirmed.
 
+## Slice 13 — Per-League scheduler tuning
+
+Makes the 2-opt soft-penalty weights configurable per League (resolves the Slice 10 deferral); they were hardcoded constants.
+
+- `leagues` gains `spread_weight` / `leg_weight` / `min_gap_days` (defaults 2 / 1 / 7) and a nullable `target_gap_days` (null = derive ~half-season).
+- `SchedulerWeights` carries them into `SchedulerInput`; `SchedulerCost` reads them (defaults preserved when unset, so prior behaviour/tests are unchanged). `ScheduleGenerator` loads the season's League config into the input.
+- `GET /api/leagues/{id}/scheduling-config` *(authenticated)* and `PATCH …/scheduling-config` *(LeagueAdmin@thisLeague | SystemAdmin)*; non-negative validation.
+
+Frontend: a **Scheduler tuning** panel on `/admin/leagues/:id` shows the current values with an Edit dialog (blank target gap = ½-season auto).
+
 ## Slice 10 — Scheduler soft optimisation (2-opt)
 
 Lifts schedule *quality* (ADR 0001 phase 3) — the feasible greedy schedule is improved against the soft constraints before it's persisted. Pure engine, unit-tested; no API, schema or frontend change (`IScheduler` and `/generate` / `/rerun` are unchanged).
 
-- `SchedulerCost` (pure) — soft-penalty cost: a **team-spread** penalty for closely-spaced matches (gap below `MinGapDays`) plus a **leg-gap** penalty for the two legs of a pairing deviating from ~half the season. Default weights; per-League configuration deferred.
+- `SchedulerCost` (pure) — soft-penalty cost: a **team-spread** penalty for closely-spaced matches (gap below `MinGapDays`) plus a **leg-gap** penalty for the two legs of a pairing deviating from ~half the season. Weights are per-League configurable (see Slice 13).
 - `SchedulerHardConstraints.IsFeasible` (pure) — full-schedule validator (one match/team/date, venue capacity + ownership, Venue/Club/Team blocks, week-type ↔ gender, derby-first).
 - `ScheduleOptimizer.Optimize` — deterministic 2-opt: repeatedly swaps two matches' dates (each kept at its home venue) when the swap stays feasible and lowers cost; fixed pass budget, no RNG. `Scheduler.Build` runs it after greedy placement on full success.
 

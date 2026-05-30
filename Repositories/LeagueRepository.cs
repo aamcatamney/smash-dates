@@ -8,7 +8,8 @@ namespace smash_dates.Repositories;
 public sealed class LeagueRepository : ILeagueRepository
 {
     private const string SelectColumns =
-        "id, name, description, created_by, created_at, updated_at";
+        "id, name, description, created_by, created_at, updated_at, " +
+        "spread_weight, leg_weight, min_gap_days, target_gap_days";
 
     private readonly IDbConnectionFactory _factory;
 
@@ -87,5 +88,20 @@ public sealed class LeagueRepository : ILeagueRepository
 
         tx.Commit();
         return id;
+    }
+
+    public async Task<bool> UpdateSchedulingConfigAsync(
+        Guid id, int spreadWeight, int legWeight, int minGapDays, int? targetGapDays, CancellationToken ct = default)
+    {
+        using var conn = _factory.Create();
+        var rows = await conn.ExecuteAsync(
+            new CommandDefinition(
+                @"UPDATE leagues
+                  SET spread_weight = @spreadWeight, leg_weight = @legWeight,
+                      min_gap_days = @minGapDays, target_gap_days = @targetGapDays, updated_at = now()
+                  WHERE id = @id",
+                new { id, spreadWeight, legWeight, minGapDays, targetGapDays },
+                cancellationToken: ct));
+        return rows > 0;
     }
 }

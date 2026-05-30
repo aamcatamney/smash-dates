@@ -10,6 +10,7 @@ public static class LeagueEndpoints
         group.MapCreateLeagueEndpoint();
         group.MapListLeaguesEndpoint();
         group.MapGetLeagueEndpoint();
+        group.MapSchedulingConfigEndpoints();
 
         return app;
     }

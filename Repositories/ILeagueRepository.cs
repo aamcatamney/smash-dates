@@ -15,4 +15,7 @@ public interface ILeagueRepository
         Guid createdBy,
         Guid firstAdminUserId,
         CancellationToken ct = default);
+
+    Task<bool> UpdateSchedulingConfigAsync(
+        Guid id, int spreadWeight, int legWeight, int minGapDays, int? targetGapDays, CancellationToken ct = default);
 }

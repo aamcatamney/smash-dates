@@ -16,6 +16,12 @@ public sealed record SchedulerBlock(
 // A fixture already Confirmed and held fixed during an incremental re-run.
 public sealed record LockedMatch(Guid DivisionId, Guid HomeTeamId, Guid AwayTeamId, Guid VenueId, DateOnly Date);
 
+// Per-League soft-penalty configuration. TargetGapDays null = derive ~half-season.
+public sealed record SchedulerWeights(int SpreadWeight, int LegWeight, int MinGapDays, int? TargetGapDays)
+{
+    public static readonly SchedulerWeights Default = new(2, 1, 7, null);
+}
+
 public sealed record SchedulerInput(
     IReadOnlyList<SchedulerDivision> Divisions,
     IReadOnlyList<SchedulerWeek> Weeks,
@@ -25,6 +31,9 @@ public sealed record SchedulerInput(
     // Pre-placed Confirmed fixtures: their slots are occupied and their pairings are not
     // re-emitted. Empty for a from-scratch generate.
     public IReadOnlyList<LockedMatch> Locked { get; init; } = [];
+
+    // Soft-penalty weights for the optimiser; defaults match the out-of-the-box values.
+    public SchedulerWeights Weights { get; init; } = SchedulerWeights.Default;
 }
 
 public sealed record ScheduledMatch(Guid DivisionId, Guid HomeTeamId, Guid AwayTeamId, Guid VenueId, DateOnly Date);

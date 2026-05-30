@@ -21,6 +21,7 @@ public sealed class ScheduleGenerator : IScheduleGenerator
     private readonly IVenueRepository _venues;
     private readonly IBlockedDateRepository _blockedDates;
     private readonly IMatchRepository _matches;
+    private readonly ILeagueRepository _leagues;
 
     public ScheduleGenerator(
         IScheduler scheduler,
@@ -28,7 +29,8 @@ public sealed class ScheduleGenerator : IScheduleGenerator
         ISeasonEntryRepository entries,
         IVenueRepository venues,
         IBlockedDateRepository blockedDates,
-        IMatchRepository matches)
+        IMatchRepository matches,
+        ILeagueRepository leagues)
     {
         _scheduler = scheduler;
         _seasons = seasons;
@@ -36,6 +38,7 @@ public sealed class ScheduleGenerator : IScheduleGenerator
         _venues = venues;
         _blockedDates = blockedDates;
         _matches = matches;
+        _leagues = leagues;
     }
 
     public async Task<ScheduleResult> GenerateAsync(Guid seasonId, CancellationToken ct = default)
@@ -94,6 +97,11 @@ public sealed class ScheduleGenerator : IScheduleGenerator
             .Select(w => new SchedulerWeek(w.StartDate, w.EndDate, w.WeekType))
             .ToList();
 
-        return new SchedulerInput(divisions, weeks, venues, blocks) { Locked = locked };
+        var weights = SchedulerWeights.Default;
+        var season = await _seasons.GetByIdAsync(seasonId, ct);
+        if (season is not null && await _leagues.GetByIdAsync(season.LeagueId, ct) is { } league)
+            weights = new SchedulerWeights(league.SpreadWeight, league.LegWeight, league.MinGapDays, league.TargetGapDays);
+
+        return new SchedulerInput(divisions, weeks, venues, blocks) { Locked = locked, Weights = weights };
     }
 }
