@@ -22,10 +22,11 @@ interface TeamOption {
   label: string;
 }
 import { AdminHeaderComponent } from './admin-header.component';
+import { ModalComponent } from '../../shared/modal.component';
 
 @Component({
   selector: 'app-league-detail-page',
-  imports: [ReactiveFormsModule, RouterLink, AdminHeaderComponent],
+  imports: [ReactiveFormsModule, RouterLink, AdminHeaderComponent, ModalComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <div class="min-h-screen bg-slate-50">
@@ -44,7 +45,16 @@ import { AdminHeaderComponent } from './admin-header.component';
           >
         }
 
-        <h2 class="mt-8 font-mono text-lg font-semibold text-slate-900">Divisions</h2>
+        <div class="mt-8 flex items-center justify-between">
+          <h2 class="font-mono text-lg font-semibold text-slate-900">Divisions</h2>
+          <button
+            type="button"
+            (click)="divisionDialogOpen.set(true)"
+            class="rounded-md border border-slate-300 px-3 py-1 font-mono text-xs text-slate-700 hover:bg-slate-50"
+          >
+            ＋ Add division
+          </button>
+        </div>
         <ul class="mt-3 divide-y divide-slate-200 rounded-md border border-slate-200 bg-white">
           @for (d of divisions(); track d.id) {
             <li class="px-4 py-3 font-mono text-sm text-slate-900">
@@ -56,10 +66,11 @@ import { AdminHeaderComponent } from './admin-header.component';
           }
         </ul>
 
+        <app-modal [open]="divisionDialogOpen()" title="Add division" (closed)="divisionDialogOpen.set(false)">
         <form
           [formGroup]="form"
           (ngSubmit)="onCreate()"
-          class="mt-6 grid gap-3 rounded-md border border-slate-200 bg-white p-4 shadow-sm"
+          class="grid gap-3"
         >
           <label class="grid gap-1">
             <span class="font-mono text-xs uppercase tracking-wider text-slate-600">Name</span>
@@ -138,8 +149,18 @@ import { AdminHeaderComponent } from './admin-header.component';
             <p class="font-mono text-sm text-red-600" role="alert">{{ error() }}</p>
           }
         </form>
+        </app-modal>
 
-        <h2 class="mt-10 font-mono text-lg font-semibold text-slate-900">Seasons</h2>
+        <div class="mt-10 flex items-center justify-between">
+          <h2 class="font-mono text-lg font-semibold text-slate-900">Seasons</h2>
+          <button
+            type="button"
+            (click)="seasonDialogOpen.set(true)"
+            class="rounded-md border border-slate-300 px-3 py-1 font-mono text-xs text-slate-700 hover:bg-slate-50"
+          >
+            ＋ Add season
+          </button>
+        </div>
         <ul class="mt-3 divide-y divide-slate-200 rounded-md border border-slate-200 bg-white">
           @for (s of seasons(); track s.id) {
             <li class="px-4 py-3 font-mono text-sm">
@@ -428,10 +449,11 @@ import { AdminHeaderComponent } from './admin-header.component';
           }
         </ul>
 
+        <app-modal [open]="seasonDialogOpen()" title="Add season" (closed)="seasonDialogOpen.set(false)">
         <form
           [formGroup]="seasonForm"
           (ngSubmit)="onCreateSeason()"
-          class="mt-4 grid gap-3 rounded-md border border-slate-200 bg-white p-4 shadow-sm sm:grid-cols-[1fr_auto_auto_auto] sm:items-end"
+          class="grid gap-3"
         >
           <label class="grid gap-1">
             <span class="font-mono text-xs uppercase tracking-wider text-slate-600">Season name</span>
@@ -466,11 +488,21 @@ import { AdminHeaderComponent } from './admin-header.component';
             {{ seasonSubmitting() ? 'Adding…' : 'Add season' }}
           </button>
           @if (seasonError()) {
-            <p class="font-mono text-sm text-red-600 sm:col-span-4" role="alert">{{ seasonError() }}</p>
+            <p class="font-mono text-sm text-red-600" role="alert">{{ seasonError() }}</p>
           }
         </form>
+        </app-modal>
 
-        <h2 class="mt-10 font-mono text-lg font-semibold text-slate-900">Member clubs</h2>
+        <div class="mt-10 flex items-center justify-between">
+          <h2 class="font-mono text-lg font-semibold text-slate-900">Member clubs</h2>
+          <button
+            type="button"
+            (click)="inviteDialogOpen.set(true)"
+            class="rounded-md border border-slate-300 px-3 py-1 font-mono text-xs text-slate-700 hover:bg-slate-50"
+          >
+            ＋ Invite club
+          </button>
+        </div>
         <ul class="mt-3 divide-y divide-slate-200 rounded-md border border-slate-200 bg-white">
           @for (m of memberships(); track m.id) {
             <li class="flex items-center justify-between px-4 py-3 font-mono text-sm">
@@ -491,10 +523,11 @@ import { AdminHeaderComponent } from './admin-header.component';
           }
         </ul>
 
+        <app-modal [open]="inviteDialogOpen()" title="Invite club" (closed)="inviteDialogOpen.set(false)">
         <form
           [formGroup]="inviteForm"
           (ngSubmit)="onInvite()"
-          class="mt-4 grid gap-3 rounded-md border border-slate-200 bg-white p-4 shadow-sm"
+          class="grid gap-3"
         >
           <label class="grid gap-1">
             <span class="font-mono text-xs uppercase tracking-wider text-slate-600">Invite club</span>
@@ -516,6 +549,7 @@ import { AdminHeaderComponent } from './admin-header.component';
             Send invite
           </button>
         </form>
+        </app-modal>
       </main>
     </div>
   `,
@@ -532,6 +566,9 @@ export default class LeagueDetailPage {
   protected readonly seasons = signal<SeasonSummary[]>([]);
   protected readonly error = signal<string | null>(null);
   protected readonly submitting = signal(false);
+  protected readonly divisionDialogOpen = signal(false);
+  protected readonly seasonDialogOpen = signal(false);
+  protected readonly inviteDialogOpen = signal(false);
   protected readonly seasonError = signal<string | null>(null);
   protected readonly seasonSubmitting = signal(false);
   protected readonly editingSeasonId = signal<string | null>(null);
@@ -641,6 +678,7 @@ export default class LeagueDetailPage {
     this.api.invite(this.leagueId, clubId).subscribe({
       next: () => {
         this.inviteForm.reset({ clubId: '' });
+        this.inviteDialogOpen.set(false);
         this.refreshMemberships();
       },
       error: (err: { error?: { title?: string } }) =>
@@ -682,6 +720,7 @@ export default class LeagueDetailPage {
           drawPoints: 1,
           lossPoints: 0,
         });
+        this.divisionDialogOpen.set(false);
         this.api.listDivisions(this.leagueId).subscribe({
           next: (rows) => this.divisions.set(rows),
         });
@@ -719,6 +758,7 @@ export default class LeagueDetailPage {
         next: () => {
           this.seasonSubmitting.set(false);
           this.seasonForm.reset({ name: '', startDate: '', endDate: '' });
+          this.seasonDialogOpen.set(false);
           this.refreshSeasons();
         },
         error: (err: { error?: { title?: string } }) => {

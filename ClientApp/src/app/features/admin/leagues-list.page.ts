@@ -4,23 +4,35 @@ import { RouterLink } from '@angular/router';
 import { LeaguesApi, LeagueSummary } from './leagues.api';
 import { AuthStore } from '../../core/auth/auth.store';
 import { AdminHeaderComponent } from './admin-header.component';
+import { ModalComponent } from '../../shared/modal.component';
 
 @Component({
   selector: 'app-leagues-list-page',
-  imports: [ReactiveFormsModule, RouterLink, AdminHeaderComponent],
+  imports: [ReactiveFormsModule, RouterLink, AdminHeaderComponent, ModalComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <div class="min-h-screen bg-slate-50">
       <app-admin-header />
 
       <main class="mx-auto w-full max-w-5xl px-4 py-10">
-        <h1 class="font-mono text-2xl font-semibold text-slate-900">Leagues</h1>
+        <div class="flex items-center justify-between">
+          <h1 class="font-mono text-2xl font-semibold text-slate-900">Leagues</h1>
+          @if (canCreate()) {
+            <button
+              type="button"
+              (click)="dialogOpen.set(true)"
+              class="rounded-md bg-slate-900 px-4 py-2 font-mono text-sm font-medium text-amber-300 hover:bg-slate-800"
+            >
+              ＋ Create league
+            </button>
+          }
+        </div>
 
-        @if (canCreate()) {
+        <app-modal [open]="dialogOpen()" title="Create league" (closed)="dialogOpen.set(false)">
         <form
           [formGroup]="form"
           (ngSubmit)="onCreate()"
-          class="mt-6 grid gap-3 rounded-md border border-slate-200 bg-white p-4 shadow-sm"
+          class="grid gap-3"
         >
           <label class="grid gap-1">
             <span class="font-mono text-xs uppercase tracking-wider text-slate-600">Name</span>
@@ -59,7 +71,7 @@ import { AdminHeaderComponent } from './admin-header.component';
             <p class="font-mono text-sm text-red-600" role="alert">{{ error() }}</p>
           }
         </form>
-        }
+        </app-modal>
 
         <ul class="mt-8 divide-y divide-slate-200 rounded-md border border-slate-200 bg-white">
           @for (league of leagues(); track league.id) {
@@ -88,6 +100,7 @@ export default class LeaguesListPage {
   protected readonly leagues = signal<LeagueSummary[]>([]);
   protected readonly submitting = signal(false);
   protected readonly error = signal<string | null>(null);
+  protected readonly dialogOpen = signal(false);
   protected readonly canCreate = computed(() => this.auth.isSystemAdmin());
 
   protected readonly form = new FormGroup({
@@ -131,6 +144,7 @@ export default class LeaguesListPage {
             next: () => {
               this.submitting.set(false);
               this.form.reset({ name: '', description: '', firstAdminEmail: '' });
+              this.dialogOpen.set(false);
               this.refresh();
             },
             error: (err: { error?: { title?: string } }) => {
