@@ -18,10 +18,11 @@ import { LeaguesApi, LeagueSummary } from './leagues.api';
 import { AdminHeaderComponent } from './admin-header.component';
 import { ModalComponent } from '../../shared/modal.component';
 import { ConfirmComponent } from '../../shared/confirm.component';
+import { StatusColorPipe } from '../../shared/status-color.pipe';
 
 @Component({
   selector: 'app-club-detail-page',
-  imports: [ReactiveFormsModule, RouterLink, AdminHeaderComponent, ModalComponent, ConfirmComponent],
+  imports: [ReactiveFormsModule, RouterLink, AdminHeaderComponent, ModalComponent, ConfirmComponent, StatusColorPipe],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <div class="min-h-screen bg-slate-50">
@@ -105,7 +106,7 @@ import { ConfirmComponent } from '../../shared/confirm.component';
             <li class="flex items-center justify-between px-4 py-3 font-mono text-sm">
               <span>
                 {{ leagueName(m.leagueId) }}
-                <span class="ml-3 inline-block rounded bg-slate-200 px-2 py-0.5 text-xs">{{ m.status }}</span>
+                <span [class]="'ml-3 inline-block rounded px-2 py-0.5 text-xs ' + (m.status | statusColor)">{{ m.status }}</span>
               </span>
               <div class="flex gap-2">
                 @if (m.status === 'Pending') {
@@ -284,7 +285,7 @@ import { ConfirmComponent } from '../../shared/confirm.component';
               </span>
               @if (m.isWalkover) { <span class="rounded bg-amber-200 px-1 text-xs text-amber-800">w/o</span> }
               <span class="text-slate-500">@ {{ m.venueName }}</span>
-              <span class="ml-auto inline-block rounded bg-slate-100 px-2 py-0.5 text-xs text-slate-600">{{ m.status }}</span>
+              <span [class]="'ml-auto inline-block rounded px-2 py-0.5 text-xs ' + (m.status | statusColor)">{{ m.status }}</span>
               @if (m.status === 'Proposed') {
                 <span class="text-xs text-slate-400">({{ m.homeAccepted ? 'home ✓' : 'home …' }}, {{ m.awayAccepted ? 'away ✓' : 'away …' }})</span>
                 <button type="button" (click)="onAcceptMatch(m)" class="rounded-md border border-emerald-300 px-2 py-1 text-xs text-emerald-700 hover:bg-emerald-50">Accept</button>

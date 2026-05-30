@@ -93,17 +93,21 @@ import { ModalComponent } from '../../shared/modal.component';
         </app-modal>
 
         <ul class="mt-8 divide-y divide-slate-200 rounded-md border border-slate-200 bg-white">
-          @for (club of clubs(); track club.id) {
-            <li class="px-4 py-3">
-              <a
-                [routerLink]="['/admin/clubs', club.id]"
-                class="font-mono text-sm font-medium text-slate-900 hover:underline"
-                >{{ club.shortCode }} · {{ club.name }}</a
-              >
-              <span class="ml-2 font-mono text-xs text-slate-500">{{ club.contactEmail }}</span>
-            </li>
-          } @empty {
-            <li class="px-4 py-3 font-mono text-sm text-slate-500">No clubs yet.</li>
+          @if (loading()) {
+            <li class="px-4 py-3 font-mono text-sm text-slate-400">Loading…</li>
+          } @else {
+            @for (club of clubs(); track club.id) {
+              <li class="px-4 py-3">
+                <a
+                  [routerLink]="['/admin/clubs', club.id]"
+                  class="font-mono text-sm font-medium text-slate-900 hover:underline"
+                  >{{ club.shortCode }} · {{ club.name }}</a
+                >
+                <span class="ml-2 font-mono text-xs text-slate-500">{{ club.contactEmail }}</span>
+              </li>
+            } @empty {
+              <li class="px-4 py-3 font-mono text-sm text-slate-500">No clubs yet.</li>
+            }
           }
         </ul>
       </main>
@@ -119,6 +123,7 @@ export default class ClubsListPage {
   protected readonly submitting = signal(false);
   protected readonly error = signal<string | null>(null);
   protected readonly dialogOpen = signal(false);
+  protected readonly loading = signal(true);
   protected readonly canCreate = computed(() => this.auth.isSystemAdmin());
 
   protected readonly form = new FormGroup({
@@ -144,8 +149,14 @@ export default class ClubsListPage {
 
   private refresh(): void {
     this.api.list().subscribe({
-      next: (rows) => this.clubs.set(rows),
-      error: () => this.error.set('Failed to load clubs.'),
+      next: (rows) => {
+        this.clubs.set(rows);
+        this.loading.set(false);
+      },
+      error: () => {
+        this.error.set('Failed to load clubs.');
+        this.loading.set(false);
+      },
     });
   }
 

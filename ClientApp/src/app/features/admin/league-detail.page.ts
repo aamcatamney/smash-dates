@@ -25,10 +25,11 @@ interface TeamOption {
 import { AdminHeaderComponent } from './admin-header.component';
 import { ModalComponent } from '../../shared/modal.component';
 import { ConfirmComponent } from '../../shared/confirm.component';
+import { StatusColorPipe } from '../../shared/status-color.pipe';
 
 @Component({
   selector: 'app-league-detail-page',
-  imports: [ReactiveFormsModule, RouterLink, AdminHeaderComponent, ModalComponent, ConfirmComponent],
+  imports: [ReactiveFormsModule, RouterLink, AdminHeaderComponent, ModalComponent, ConfirmComponent, StatusColorPipe],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <div class="min-h-screen bg-slate-50">
@@ -170,7 +171,7 @@ import { ConfirmComponent } from '../../shared/confirm.component';
                 <span>
                   {{ s.name }}
                   <span class="ml-2 text-slate-500">{{ s.startDate }} → {{ s.endDate }}</span>
-                  <span class="ml-3 inline-block rounded bg-slate-200 px-2 py-0.5 text-xs">{{ s.status }}</span>
+                  <span [class]="'ml-3 inline-block rounded px-2 py-0.5 text-xs ' + (s.status | statusColor)">{{ s.status }}</span>
                 </span>
                 <div class="flex gap-2">
                   @if (s.status === 'Draft') {
@@ -379,7 +380,7 @@ import { ConfirmComponent } from '../../shared/confirm.component';
                       @if (f.status === 'Proposed') {
                         <span class="text-slate-400">({{ f.homeAccepted ? 'home ✓' : 'home …' }}, {{ f.awayAccepted ? 'away ✓' : 'away …' }})</span>
                       }
-                      <span class="ml-auto inline-block rounded bg-slate-100 px-1.5 py-0.5 text-slate-600">{{ f.status }}</span>
+                      <span [class]="'ml-auto inline-block rounded px-1.5 py-0.5 ' + (f.status | statusColor)">{{ f.status }}</span>
                       @if (f.status === 'Proposed') {
                         <button
                           type="button"
@@ -510,7 +511,7 @@ import { ConfirmComponent } from '../../shared/confirm.component';
             <li class="flex items-center justify-between px-4 py-3 font-mono text-sm">
               <span>
                 {{ clubLabel(m.clubId) }}
-                <span class="ml-3 inline-block rounded bg-slate-200 px-2 py-0.5 text-xs">{{ m.status }}</span>
+                <span [class]="'ml-3 inline-block rounded px-2 py-0.5 text-xs ' + (m.status | statusColor)">{{ m.status }}</span>
               </span>
               @if (m.status === 'Accepted') {
                 <button
