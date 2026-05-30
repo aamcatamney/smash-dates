@@ -23,10 +23,11 @@ interface TeamOption {
 }
 import { AdminHeaderComponent } from './admin-header.component';
 import { ModalComponent } from '../../shared/modal.component';
+import { ConfirmComponent } from '../../shared/confirm.component';
 
 @Component({
   selector: 'app-league-detail-page',
-  imports: [ReactiveFormsModule, RouterLink, AdminHeaderComponent, ModalComponent],
+  imports: [ReactiveFormsModule, RouterLink, AdminHeaderComponent, ModalComponent, ConfirmComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <div class="min-h-screen bg-slate-50">
@@ -197,7 +198,7 @@ import { ModalComponent } from '../../shared/modal.component';
                     <button
                       type="button"
                       [attr.aria-label]="'Delete season ' + s.name"
-                      (click)="onDeleteSeason(s)"
+                      (click)="askDeleteSeason(s)"
                       class="rounded-md border border-red-300 px-3 py-1 text-xs text-red-700 hover:bg-red-50"
                     >
                       Delete
@@ -507,13 +508,13 @@ import { ModalComponent } from '../../shared/modal.component';
           @for (m of memberships(); track m.id) {
             <li class="flex items-center justify-between px-4 py-3 font-mono text-sm">
               <span>
-                club <span class="text-slate-500">{{ m.clubId }}</span>
+                {{ clubLabel(m.clubId) }}
                 <span class="ml-3 inline-block rounded bg-slate-200 px-2 py-0.5 text-xs">{{ m.status }}</span>
               </span>
               @if (m.status === 'Accepted') {
                 <button
                   type="button"
-                  (click)="onExpel(m)"
+                  (click)="askExpel(m)"
                   class="rounded-md border border-red-300 px-3 py-1 text-xs text-red-700 hover:bg-red-50"
                 >Expel</button>
               }
@@ -550,6 +551,12 @@ import { ModalComponent } from '../../shared/modal.component';
           </button>
         </form>
         </app-modal>
+
+        <app-confirm
+          [message]="pending()?.message ?? null"
+          (confirmed)="runPending()"
+          (cancelled)="pending.set(null)"
+        />
       </main>
     </div>
   `,
@@ -569,6 +576,7 @@ export default class LeagueDetailPage {
   protected readonly divisionDialogOpen = signal(false);
   protected readonly seasonDialogOpen = signal(false);
   protected readonly inviteDialogOpen = signal(false);
+  protected readonly pending = signal<{ message: string; action: () => void } | null>(null);
   protected readonly seasonError = signal<string | null>(null);
   protected readonly seasonSubmitting = signal(false);
   protected readonly editingSeasonId = signal<string | null>(null);
@@ -666,6 +674,11 @@ export default class LeagueDetailPage {
     });
   }
 
+  protected clubLabel(clubId: string): string {
+    const club = this.availableClubs().find((c) => c.id === clubId);
+    return club ? `${club.shortCode} · ${club.name}` : clubId;
+  }
+
   private refreshAvailableClubs(): void {
     this.clubsApi.list().subscribe({
       next: (rows) => this.availableClubs.set(rows),
@@ -690,6 +703,20 @@ export default class LeagueDetailPage {
     this.api.expel(this.leagueId, m.id).subscribe({
       next: () => this.refreshMemberships(),
     });
+  }
+
+  protected runPending(): void {
+    const p = this.pending();
+    this.pending.set(null);
+    p?.action();
+  }
+
+  protected askExpel(m: MembershipSummary): void {
+    this.pending.set({ message: `Expel ${this.clubLabel(m.clubId)} from this league?`, action: () => this.onExpel(m) });
+  }
+
+  protected askDeleteSeason(s: SeasonSummary): void {
+    this.pending.set({ message: `Delete season "${s.name}"?`, action: () => this.onDeleteSeason(s) });
   }
 
   protected onCreate(): void {

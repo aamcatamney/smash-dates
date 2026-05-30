@@ -14,13 +14,14 @@ import {
   TeamSummary,
   VenueSummary,
 } from './clubs.api';
-import { LeaguesApi } from './leagues.api';
+import { LeaguesApi, LeagueSummary } from './leagues.api';
 import { AdminHeaderComponent } from './admin-header.component';
 import { ModalComponent } from '../../shared/modal.component';
+import { ConfirmComponent } from '../../shared/confirm.component';
 
 @Component({
   selector: 'app-club-detail-page',
-  imports: [ReactiveFormsModule, RouterLink, AdminHeaderComponent, ModalComponent],
+  imports: [ReactiveFormsModule, RouterLink, AdminHeaderComponent, ModalComponent, ConfirmComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <div class="min-h-screen bg-slate-50">
@@ -63,7 +64,7 @@ import { ModalComponent } from '../../shared/modal.component';
               <button
                 type="button"
                 [attr.aria-label]="'Revoke ' + admin.email"
-                (click)="onRevoke(admin.userId)"
+                (click)="askRevoke(admin)"
                 class="rounded-md border border-red-300 px-3 py-1 text-xs text-red-700 hover:bg-red-50"
               >
                 Revoke
@@ -103,7 +104,7 @@ import { ModalComponent } from '../../shared/modal.component';
           @for (m of memberships(); track m.id) {
             <li class="flex items-center justify-between px-4 py-3 font-mono text-sm">
               <span>
-                league <span class="text-slate-500">{{ m.leagueId }}</span>
+                {{ leagueName(m.leagueId) }}
                 <span class="ml-3 inline-block rounded bg-slate-200 px-2 py-0.5 text-xs">{{ m.status }}</span>
               </span>
               <div class="flex gap-2">
@@ -153,7 +154,7 @@ import { ModalComponent } from '../../shared/modal.component';
               <button
                 type="button"
                 [attr.aria-label]="'Delete team ' + t.name"
-                (click)="onDeleteTeam(t)"
+                (click)="askDeleteTeam(t)"
                 class="rounded-md border border-red-300 px-3 py-1 text-xs text-red-700 hover:bg-red-50"
               >
                 Delete
@@ -221,7 +222,7 @@ import { ModalComponent } from '../../shared/modal.component';
               <button
                 type="button"
                 [attr.aria-label]="'Delete venue ' + v.name"
-                (click)="onDeleteVenue(v)"
+                (click)="askDeleteVenue(v)"
                 class="rounded-md border border-red-300 px-3 py-1 text-xs text-red-700 hover:bg-red-50"
               >
                 Delete
@@ -332,7 +333,7 @@ import { ModalComponent } from '../../shared/modal.component';
               <button
                 type="button"
                 [attr.aria-label]="'Delete blocked date ' + b.reason"
-                (click)="onDeleteBlockedDate(b)"
+                (click)="askDeleteBlockedDate(b)"
                 class="rounded-md border border-red-300 px-3 py-1 text-xs text-red-700 hover:bg-red-50"
               >
                 Delete
@@ -430,6 +431,12 @@ import { ModalComponent } from '../../shared/modal.component';
           }
         </form>
         </app-modal>
+
+        <app-confirm
+          [message]="pending()?.message ?? null"
+          (confirmed)="runPending()"
+          (cancelled)="pending.set(null)"
+        />
       </main>
     </div>
   `,
@@ -443,6 +450,7 @@ export default class ClubDetailPage {
   protected readonly club = signal<ClubDetail | null>(null);
   protected readonly admins = signal<ClubAdminSummary[]>([]);
   protected readonly memberships = signal<MembershipSummary[]>([]);
+  protected readonly leagueList = signal<LeagueSummary[]>([]);
   protected readonly teams = signal<TeamSummary[]>([]);
   protected readonly venues = signal<VenueSummary[]>([]);
   protected readonly blockedDates = signal<BlockedDateSummary[]>([]);
@@ -466,6 +474,29 @@ export default class ClubDetailPage {
   protected readonly teamDialogOpen = signal(false);
   protected readonly venueDialogOpen = signal(false);
   protected readonly blockDialogOpen = signal(false);
+  protected readonly pending = signal<{ message: string; action: () => void } | null>(null);
+
+  protected runPending(): void {
+    const p = this.pending();
+    this.pending.set(null);
+    p?.action();
+  }
+
+  protected askRevoke(admin: ClubAdminSummary): void {
+    this.pending.set({ message: `Revoke ${admin.email} as a club admin?`, action: () => this.onRevoke(admin.userId) });
+  }
+
+  protected askDeleteTeam(t: TeamSummary): void {
+    this.pending.set({ message: `Delete team "${t.name}"?`, action: () => this.onDeleteTeam(t) });
+  }
+
+  protected askDeleteVenue(v: VenueSummary): void {
+    this.pending.set({ message: `Delete venue "${v.name}"?`, action: () => this.onDeleteVenue(v) });
+  }
+
+  protected askDeleteBlockedDate(b: BlockedDateSummary): void {
+    this.pending.set({ message: `Delete this blocked date (${b.reason})?`, action: () => this.onDeleteBlockedDate(b) });
+  }
 
   protected readonly adminForm = new FormGroup({
     email: new FormControl('', {
@@ -510,6 +541,11 @@ export default class ClubDetailPage {
           this.refreshMatches();
         },
       });
+    this.leagues.list().subscribe({ next: (rows) => this.leagueList.set(rows) });
+  }
+
+  protected leagueName(leagueId: string): string {
+    return this.leagueList().find((l) => l.id === leagueId)?.name ?? leagueId;
   }
 
   private refreshAdmins(): void {

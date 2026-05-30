@@ -5,10 +5,11 @@ import { switchMap, tap } from 'rxjs';
 import { LeagueAdminSummary, LeaguesApi } from './leagues.api';
 import { AdminHeaderComponent } from './admin-header.component';
 import { ModalComponent } from '../../shared/modal.component';
+import { ConfirmComponent } from '../../shared/confirm.component';
 
 @Component({
   selector: 'app-league-admins-page',
-  imports: [ReactiveFormsModule, RouterLink, AdminHeaderComponent, ModalComponent],
+  imports: [ReactiveFormsModule, RouterLink, AdminHeaderComponent, ModalComponent, ConfirmComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <div class="min-h-screen bg-slate-50">
@@ -40,7 +41,7 @@ import { ModalComponent } from '../../shared/modal.component';
               </span>
               <button
                 type="button"
-                (click)="onRevoke(admin.userId)"
+                (click)="askRevoke(admin)"
                 class="rounded-md border border-red-300 px-3 py-1 text-xs text-red-700 hover:bg-red-50"
               >
                 Revoke
@@ -74,6 +75,12 @@ import { ModalComponent } from '../../shared/modal.component';
             }
           </form>
         </app-modal>
+
+        <app-confirm
+          [message]="pending()?.message ?? null"
+          (confirmed)="runPending()"
+          (cancelled)="pending.set(null)"
+        />
       </main>
     </div>
   `,
@@ -87,6 +94,7 @@ export default class LeagueAdminsPage {
   protected readonly submitting = signal(false);
   protected readonly error = signal<string | null>(null);
   protected readonly dialogOpen = signal(false);
+  protected readonly pending = signal<{ message: string; action: () => void } | null>(null);
 
   protected readonly form = new FormGroup({
     email: new FormControl('', {
@@ -132,6 +140,16 @@ export default class LeagueAdminsPage {
         this.error.set('No registered user with that email.');
       },
     });
+  }
+
+  protected runPending(): void {
+    const p = this.pending();
+    this.pending.set(null);
+    p?.action();
+  }
+
+  protected askRevoke(admin: LeagueAdminSummary): void {
+    this.pending.set({ message: `Revoke ${admin.email} as a league admin?`, action: () => this.onRevoke(admin.userId) });
   }
 
   protected onRevoke(userId: string): void {
