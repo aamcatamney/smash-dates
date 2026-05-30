@@ -13,5 +13,6 @@ Screenshots embedded in the root `README.md`, captured from a seeded demo league
 | `club-detail.png` | Club detail — teams, venues, blocked dates, matches |
 | `csv-import.png` | Bulk CSV import dialog with a per-row result |
 | `dark-mode.png` | League detail in the dark theme |
+| `players.png` | Player registrations + transfers awaiting league approval |
 
 Suggested width ~1400px, PNG.

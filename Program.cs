@@ -17,6 +17,7 @@ using smash_dates.Endpoints.ClubAdmins;
 using smash_dates.Endpoints.Clubs;
 using smash_dates.Endpoints.Memberships;
 using smash_dates.Endpoints.Notifications;
+using smash_dates.Endpoints.Players;
 using smash_dates.Endpoints.Divisions;
 using smash_dates.Endpoints.SeasonEntries;
 using smash_dates.Endpoints.Seasons;
@@ -35,6 +36,11 @@ var builder = WebApplication.CreateBuilder(args);
 
 Dapper.SqlMapper.AddTypeHandler(new DateOnlyTypeHandler());
 
+// Serialize enums as their names (e.g. "Member", "Level") rather than ordinals, so API
+// responses that surface enum-typed view models read the same as the hand-stringified ones.
+builder.Services.ConfigureHttpJsonOptions(o =>
+    o.SerializerOptions.Converters.Add(new System.Text.Json.Serialization.JsonStringEnumConverter()));
+
 builder.Services.AddSingleton<IDbConnectionFactory, NpgsqlConnectionFactory>();
 builder.Services.AddSingleton<IPasswordHasher, BCryptPasswordHasher>();
 builder.Services.AddScoped<IUserRepository, UserRepository>();
@@ -52,6 +58,9 @@ builder.Services.AddScoped<IBlockedDateRepository, BlockedDateRepository>();
 builder.Services.AddScoped<IMatchRepository, MatchRepository>();
 builder.Services.AddSingleton<smash_dates.Services.Scheduling.IScheduler, smash_dates.Services.Scheduling.Scheduler>();
 builder.Services.AddScoped<smash_dates.Services.Scheduling.IScheduleGenerator, smash_dates.Services.Scheduling.ScheduleGenerator>();
+builder.Services.AddScoped<IPlayerRepository, PlayerRepository>();
+builder.Services.AddScoped<IDisciplineRegistrationRepository, DisciplineRegistrationRepository>();
+builder.Services.AddScoped<IRegistrationTransferRepository, RegistrationTransferRepository>();
 builder.Services.AddScoped<INotificationRepository, NotificationRepository>();
 builder.Services.AddScoped<smash_dates.Services.Notifications.INotificationService, smash_dates.Services.Notifications.NotificationService>();
 builder.Services.AddSingleton<smash_dates.Services.Notifications.INotificationSender, smash_dates.Services.Notifications.LoggingNotificationSender>();
@@ -221,6 +230,9 @@ app.MapBlockedDateEndpoints();
 app.MapMatchEndpoints();
 app.MapMatchActionEndpoints();
 app.MapNotificationEndpoints();
+app.MapClubPlayersEndpoints();
+app.MapRegistrationEndpoints();
+app.MapTransferEndpoints();
 
 if (Directory.Exists(clientAppPath))
 {
