@@ -1,6 +1,7 @@
 using System.Security.Claims;
 using smash_dates.Models;
 using smash_dates.Repositories;
+using smash_dates.Services.Notifications;
 
 namespace smash_dates.Endpoints.Matches;
 
@@ -20,6 +21,7 @@ public static class AcceptMatchEndpoint
         IMatchRepository matches,
         ITeamRepository teams,
         IClubAdminRepository clubAdmins,
+        INotificationService notifications,
         CancellationToken ct)
     {
         var match = await matches.GetByIdAsync(id, ct);
@@ -35,6 +37,8 @@ public static class AcceptMatchEndpoint
             return Results.Problem(statusCode: StatusCodes.Status409Conflict, title: "Only a Proposed match can be accepted");
 
         var updated = await matches.GetByIdAsync(id, ct);
-        return Results.Ok(new AcceptResult(updated!.Status.ToString(), updated.HomeAccepted, updated.AwayAccepted));
+        if (updated!.Status == MatchStatus.Confirmed)
+            await notifications.MatchStatusChangedAsync(id, MatchStatus.Confirmed, ct);
+        return Results.Ok(new AcceptResult(updated.Status.ToString(), updated.HomeAccepted, updated.AwayAccepted));
     }
 }

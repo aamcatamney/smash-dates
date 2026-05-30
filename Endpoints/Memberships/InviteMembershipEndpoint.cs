@@ -2,6 +2,7 @@ using System.Security.Claims;
 using Npgsql;
 using smash_dates.Repositories;
 using smash_dates.Services.Auth;
+using smash_dates.Services.Notifications;
 
 namespace smash_dates.Endpoints.Memberships;
 
@@ -27,6 +28,7 @@ public static class InviteMembershipEndpoint
         ILeagueAdminRepository leagueAdmins,
         IClubRepository clubs,
         IClubLeagueMembershipRepository memberships,
+        INotificationService notifications,
         CancellationToken ct)
     {
         if (await leagues.GetByIdAsync(leagueId, ct) is null) return Results.NotFound();
@@ -44,6 +46,7 @@ public static class InviteMembershipEndpoint
         try
         {
             var id = await memberships.InviteAsync(request.ClubId, leagueId, invitedBy, ct);
+            await notifications.MembershipInvitedAsync(request.ClubId, leagueId, ct);
             return Results.Created(
                 $"/api/leagues/{leagueId}/memberships/{id}",
                 new InviteResponse(id, request.ClubId, leagueId, "Pending"));

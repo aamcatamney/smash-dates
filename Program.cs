@@ -16,6 +16,7 @@ using smash_dates.Endpoints.BlockedDates;
 using smash_dates.Endpoints.ClubAdmins;
 using smash_dates.Endpoints.Clubs;
 using smash_dates.Endpoints.Memberships;
+using smash_dates.Endpoints.Notifications;
 using smash_dates.Endpoints.Divisions;
 using smash_dates.Endpoints.SeasonEntries;
 using smash_dates.Endpoints.Seasons;
@@ -51,6 +52,8 @@ builder.Services.AddScoped<IBlockedDateRepository, BlockedDateRepository>();
 builder.Services.AddScoped<IMatchRepository, MatchRepository>();
 builder.Services.AddSingleton<smash_dates.Services.Scheduling.IScheduler, smash_dates.Services.Scheduling.Scheduler>();
 builder.Services.AddScoped<smash_dates.Services.Scheduling.IScheduleGenerator, smash_dates.Services.Scheduling.ScheduleGenerator>();
+builder.Services.AddScoped<INotificationRepository, NotificationRepository>();
+builder.Services.AddScoped<smash_dates.Services.Notifications.INotificationService, smash_dates.Services.Notifications.NotificationService>();
 
 var connectionString = builder.Configuration.GetConnectionString("Postgres")
     ?? throw new InvalidOperationException("ConnectionStrings:Postgres missing");
@@ -212,6 +215,7 @@ app.MapSeasonEntryEndpoints();
 app.MapBlockedDateEndpoints();
 app.MapMatchEndpoints();
 app.MapMatchActionEndpoints();
+app.MapNotificationEndpoints();
 
 if (Directory.Exists(clientAppPath))
 {
