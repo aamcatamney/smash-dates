@@ -249,13 +249,13 @@ public sealed class TestDataSeeder
         var seasonId = await CreateSeasonAsync(leagueId, "2025/26", new DateOnly(2025, 9, 1), new DateOnly(2025, 9, 30), seasonStatus);
         var divisionId = await CreateDivisionAsync(leagueId, "Mens 1", DivisionGender.Mens, 1, 9);
 
-        var clubA = await CreateClubAsync($"Acme-{adminAEmail}", RandomCode());
+        var clubA = await CreateClubAsync($"Acme-{adminAEmail}", RandomCode(), contactEmail: $"acme-{adminAEmail}");
         var adminA = await CreateUserAsync(adminAEmail, password);
         await GrantClubAdminAsync(clubA, adminA.Id, adminA.Id);
         var teamA = await CreateTeamAsync(clubA, "Acme 1", DivisionGender.Mens);
         var venueA = await CreateVenueAsync(clubA, "Acme Hall", 1);
 
-        var clubB = sameClub ? clubA : await CreateClubAsync($"Beta-{adminAEmail}", RandomCode());
+        var clubB = sameClub ? clubA : await CreateClubAsync($"Beta-{adminAEmail}", RandomCode(), contactEmail: $"beta-{adminAEmail}");
         var adminB = sameClub ? adminA : await CreateUserAsync(adminBEmail, password);
         if (!sameClub) await GrantClubAdminAsync(clubB, adminB.Id, adminB.Id);
         var teamB = await CreateTeamAsync(clubB, sameClub ? "Acme 2" : "Beta 1", DivisionGender.Mens);

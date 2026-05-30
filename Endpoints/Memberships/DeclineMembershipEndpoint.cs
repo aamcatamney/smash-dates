@@ -2,6 +2,7 @@ using System.Security.Claims;
 using smash_dates.Models;
 using smash_dates.Repositories;
 using smash_dates.Services.Auth;
+using smash_dates.Services.Notifications;
 
 namespace smash_dates.Endpoints.Memberships;
 
@@ -20,6 +21,7 @@ public static class DeclineMembershipEndpoint
         ILeagueRepository leagues,
         IClubLeagueMembershipRepository memberships,
         IClubAdminRepository clubAdmins,
+        INotificationService notifications,
         CancellationToken ct)
     {
         if (await leagues.GetByIdAsync(leagueId, ct) is null) return Results.NotFound();
@@ -32,8 +34,9 @@ public static class DeclineMembershipEndpoint
 
         var userId = principal.UserId()!.Value;
         var ok = await memberships.TransitionFromPendingAsync(membershipId, MembershipStatus.Declined, userId, ct);
-        return ok
-            ? Results.NoContent()
-            : Results.Problem(statusCode: StatusCodes.Status409Conflict, title: "Membership is not Pending");
+        if (!ok) return Results.Problem(statusCode: StatusCodes.Status409Conflict, title: "Membership is not Pending");
+
+        await notifications.MembershipRespondedAsync(membership.ClubId, leagueId, MembershipStatus.Declined, ct);
+        return Results.NoContent();
     }
 }

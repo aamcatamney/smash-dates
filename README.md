@@ -325,6 +325,18 @@ Frontend additions: the Season panel gains **Activate** (Proposed) and **Close s
 
 Completes the standings sort (resolves the slice 6 deferral). `StandingsCalculator` now splits teams level on points → rubber-diff → rubbers-for by a **head-to-head mini-league**: from only the matches *between* the tied teams, order by head-to-head points, then head-to-head rubber difference, then team name as the final stable fallback. Handles 2-team and 3+-team ties uniformly; pure and unit-tested, no API or schema change.
 
+## Slice 11 — Notifications (outbox)
+
+Records notifications for domain events to a `notifications` outbox table (recipient, subject, body, `sent_at`). Delivery itself (SMTP) is deferred — a sender drains unsent rows and ties into the deferred async job runner.
+
+- `NotificationService` resolves recipients per event and enqueues rows. Triggers:
+  - membership **invite** → invited Club's `ContactEmail`;
+  - membership **accept** / **decline** → the League's admins (their user emails);
+  - match **Confirmed** (accept-both / force-confirm), **Rejected**, **Postponed** (→ Proposed) → both Clubs' `ContactEmail` (a derby's single contact isn't notified twice).
+- `GET /api/notifications` *(SystemAdmin)* — the outbox, newest first (operational/debug view).
+
+Deferred: actual email delivery; the *"only when no ClubAdmin is signed in"* presence condition (no presence tracking yet) — notifications always go to the contact for now; per-generate bulk "matches proposed" summaries.
+
 ## Slice 9 — Club "my matches" screen
 
 Gives club admins one place to see and act on their club's fixtures (resolves the deferral from the match-lifecycle slices).

@@ -2,6 +2,7 @@ using System.Security.Claims;
 using smash_dates.Models;
 using smash_dates.Repositories;
 using smash_dates.Services.Auth;
+using smash_dates.Services.Notifications;
 
 namespace smash_dates.Endpoints.Matches;
 
@@ -21,6 +22,7 @@ public static class ForceConfirmMatchEndpoint
         IMatchRepository matches,
         ISeasonRepository seasons,
         ILeagueAdminRepository leagueAdmins,
+        INotificationService notifications,
         CancellationToken ct)
     {
         var match = await matches.GetByIdAsync(id, ct);
@@ -38,6 +40,7 @@ public static class ForceConfirmMatchEndpoint
         if (!await matches.ForceConfirmAsync(id, ct))
             return Results.Problem(statusCode: StatusCodes.Status409Conflict, title: "Only a Proposed match can be force-confirmed");
 
+        await notifications.MatchStatusChangedAsync(id, MatchStatus.Confirmed, ct);
         return Results.Ok(new ForceConfirmResult(MatchStatus.Confirmed.ToString()));
     }
 }

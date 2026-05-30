@@ -2,6 +2,7 @@ using System.Security.Claims;
 using smash_dates.Models;
 using smash_dates.Repositories;
 using smash_dates.Services.Auth;
+using smash_dates.Services.Notifications;
 
 namespace smash_dates.Endpoints.Matches;
 
@@ -22,6 +23,7 @@ public static class PostponeMatchEndpoint
         IMatchRepository matches,
         ISeasonRepository seasons,
         ILeagueAdminRepository leagueAdmins,
+        INotificationService notifications,
         CancellationToken ct)
     {
         var match = await matches.GetByIdAsync(id, ct);
@@ -42,6 +44,7 @@ public static class PostponeMatchEndpoint
         if (!await matches.PostponeAsync(id, ct))
             return Results.Problem(statusCode: StatusCodes.Status409Conflict, title: "Only a Confirmed match can be postponed");
 
+        await notifications.MatchStatusChangedAsync(id, MatchStatus.Proposed, ct);
         return Results.Ok(new { status = MatchStatus.Proposed.ToString() });
     }
 }
