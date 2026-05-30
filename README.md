@@ -78,6 +78,17 @@ cd ..
 dotnet run
 ```
 
+### Container deployment
+
+The `Dockerfile` builds a single image (Angular production bundle + .NET publish) that serves the SPA and API on port **8080**. It runs migrations on startup (DbUp, idempotent) and creates the database if missing.
+
+```powershell
+docker build -t smash-dates .
+docker run -p 8080:8080 -e "ConnectionStrings__Postgres=Host=...;Port=5432;Database=smash_dates;Username=...;Password=..." smash-dates
+```
+
+In `Production` the auth and antiforgery cookies are `Secure`, so the app **must** be reached over HTTPS. The container is designed to sit behind a **TLS-terminating reverse proxy / ingress**: it honours `X-Forwarded-Proto` / `X-Forwarded-For` (via `UseForwardedHeaders`), so the proxy must forward those headers. Reached over plain HTTP, cookie-issuing endpoints (e.g. register/login) return 500 by design.
+
 ### Tests
 
 ```powershell
