@@ -24,4 +24,8 @@ public interface ISeasonRepository
         CancellationToken ct = default);
 
     Task<bool> DeleteAsync(Guid id, CancellationToken ct = default);
+
+    // Moves the season from one status to another only if it is currently `from`.
+    // Returns false otherwise (caller maps to 409).
+    Task<bool> TransitionStatusAsync(Guid id, SeasonStatus from, SeasonStatus to, CancellationToken ct = default);
 }

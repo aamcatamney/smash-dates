@@ -11,6 +11,7 @@ public static class ClubEndpoints
         group.MapListClubsEndpoint();
         group.MapGetClubEndpoint();
         group.MapUpdateClubEndpoint();
+        group.MapListClubMatchesEndpoint();
         return app;
     }
 }

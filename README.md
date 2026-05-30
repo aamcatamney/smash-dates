@@ -280,13 +280,55 @@ The table is built by a pure, unit-tested `Services/Standings/StandingsCalculato
 
 Two documented choices:
 - **Computed-on-read** (not materialised, despite CONTEXT's wording): `GET …/standings` derives the table each call — trivially cheap at this scale, and no stored table to keep in sync on every result/walkover/re-run. Can materialise later behind the same endpoint.
-- **Head-to-head tiebreak deferred**: the final CONTEXT tiebreak (a mini-league among teams tied on the first three keys) is replaced by a stable team-name fallback for now. Adds later without an API change.
+- ~~**Head-to-head tiebreak deferred**~~: now implemented (see Slice 8). Teams level on points / rubber-diff / rubbers-for are split by a head-to-head mini-league before the team-name fallback.
 
 `matches` gains `home_score` / `away_score` / `played_on` / `is_walkover`.
 
 **Deferred:** Postpone (needs the `Active` season transition); the head-to-head tiebreak; a club-admin "my club's matches" result-entry screen (the result/walkover APIs work now).
 
 Frontend additions: the **Fixtures** view shows the score (and a `w/o` marker) on Played matches, and **Result** / **W/O home** / **W/O away** controls on Confirmed matches; the Season panel gains a **Table** view rendering the per-division standings.
+
+## Slice 7 — Active lifecycle, Postpone & the Active-gated locks
+
+Completes the season lifecycle and wires the cross-aggregate rules that were deferred until Seasons + Season Entries existed.
+
+Season transitions (manual, LeagueAdmin@thisLeague | SystemAdmin):
+
+- `POST /api/leagues/{leagueId}/seasons/{seasonId}/activate` — `Proposed → Active` (else 409).
+- `POST /api/leagues/{leagueId}/seasons/{seasonId}/close` — `Active → Closed` (else 409).
+
+Auto-activation on the first match date and auto-close on the end date are deferred — they need a scheduled job (same family as the deferred async scheduler runner).
+
+Postpone (LeagueAdmin-executed):
+
+- `POST /api/matches/{id}/postpone` *(LeagueAdmin@thisLeague | SystemAdmin)* — a `Confirmed` match in an `Active` season returns to `Proposed` with acceptance cleared, so `/rerun` can re-place it (409 if the season isn't Active or the match isn't Confirmed). The three-party agreement is confirmed by the LeagueAdmin out-of-band; the full request→approve→approve flow is deferred.
+
+Active-gated locks now enforced:
+
+- **Blocked dates** — `POST`/`DELETE …/blocked-dates` return 409 once the club has a team entered in an **Active** season (CONTEXT.md: blocked-date edits forbidden from Active onward). *(resolves the slice 2f deferral)*
+- **Mid-season Withdraw/Expel** — `…/memberships/{id}/withdraw` and `/expel` return 409 while the club has a team entered in a non-`Closed` season of the league. *(resolves the slice 2b deferral)*
+
+Frontend additions: the Season panel gains **Activate** (Proposed) and **Close season** (Active) buttons; the Fixtures view gains a **Postpone** action on Confirmed matches in an Active season.
+
+## Slice 8 — Head-to-head tiebreak
+
+Completes the standings sort (resolves the slice 6 deferral). `StandingsCalculator` now splits teams level on points → rubber-diff → rubbers-for by a **head-to-head mini-league**: from only the matches *between* the tied teams, order by head-to-head points, then head-to-head rubber difference, then team name as the final stable fallback. Handles 2-team and 3+-team ties uniformly; pure and unit-tested, no API or schema change.
+
+## Slice 9 — Club "my matches" screen
+
+Gives club admins one place to see and act on their club's fixtures (resolves the deferral from the match-lifecycle slices).
+
+- `GET /api/clubs/{clubId}/matches` *(authenticated)* — every match where the club is home **or** away (across seasons), with division/team/venue names, status, acceptance flags and scores. Reuses the flat `/api/matches/{id}` actions (`accept` / `reject` / `result` / `walkover`), which resolve the caller's side.
+
+Frontend additions: the `/admin/clubs/:id` detail page gains a **Matches** section — fixtures with the score (and `w/o` marker) on Played, **Accept** / **Reject** on Proposed (with per-side acceptance state), and **Result** / **W/O home** / **W/O away** on Confirmed.
+
+## Slice 10 — Scheduler soft optimisation (2-opt)
+
+Lifts schedule *quality* (ADR 0001 phase 3) — the feasible greedy schedule is improved against the soft constraints before it's persisted. Pure engine, unit-tested; no API, schema or frontend change (`IScheduler` and `/generate` / `/rerun` are unchanged).
+
+- `SchedulerCost` (pure) — soft-penalty cost: a **team-spread** penalty for closely-spaced matches (gap below `MinGapDays`) plus a **leg-gap** penalty for the two legs of a pairing deviating from ~half the season. Default weights; per-League configuration deferred.
+- `SchedulerHardConstraints.IsFeasible` (pure) — full-schedule validator (one match/team/date, venue capacity + ownership, Venue/Club/Team blocks, week-type ↔ gender, derby-first).
+- `ScheduleOptimizer.Optimize` — deterministic 2-opt: repeatedly swaps two matches' dates (each kept at its home venue) when the swap stays feasible and lowers cost; fixed pass budget, no RNG. `Scheduler.Build` runs it after greedy placement on full success.
 
 ## Adding a migration
 

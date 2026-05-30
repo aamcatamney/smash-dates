@@ -36,12 +36,17 @@ public static class CreateBlockedDateEndpoint
         ITeamRepository teams,
         IBlockedDateRepository blockedDates,
         IClubAdminRepository clubAdmins,
+        ISeasonEntryRepository seasonEntries,
         CancellationToken ct)
     {
         if (await clubs.GetByIdAsync(clubId, ct) is null) return Results.NotFound();
 
         var authz = await ClubAuthorizer.RequireClubAdminAsync(principal, clubId, clubAdmins, ct);
         if (authz is not null) return authz;
+
+        // From Active onward blocked-date edits are forbidden (CONTEXT.md).
+        if (await seasonEntries.ClubHasActiveSeasonEntryAsync(clubId, ct))
+            return Results.Problem(statusCode: StatusCodes.Status409Conflict, title: "Blocked dates can't be changed while the club is in an active season");
 
         if (!Enum.TryParse<BlockedDateScope>(request.Scope, ignoreCase: false, out var scope))
             return Results.Problem(statusCode: StatusCodes.Status400BadRequest, title: "Invalid scope");

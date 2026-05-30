@@ -12,6 +12,8 @@ public static class SeasonEndpoints
         group.MapGetSeasonEndpoint();
         group.MapReplaceSeasonWeeksEndpoint();
         group.MapDeleteSeasonEndpoint();
+        group.MapActivateSeasonEndpoint();
+        group.MapCloseSeasonEndpoint();
         return app;
     }
 }

@@ -90,7 +90,12 @@ public sealed class Scheduler : IScheduler
             }
         }
 
-        return new ScheduleResult(unplaced.Count == 0, placed, unplaced);
+        if (unplaced.Count > 0)
+            return new ScheduleResult(false, placed, unplaced);
+
+        // Improve the feasible schedule against the soft constraints (ADR 0001 phase 3).
+        var optimised = ScheduleOptimizer.Optimize(placed, input);
+        return new ScheduleResult(true, optimised, unplaced);
     }
 
     private static DateOnly? TryPlace(

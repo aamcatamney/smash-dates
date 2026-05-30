@@ -241,11 +241,12 @@ public sealed class TestDataSeeder
         string adminBEmail,
         string password,
         MatchStatus status = MatchStatus.Proposed,
-        bool sameClub = false)
+        bool sameClub = false,
+        SeasonStatus seasonStatus = SeasonStatus.Proposed)
     {
         var sys = await CreateSystemAdminUserAsync($"sys-{adminAEmail}", password);
         var leagueId = await CreateLeagueAsync($"L-{adminAEmail}", sys.Id);
-        var seasonId = await CreateSeasonAsync(leagueId, "2025/26", new DateOnly(2025, 9, 1), new DateOnly(2025, 9, 30), SeasonStatus.Proposed);
+        var seasonId = await CreateSeasonAsync(leagueId, "2025/26", new DateOnly(2025, 9, 1), new DateOnly(2025, 9, 30), seasonStatus);
         var divisionId = await CreateDivisionAsync(leagueId, "Mens 1", DivisionGender.Mens, 1, 9);
 
         var clubA = await CreateClubAsync($"Acme-{adminAEmail}", RandomCode());
@@ -259,7 +260,9 @@ public sealed class TestDataSeeder
         if (!sameClub) await GrantClubAdminAsync(clubB, adminB.Id, adminB.Id);
         var teamB = await CreateTeamAsync(clubB, sameClub ? "Acme 2" : "Beta 1", DivisionGender.Mens);
 
-        var matchId = await CreateMatchAsync(seasonId, divisionId, teamA, teamB, venueA, new DateOnly(2025, 9, 3), status);
+        // A Confirmed match has both sides accepted.
+        var accepted = status == MatchStatus.Confirmed;
+        var matchId = await CreateMatchAsync(seasonId, divisionId, teamA, teamB, venueA, new DateOnly(2025, 9, 3), status, accepted, accepted);
 
         return new MatchScenario(leagueId, seasonId, divisionId, matchId, clubA, adminA, clubB, adminB, teamA, teamB);
     }

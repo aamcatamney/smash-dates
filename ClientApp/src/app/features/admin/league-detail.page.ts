@@ -198,6 +198,18 @@ import { AdminHeaderComponent } from './admin-header.component';
                       >
                         {{ rerunningSeasonId() === s.id ? 'Re-running…' : 'Re-run' }}
                       </button>
+                      <button
+                        type="button"
+                        (click)="onActivate(s)"
+                        class="rounded-md bg-slate-900 px-3 py-1 text-xs font-medium text-amber-300 hover:bg-slate-800"
+                      >Activate</button>
+                    }
+                    @if (s.status === 'Active') {
+                      <button
+                        type="button"
+                        (click)="onCloseSeason(s)"
+                        class="rounded-md border border-red-300 px-3 py-1 text-xs text-red-700 hover:bg-red-50"
+                      >Close season</button>
                     }
                     <button
                       type="button"
@@ -356,6 +368,9 @@ import { AdminHeaderComponent } from './admin-header.component';
                         <button type="button" (click)="onOpenResult(f)" class="rounded-md border border-slate-300 px-2 py-0.5 text-slate-700 hover:bg-slate-50">Result</button>
                         <button type="button" (click)="onWalkover(s, f, 'Home')" class="rounded-md border border-slate-300 px-2 py-0.5 text-slate-700 hover:bg-slate-50">W/O home</button>
                         <button type="button" (click)="onWalkover(s, f, 'Away')" class="rounded-md border border-slate-300 px-2 py-0.5 text-slate-700 hover:bg-slate-50">W/O away</button>
+                        @if (s.status === 'Active') {
+                          <button type="button" (click)="onPostpone(s, f)" class="rounded-md border border-amber-300 px-2 py-0.5 text-amber-700 hover:bg-amber-50">Postpone</button>
+                        }
                       }
 
                       @if (resultMatchId() === f.id) {
@@ -905,6 +920,20 @@ export default class LeagueDetailPage {
     this.api.recordWalkover(f.id, winner).subscribe({
       next: () => this.openFixtures(s.id),
     });
+  }
+
+  protected onPostpone(s: SeasonSummary, f: MatchSummary): void {
+    this.api.postponeMatch(f.id).subscribe({
+      next: () => this.openFixtures(s.id),
+    });
+  }
+
+  protected onActivate(s: SeasonSummary): void {
+    this.api.activateSeason(this.leagueId, s.id).subscribe({ next: () => this.refreshSeasons() });
+  }
+
+  protected onCloseSeason(s: SeasonSummary): void {
+    this.api.closeSeason(this.leagueId, s.id).subscribe({ next: () => this.refreshSeasons() });
   }
 
   protected onRerun(s: SeasonSummary): void {

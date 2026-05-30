@@ -20,6 +20,7 @@ public static class ExpelMembershipEndpoint
         ILeagueRepository leagues,
         ILeagueAdminRepository leagueAdmins,
         IClubLeagueMembershipRepository memberships,
+        ISeasonEntryRepository seasonEntries,
         CancellationToken ct)
     {
         if (await leagues.GetByIdAsync(leagueId, ct) is null) return Results.NotFound();
@@ -30,7 +31,11 @@ public static class ExpelMembershipEndpoint
         var authz = await LeagueAuthorizer.RequireLeagueAdminAsync(principal, leagueId, leagueAdmins, ct);
         if (authz is not null) return authz;
 
-        // Mid-season block deferred to the slice that adds Season Entries.
+        // Mid-season block (CONTEXT.md): can't expel while the club has a team entered in
+        // a non-Closed season of this league.
+        if (await seasonEntries.ClubHasOpenSeasonEntryInLeagueAsync(membership.ClubId, leagueId, ct))
+            return Results.Problem(statusCode: StatusCodes.Status409Conflict, title: "Can't expel mid-season: the club has a team in an open season");
+
         var userId = principal.UserId()!.Value;
         var ok = await memberships.TransitionFromAcceptedAsync(membershipId, MembershipStatus.Expelled, userId, ct);
         return ok

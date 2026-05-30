@@ -7,6 +7,7 @@ import {
   BlockedDateSummary,
   ClubAdminSummary,
   ClubDetail,
+  ClubMatch,
   ClubsApi,
   Gender,
   MembershipSummary,
@@ -243,6 +244,49 @@ import { AdminHeaderComponent } from './admin-header.component';
           }
         </form>
 
+        <h2 class="mt-10 font-mono text-lg font-semibold text-slate-900">Matches</h2>
+        <ul class="mt-3 divide-y divide-slate-200 rounded-md border border-slate-200 bg-white">
+          @for (m of matches(); track m.id) {
+            <li class="flex flex-wrap items-center gap-x-3 gap-y-1 px-4 py-3 font-mono text-sm">
+              <span class="font-semibold">{{ m.matchDate }}</span>
+              <span class="inline-block rounded bg-slate-200 px-1.5 py-0.5 text-xs">{{ m.divisionName }}</span>
+              <span>
+                {{ m.homeTeamName }}
+                @if (m.status === 'Played') {
+                  <span class="font-semibold">{{ m.homeScore }}–{{ m.awayScore }}</span>
+                } @else {
+                  <span class="text-slate-400">v</span>
+                }
+                {{ m.awayTeamName }}
+              </span>
+              @if (m.isWalkover) { <span class="rounded bg-amber-200 px-1 text-xs text-amber-800">w/o</span> }
+              <span class="text-slate-500">@ {{ m.venueName }}</span>
+              <span class="ml-auto inline-block rounded bg-slate-100 px-2 py-0.5 text-xs text-slate-600">{{ m.status }}</span>
+              @if (m.status === 'Proposed') {
+                <span class="text-xs text-slate-400">({{ m.homeAccepted ? 'home ✓' : 'home …' }}, {{ m.awayAccepted ? 'away ✓' : 'away …' }})</span>
+                <button type="button" (click)="onAcceptMatch(m)" class="rounded-md border border-emerald-300 px-2 py-1 text-xs text-emerald-700 hover:bg-emerald-50">Accept</button>
+                <button type="button" (click)="onRejectMatch(m)" class="rounded-md border border-red-300 px-2 py-1 text-xs text-red-700 hover:bg-red-50">Reject</button>
+              }
+              @if (m.status === 'Confirmed') {
+                <button type="button" (click)="onOpenMatchResult(m)" class="rounded-md border border-slate-300 px-2 py-1 text-xs text-slate-700 hover:bg-slate-50">Result</button>
+                <button type="button" (click)="onMatchWalkover(m, 'Home')" class="rounded-md border border-slate-300 px-2 py-1 text-xs text-slate-700 hover:bg-slate-50">W/O home</button>
+                <button type="button" (click)="onMatchWalkover(m, 'Away')" class="rounded-md border border-slate-300 px-2 py-1 text-xs text-slate-700 hover:bg-slate-50">W/O away</button>
+              }
+              @if (matchResultId() === m.id) {
+                <form [formGroup]="matchResultForm" (ngSubmit)="onSaveMatchResult(m)" class="flex w-full items-center gap-2 pt-1">
+                  <input type="number" formControlName="homeScore" min="0" aria-label="Home score" class="w-16 rounded-md border border-slate-300 px-2 py-1 text-xs" />
+                  <span class="text-slate-400">–</span>
+                  <input type="number" formControlName="awayScore" min="0" aria-label="Away score" class="w-16 rounded-md border border-slate-300 px-2 py-1 text-xs" />
+                  <button type="submit" class="rounded-md bg-slate-900 px-2 py-1 text-xs font-medium text-amber-300">Save</button>
+                  @if (matchError()) { <span class="text-xs text-red-600" role="alert">{{ matchError() }}</span> }
+                </form>
+              }
+            </li>
+          } @empty {
+            <li class="px-4 py-3 font-mono text-sm text-slate-500">No matches.</li>
+          }
+        </ul>
+
         <h2 class="mt-10 font-mono text-lg font-semibold text-slate-900">Blocked dates</h2>
         <ul class="mt-3 divide-y divide-slate-200 rounded-md border border-slate-200 bg-white">
           @for (b of blockedDates(); track b.id) {
@@ -369,6 +413,14 @@ export default class ClubDetailPage {
   protected readonly teams = signal<TeamSummary[]>([]);
   protected readonly venues = signal<VenueSummary[]>([]);
   protected readonly blockedDates = signal<BlockedDateSummary[]>([]);
+  protected readonly matches = signal<ClubMatch[]>([]);
+  protected readonly matchResultId = signal<string | null>(null);
+  protected readonly matchError = signal<string | null>(null);
+
+  protected readonly matchResultForm = new FormGroup({
+    homeScore: new FormControl(0, { nonNullable: true, validators: [Validators.required, Validators.min(0)] }),
+    awayScore: new FormControl(0, { nonNullable: true, validators: [Validators.required, Validators.min(0)] }),
+  });
   protected readonly adminBusy = signal(false);
   protected readonly adminError = signal<string | null>(null);
   protected readonly teamBusy = signal(false);
@@ -418,6 +470,7 @@ export default class ClubDetailPage {
           this.refreshTeams();
           this.refreshVenues();
           this.refreshBlockedDates();
+          this.refreshMatches();
         },
       });
   }
@@ -583,5 +636,40 @@ export default class ClubDetailPage {
 
   protected onDeleteBlockedDate(b: BlockedDateSummary): void {
     this.api.deleteBlockedDate(this.clubId(), b.id).subscribe({ next: () => this.refreshBlockedDates() });
+  }
+
+  private refreshMatches(): void {
+    this.api.listMatches(this.clubId()).subscribe({ next: (rows) => this.matches.set(rows) });
+  }
+
+  protected onAcceptMatch(m: ClubMatch): void {
+    this.api.acceptMatch(m.id).subscribe({ next: () => this.refreshMatches() });
+  }
+
+  protected onRejectMatch(m: ClubMatch): void {
+    this.api.rejectMatch(m.id).subscribe({ next: () => this.refreshMatches() });
+  }
+
+  protected onOpenMatchResult(m: ClubMatch): void {
+    this.matchError.set(null);
+    this.matchResultForm.reset({ homeScore: 0, awayScore: 0 });
+    this.matchResultId.set(this.matchResultId() === m.id ? null : m.id);
+  }
+
+  protected onSaveMatchResult(m: ClubMatch): void {
+    const { homeScore, awayScore } = this.matchResultForm.getRawValue();
+    this.matchError.set(null);
+    this.api.recordResult(m.id, Number(homeScore), Number(awayScore), m.matchDate).subscribe({
+      next: () => {
+        this.matchResultId.set(null);
+        this.refreshMatches();
+      },
+      error: (err: { error?: { title?: string } }) =>
+        this.matchError.set(err?.error?.title ?? 'Could not record result.'),
+    });
+  }
+
+  protected onMatchWalkover(m: ClubMatch, winner: 'Home' | 'Away'): void {
+    this.api.recordWalkover(m.id, winner).subscribe({ next: () => this.refreshMatches() });
   }
 }

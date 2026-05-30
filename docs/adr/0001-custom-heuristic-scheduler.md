@@ -49,4 +49,5 @@ The scheduler is delivered in stages behind the same `IScheduler` boundary:
 
 1. **Done:** Berger double round-robin → derby-first → greedy placement satisfying all **hard** constraints, run **synchronously** (millisecond runtimes at expected scale). Generation persists `Proposed` matches and moves the season to `Proposed`; an unschedulable input returns 422 and changes nothing.
 2. **Done:** incremental re-run — `SchedulerInput.Locked` carries the `Confirmed` fixtures (occupancy seeded, pairings not re-emitted) so the engine re-places only the rest. Triggered manually by the LeagueAdmin (`POST …/rerun`); all-or-nothing.
-3. **Later:** the soft-penalty 2-opt local search and async background-job execution (with the `Scheduling` season state) — layered in without changing callers.
+3. **Done:** soft-penalty **2-opt local search** — after greedy placement, deterministically swap two matches' dates whenever it stays hard-feasible and lowers `SchedulerCost` (team-spread + home/away leg-gap penalties, default weights). `SchedulerHardConstraints.IsFeasible` guards every move.
+4. **Later:** async background-job execution (with the `Scheduling` season state) and per-League penalty configuration — layered in without changing callers.
