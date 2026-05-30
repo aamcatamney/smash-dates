@@ -61,6 +61,25 @@ export interface VenueSummary {
   capacity: number;
 }
 
+export type MatchStatus = 'Proposed' | 'Confirmed' | 'Played' | 'Postponed' | 'Rejected';
+
+export interface ClubMatch {
+  id: string;
+  divisionName: string;
+  homeTeamId: string;
+  homeTeamName: string;
+  awayTeamId: string;
+  awayTeamName: string;
+  venueName: string;
+  matchDate: string;
+  status: MatchStatus;
+  homeAccepted: boolean;
+  awayAccepted: boolean;
+  homeScore: number | null;
+  awayScore: number | null;
+  isWalkover: boolean;
+}
+
 export type BlockedDateScope = 'Club' | 'Venue' | 'Team';
 
 export interface BlockedDateSummary {
@@ -173,5 +192,25 @@ export class ClubsApi {
 
   deleteBlockedDate(clubId: string, id: string): Observable<void> {
     return this.http.delete<void>(`/api/clubs/${clubId}/blocked-dates/${id}`);
+  }
+
+  listMatches(clubId: string): Observable<ClubMatch[]> {
+    return this.http.get<ClubMatch[]>(`/api/clubs/${clubId}/matches`);
+  }
+
+  acceptMatch(matchId: string): Observable<unknown> {
+    return this.http.post(`/api/matches/${matchId}/accept`, null);
+  }
+
+  rejectMatch(matchId: string): Observable<unknown> {
+    return this.http.post(`/api/matches/${matchId}/reject`, null);
+  }
+
+  recordResult(matchId: string, homeScore: number, awayScore: number, playedOn: string): Observable<unknown> {
+    return this.http.post(`/api/matches/${matchId}/result`, { homeScore, awayScore, playedOn });
+  }
+
+  recordWalkover(matchId: string, winner: 'Home' | 'Away'): Observable<unknown> {
+    return this.http.post(`/api/matches/${matchId}/walkover`, { winner });
   }
 }

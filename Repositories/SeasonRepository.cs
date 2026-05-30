@@ -140,6 +140,17 @@ public sealed class SeasonRepository : ISeasonRepository
         return rows > 0;
     }
 
+    public async Task<bool> TransitionStatusAsync(Guid id, SeasonStatus from, SeasonStatus to, CancellationToken ct = default)
+    {
+        using var conn = _factory.Create();
+        var rows = await conn.ExecuteAsync(
+            new CommandDefinition(
+                "UPDATE seasons SET status = @to, updated_at = now() WHERE id = @id AND status = @from",
+                new { id, from = from.ToString(), to = to.ToString() },
+                cancellationToken: ct));
+        return rows > 0;
+    }
+
     private sealed class SeasonRow
     {
         public Guid Id { get; init; }

@@ -18,6 +18,7 @@ public static class DeleteBlockedDateEndpoint
         ClaimsPrincipal principal,
         IBlockedDateRepository blockedDates,
         IClubAdminRepository clubAdmins,
+        ISeasonEntryRepository seasonEntries,
         CancellationToken ct)
     {
         var block = await blockedDates.GetByIdAsync(id, ct);
@@ -25,6 +26,9 @@ public static class DeleteBlockedDateEndpoint
 
         var authz = await ClubAuthorizer.RequireClubAdminAsync(principal, clubId, clubAdmins, ct);
         if (authz is not null) return authz;
+
+        if (await seasonEntries.ClubHasActiveSeasonEntryAsync(clubId, ct))
+            return Results.Problem(statusCode: StatusCodes.Status409Conflict, title: "Blocked dates can't be changed while the club is in an active season");
 
         await blockedDates.DeleteAsync(id, ct);
         return Results.NoContent();

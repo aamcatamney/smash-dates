@@ -14,4 +14,11 @@ public interface ISeasonEntryRepository
     Task<Guid> CreateAsync(Guid seasonId, Guid divisionId, Guid teamId, CancellationToken ct = default);
     Task<bool> DeleteAsync(Guid id, CancellationToken ct = default);
     Task<bool> ExistsForTeamAsync(Guid teamId, CancellationToken ct = default);
+
+    // True if the club has a team entered in any Active season (blocked-date edit lock).
+    Task<bool> ClubHasActiveSeasonEntryAsync(Guid clubId, CancellationToken ct = default);
+
+    // True if the club has a team entered in a non-Closed season of the league
+    // (mid-season Withdraw/Expel block).
+    Task<bool> ClubHasOpenSeasonEntryInLeagueAsync(Guid clubId, Guid leagueId, CancellationToken ct = default);
 }

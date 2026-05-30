@@ -80,6 +80,29 @@ public sealed class StandingsCalculatorTests
     }
 
     [Fact]
+    public void HeadToHead_BreaksTie_EvenAgainstNameOrder()
+    {
+        // Z and A finish level on points / rubber-diff / rubbers-for, but Z beat A head to
+        // head. Z must rank above A even though the name fallback would put A first.
+        var z = Team("Z", out var zId);
+        var a = Team("A", out var aId);
+        var c = Team("C", out var cId);
+        var d = Team("D", out var dId);
+
+        var results = new[]
+        {
+            new StandingResult(zId, aId, 9, 0), // Z beats A head-to-head
+            new StandingResult(cId, zId, 9, 0), // Z also loses to C
+            new StandingResult(aId, dId, 9, 0), // A also beats D
+        };
+
+        var rows = StandingsCalculator.Compute([z, a, c, d], Default, results);
+
+        // C tops on rubber-diff; Z and A are level on the primary keys, split by head-to-head.
+        rows.Select(r => r.TeamId).Should().ContainInOrder(cId, zId, aId, dId);
+    }
+
+    [Fact]
     public void AggregatesMultipleMatches()
     {
         var a = Team("A", out var aId);

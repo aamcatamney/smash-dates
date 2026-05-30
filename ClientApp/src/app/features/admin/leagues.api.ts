@@ -252,4 +252,16 @@ export class LeaguesApi {
   listStandings(leagueId: string, seasonId: string): Observable<DivisionTable[]> {
     return this.http.get<DivisionTable[]>(`/api/leagues/${leagueId}/seasons/${seasonId}/standings`);
   }
+
+  activateSeason(leagueId: string, seasonId: string): Observable<{ status: string }> {
+    return this.http.post<{ status: string }>(`/api/leagues/${leagueId}/seasons/${seasonId}/activate`, null);
+  }
+
+  closeSeason(leagueId: string, seasonId: string): Observable<{ status: string }> {
+    return this.http.post<{ status: string }>(`/api/leagues/${leagueId}/seasons/${seasonId}/close`, null);
+  }
+
+  postponeMatch(matchId: string): Observable<{ status: string }> {
+    return this.http.post<{ status: string }>(`/api/matches/${matchId}/postpone`, null);
+  }
 }

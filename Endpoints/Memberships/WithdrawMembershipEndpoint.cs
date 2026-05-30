@@ -20,6 +20,7 @@ public static class WithdrawMembershipEndpoint
         ILeagueRepository leagues,
         IClubLeagueMembershipRepository memberships,
         IClubAdminRepository clubAdmins,
+        ISeasonEntryRepository seasonEntries,
         CancellationToken ct)
     {
         if (await leagues.GetByIdAsync(leagueId, ct) is null) return Results.NotFound();
@@ -30,7 +31,11 @@ public static class WithdrawMembershipEndpoint
         var authz = await ClubAuthorizer.RequireClubAdminAsync(principal, membership.ClubId, clubAdmins, ct);
         if (authz is not null) return authz;
 
-        // Mid-season block deferred to the slice that adds Season Entries.
+        // Mid-season block (CONTEXT.md): can't withdraw while the club has a team entered
+        // in a non-Closed season of this league.
+        if (await seasonEntries.ClubHasOpenSeasonEntryInLeagueAsync(membership.ClubId, leagueId, ct))
+            return Results.Problem(statusCode: StatusCodes.Status409Conflict, title: "Can't withdraw mid-season: the club has a team in an open season");
+
         var userId = principal.UserId()!.Value;
         var ok = await memberships.TransitionFromAcceptedAsync(membershipId, MembershipStatus.Withdrawn, userId, ct);
         return ok

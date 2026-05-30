@@ -90,6 +90,35 @@ public sealed class SeasonEntryRepository : ISeasonEntryRepository
                 cancellationToken: ct));
     }
 
+    public async Task<bool> ClubHasActiveSeasonEntryAsync(Guid clubId, CancellationToken ct = default)
+    {
+        using var conn = _factory.Create();
+        return await conn.ExecuteScalarAsync<bool>(
+            new CommandDefinition(
+                @"SELECT EXISTS(
+                    SELECT 1 FROM season_entries e
+                    JOIN teams t ON t.id = e.team_id
+                    JOIN seasons s ON s.id = e.season_id
+                    WHERE t.club_id = @clubId AND s.status = 'Active')",
+                new { clubId },
+                cancellationToken: ct));
+    }
+
+    public async Task<bool> ClubHasOpenSeasonEntryInLeagueAsync(Guid clubId, Guid leagueId, CancellationToken ct = default)
+    {
+        using var conn = _factory.Create();
+        return await conn.ExecuteScalarAsync<bool>(
+            new CommandDefinition(
+                @"SELECT EXISTS(
+                    SELECT 1 FROM season_entries e
+                    JOIN teams t ON t.id = e.team_id
+                    JOIN seasons s ON s.id = e.season_id
+                    WHERE t.club_id = @clubId AND s.league_id = @leagueId
+                      AND s.status IN ('Draft', 'Scheduling', 'Proposed', 'Active'))",
+                new { clubId, leagueId },
+                cancellationToken: ct));
+    }
+
     private sealed class SchedulingRow
     {
         public Guid DivisionId { get; init; }

@@ -6,6 +6,7 @@ namespace smash_dates.Repositories;
 public interface IMatchRepository
 {
     Task<IReadOnlyList<MatchView>> ListBySeasonAsync(Guid seasonId, CancellationToken ct = default);
+    Task<IReadOnlyList<MatchView>> ListByClubAsync(Guid clubId, CancellationToken ct = default);
     Task<Match?> GetByIdAsync(Guid id, CancellationToken ct = default);
     Task<MatchView?> GetViewByIdAsync(Guid id, CancellationToken ct = default);
 
@@ -32,4 +33,8 @@ public interface IMatchRepository
     // Confirmed → Played with a score. isWalkover marks a conceded match (UI annotation only).
     // Returns false if the match was not Confirmed.
     Task<bool> RecordResultAsync(Guid id, int homeScore, int awayScore, DateOnly playedOn, bool isWalkover, CancellationToken ct = default);
+
+    // Confirmed → Proposed (postpone): acceptance is cleared so the slot can be re-run.
+    // Returns false if the match was not Confirmed.
+    Task<bool> PostponeAsync(Guid id, CancellationToken ct = default);
 }

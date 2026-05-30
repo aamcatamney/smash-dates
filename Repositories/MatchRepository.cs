@@ -38,6 +38,17 @@ public sealed class MatchRepository : IMatchRepository
         return rows.Select(r => r.ToView()).ToList();
     }
 
+    public async Task<IReadOnlyList<MatchView>> ListByClubAsync(Guid clubId, CancellationToken ct = default)
+    {
+        using var conn = _factory.Create();
+        var rows = await conn.QueryAsync<ViewRow>(
+            new CommandDefinition(
+                $"{ViewSelect} WHERE h.club_id = @clubId OR a.club_id = @clubId ORDER BY m.match_date, d.rank, h.name",
+                new { clubId },
+                cancellationToken: ct));
+        return rows.Select(r => r.ToView()).ToList();
+    }
+
     public async Task<MatchView?> GetViewByIdAsync(Guid id, CancellationToken ct = default)
     {
         using var conn = _factory.Create();
@@ -200,6 +211,19 @@ public sealed class MatchRepository : IMatchRepository
                       played_on = @playedOn, is_walkover = @isWalkover
                   WHERE id = @id AND status = 'Confirmed'",
                 new { id, homeScore, awayScore, playedOn, isWalkover },
+                cancellationToken: ct));
+        return rows > 0;
+    }
+
+    public async Task<bool> PostponeAsync(Guid id, CancellationToken ct = default)
+    {
+        using var conn = _factory.Create();
+        var rows = await conn.ExecuteAsync(
+            new CommandDefinition(
+                @"UPDATE matches
+                  SET status = 'Proposed', home_accepted = false, away_accepted = false
+                  WHERE id = @id AND status = 'Confirmed'",
+                new { id },
                 cancellationToken: ct));
         return rows > 0;
     }
