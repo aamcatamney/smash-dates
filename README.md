@@ -162,6 +162,16 @@ Manage a club's teams, venues, blocked dates and its matches in one place.
 
 ![Club detail](docs/screenshots/club-detail.png)
 
+### Bulk CSV import
+Import clubs, teams, venues or season entries from a CSV — partial import with a per-row result and a downloadable template.
+
+![CSV import with per-row result](docs/screenshots/csv-import.png)
+
+### Light & dark themes
+Every screen supports light and dark, following the OS preference with a persisted toggle.
+
+![Dark theme](docs/screenshots/dark-mode.png)
+
 ---
 
 ## License
