@@ -12,7 +12,8 @@ public sealed class MatchRepository : IMatchRepository
                  m.home_team_id, h.name AS home_team_name,
                  m.away_team_id, a.name AS away_team_name,
                  m.venue_id, v.name AS venue_name,
-                 m.match_date, m.status, m.home_accepted, m.away_accepted
+                 m.match_date, m.status, m.home_accepted, m.away_accepted,
+                 m.home_score, m.away_score, m.played_on, m.is_walkover
           FROM matches m
           JOIN divisions d ON d.id = m.division_id
           JOIN teams h ON h.id = m.home_team_id
@@ -51,7 +52,8 @@ public sealed class MatchRepository : IMatchRepository
         var row = await conn.QuerySingleOrDefaultAsync<MatchRow>(
             new CommandDefinition(
                 @"SELECT id, season_id, division_id, home_team_id, away_team_id, venue_id,
-                         match_date, status, home_accepted, away_accepted, created_at
+                         match_date, status, home_accepted, away_accepted,
+                         home_score, away_score, played_on, is_walkover, created_at
                   FROM matches WHERE id = @id",
                 new { id },
                 cancellationToken: ct));
@@ -188,6 +190,20 @@ public sealed class MatchRepository : IMatchRepository
         return rows > 0;
     }
 
+    public async Task<bool> RecordResultAsync(Guid id, int homeScore, int awayScore, DateOnly playedOn, bool isWalkover, CancellationToken ct = default)
+    {
+        using var conn = _factory.Create();
+        var rows = await conn.ExecuteAsync(
+            new CommandDefinition(
+                @"UPDATE matches
+                  SET status = 'Played', home_score = @homeScore, away_score = @awayScore,
+                      played_on = @playedOn, is_walkover = @isWalkover
+                  WHERE id = @id AND status = 'Confirmed'",
+                new { id, homeScore, awayScore, playedOn, isWalkover },
+                cancellationToken: ct));
+        return rows > 0;
+    }
+
     private sealed class MatchRow
     {
         public Guid Id { get; init; }
@@ -200,6 +216,10 @@ public sealed class MatchRepository : IMatchRepository
         public string Status { get; init; } = string.Empty;
         public bool HomeAccepted { get; init; }
         public bool AwayAccepted { get; init; }
+        public int? HomeScore { get; init; }
+        public int? AwayScore { get; init; }
+        public DateOnly? PlayedOn { get; init; }
+        public bool IsWalkover { get; init; }
         public DateTime CreatedAt { get; init; }
 
         public Match ToMatch() => new()
@@ -214,6 +234,10 @@ public sealed class MatchRepository : IMatchRepository
             Status = Enum.Parse<MatchStatus>(Status),
             HomeAccepted = HomeAccepted,
             AwayAccepted = AwayAccepted,
+            HomeScore = HomeScore,
+            AwayScore = AwayScore,
+            PlayedOn = PlayedOn,
+            IsWalkover = IsWalkover,
             CreatedAt = CreatedAt,
         };
     }
@@ -234,6 +258,10 @@ public sealed class MatchRepository : IMatchRepository
         public string Status { get; init; } = string.Empty;
         public bool HomeAccepted { get; init; }
         public bool AwayAccepted { get; init; }
+        public int? HomeScore { get; init; }
+        public int? AwayScore { get; init; }
+        public DateOnly? PlayedOn { get; init; }
+        public bool IsWalkover { get; init; }
 
         public MatchView ToView() => new()
         {
@@ -251,6 +279,10 @@ public sealed class MatchRepository : IMatchRepository
             Status = Enum.Parse<MatchStatus>(Status),
             HomeAccepted = HomeAccepted,
             AwayAccepted = AwayAccepted,
+            HomeScore = HomeScore,
+            AwayScore = AwayScore,
+            PlayedOn = PlayedOn,
+            IsWalkover = IsWalkover,
         };
     }
 }

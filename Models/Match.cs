@@ -14,5 +14,9 @@ public sealed class Match
     public MatchStatus Status { get; init; }
     public bool HomeAccepted { get; init; }
     public bool AwayAccepted { get; init; }
+    public int? HomeScore { get; init; }
+    public int? AwayScore { get; init; }
+    public DateOnly? PlayedOn { get; init; }
+    public bool IsWalkover { get; init; }
     public DateTime CreatedAt { get; init; }
 }

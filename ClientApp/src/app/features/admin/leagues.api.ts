@@ -97,6 +97,28 @@ export interface MatchSummary {
   status: MatchStatus;
   homeAccepted: boolean;
   awayAccepted: boolean;
+  homeScore: number | null;
+  awayScore: number | null;
+  isWalkover: boolean;
+}
+
+export interface StandingRow {
+  teamId: string;
+  teamName: string;
+  played: number;
+  won: number;
+  drawn: number;
+  lost: number;
+  rubbersFor: number;
+  rubbersAgainst: number;
+  rubberDifference: number;
+  points: number;
+}
+
+export interface DivisionTable {
+  divisionId: string;
+  divisionName: string;
+  rows: StandingRow[];
 }
 
 export interface SeasonEntrySummary {
@@ -217,5 +239,17 @@ export class LeaguesApi {
 
   rerunSchedule(leagueId: string, seasonId: string): Observable<{ matchCount: number }> {
     return this.http.post<{ matchCount: number }>(`/api/leagues/${leagueId}/seasons/${seasonId}/rerun`, null);
+  }
+
+  recordResult(matchId: string, homeScore: number, awayScore: number, playedOn: string): Observable<{ status: string }> {
+    return this.http.post<{ status: string }>(`/api/matches/${matchId}/result`, { homeScore, awayScore, playedOn });
+  }
+
+  recordWalkover(matchId: string, winner: 'Home' | 'Away'): Observable<{ status: string }> {
+    return this.http.post<{ status: string }>(`/api/matches/${matchId}/walkover`, { winner });
+  }
+
+  listStandings(leagueId: string, seasonId: string): Observable<DivisionTable[]> {
+    return this.http.get<DivisionTable[]>(`/api/leagues/${leagueId}/seasons/${seasonId}/standings`);
   }
 }

@@ -18,7 +18,11 @@ public static class GetMatchEndpoint
         DateOnly MatchDate,
         string Status,
         bool HomeAccepted,
-        bool AwayAccepted);
+        bool AwayAccepted,
+        int? HomeScore,
+        int? AwayScore,
+        DateOnly? PlayedOn,
+        bool IsWalkover);
 
     public static IEndpointRouteBuilder MapGetMatchEndpoint(this IEndpointRouteBuilder app)
     {
@@ -34,6 +38,6 @@ public static class GetMatchEndpoint
             : Results.Ok(new MatchDetail(
                 m.Id, m.SeasonId, m.DivisionId, m.DivisionName, m.HomeTeamId, m.HomeTeamName,
                 m.AwayTeamId, m.AwayTeamName, m.VenueId, m.VenueName, m.MatchDate, m.Status.ToString(),
-                m.HomeAccepted, m.AwayAccepted));
+                m.HomeAccepted, m.AwayAccepted, m.HomeScore, m.AwayScore, m.PlayedOn, m.IsWalkover));
     }
 }

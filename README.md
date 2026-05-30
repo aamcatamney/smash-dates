@@ -268,6 +268,26 @@ Engine seam (no caller changes): `SchedulerInput.Locked` carries the `Confirmed`
 
 Frontend additions: the Season panel gains a **Re-run** button on `Proposed` seasons (surfaces the 422 reason on failure, refreshes the fixtures view on success).
 
+## Slice 6 — Played + Walkover → Standings
+
+Records match results and derives the league table.
+
+- `POST /api/matches/{id}/result` *(ClubAdmin of either club | SystemAdmin)* — `Confirmed → Played` with `{ homeScore, awayScore, playedOn }`. Scores must be non-negative and sum to the Division's `RubbersPerMatch`; `playedOn` must be on/after the scheduled date. 400 otherwise; 409 if not `Confirmed`.
+- `POST /api/matches/{id}/walkover` *(ClubAdmin of either club | SystemAdmin)* — `{ winner: "Home" | "Away" }` → `Played` with the winner on the max score and the loser on 0, `isWalkover = true` (standings treat it as a normal win; the flag is a UI marker). Recorded on the scheduled date.
+- `GET /api/leagues/{leagueId}/seasons/{seasonId}/standings` *(authenticated)* — one table per Division that has entered teams.
+
+The table is built by a pure, unit-tested `Services/Standings/StandingsCalculator` from played results + the Division's `PointsScheme`. Columns: played / won / drawn / lost / rubbers for / rubbers against / rubber difference / points. Sort: points → rubber difference → rubbers-for → team name.
+
+Two documented choices:
+- **Computed-on-read** (not materialised, despite CONTEXT's wording): `GET …/standings` derives the table each call — trivially cheap at this scale, and no stored table to keep in sync on every result/walkover/re-run. Can materialise later behind the same endpoint.
+- **Head-to-head tiebreak deferred**: the final CONTEXT tiebreak (a mini-league among teams tied on the first three keys) is replaced by a stable team-name fallback for now. Adds later without an API change.
+
+`matches` gains `home_score` / `away_score` / `played_on` / `is_walkover`.
+
+**Deferred:** Postpone (needs the `Active` season transition); the head-to-head tiebreak; a club-admin "my club's matches" result-entry screen (the result/walkover APIs work now).
+
+Frontend additions: the **Fixtures** view shows the score (and a `w/o` marker) on Played matches, and **Result** / **W/O home** / **W/O away** controls on Confirmed matches; the Season panel gains a **Table** view rendering the per-division standings.
+
 ## Adding a migration
 
 Create `Migrations/Scripts/NNNN_description.sql` (zero-padded sequence). The file is automatically included as an embedded resource. DbUp applies scripts in name order on next startup.
