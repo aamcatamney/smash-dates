@@ -74,19 +74,23 @@ import { ModalComponent } from '../../shared/modal.component';
         </app-modal>
 
         <ul class="mt-8 divide-y divide-slate-200 rounded-md border border-slate-200 bg-white">
-          @for (league of leagues(); track league.id) {
-            <li class="px-4 py-3">
-              <a
-                [routerLink]="['/admin/leagues', league.id]"
-                class="font-mono text-sm font-medium text-slate-900 hover:underline"
-                >{{ league.name }}</a
-              >
-              @if (league.description) {
-                <span class="ml-2 font-mono text-sm text-slate-500">— {{ league.description }}</span>
-              }
-            </li>
-          } @empty {
-            <li class="px-4 py-3 font-mono text-sm text-slate-500">No leagues yet.</li>
+          @if (loading()) {
+            <li class="px-4 py-3 font-mono text-sm text-slate-400">Loading…</li>
+          } @else {
+            @for (league of leagues(); track league.id) {
+              <li class="px-4 py-3">
+                <a
+                  [routerLink]="['/admin/leagues', league.id]"
+                  class="font-mono text-sm font-medium text-slate-900 hover:underline"
+                  >{{ league.name }}</a
+                >
+                @if (league.description) {
+                  <span class="ml-2 font-mono text-sm text-slate-500">— {{ league.description }}</span>
+                }
+              </li>
+            } @empty {
+              <li class="px-4 py-3 font-mono text-sm text-slate-500">No leagues yet.</li>
+            }
           }
         </ul>
       </main>
@@ -101,6 +105,7 @@ export default class LeaguesListPage {
   protected readonly submitting = signal(false);
   protected readonly error = signal<string | null>(null);
   protected readonly dialogOpen = signal(false);
+  protected readonly loading = signal(true);
   protected readonly canCreate = computed(() => this.auth.isSystemAdmin());
 
   protected readonly form = new FormGroup({
@@ -118,8 +123,14 @@ export default class LeaguesListPage {
 
   private refresh(): void {
     this.api.list().subscribe({
-      next: (rows) => this.leagues.set(rows),
-      error: () => this.error.set('Failed to load leagues.'),
+      next: (rows) => {
+        this.leagues.set(rows);
+        this.loading.set(false);
+      },
+      error: () => {
+        this.error.set('Failed to load leagues.');
+        this.loading.set(false);
+      },
     });
   }
 
