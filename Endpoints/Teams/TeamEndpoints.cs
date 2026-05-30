@@ -8,6 +8,7 @@ public static class TeamEndpoints
             .RequireAuthorization();
 
         group.MapCreateTeamEndpoint();
+        group.MapImportTeamsEndpoint();
         group.MapListTeamsEndpoint();
         group.MapUpdateTeamEndpoint();
         group.MapDeleteTeamEndpoint();

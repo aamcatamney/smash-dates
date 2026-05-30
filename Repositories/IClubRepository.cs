@@ -5,6 +5,7 @@ namespace smash_dates.Repositories;
 public interface IClubRepository
 {
     Task<Club?> GetByIdAsync(Guid id, CancellationToken ct = default);
+    Task<Club?> GetByShortCodeAsync(string shortCode, CancellationToken ct = default);
     Task<IReadOnlyList<Club>> ListAsync(CancellationToken ct = default);
 
     // Creates the club row and the initial ClubAdmin grant in a single transaction.

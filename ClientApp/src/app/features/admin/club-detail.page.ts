@@ -19,10 +19,12 @@ import { AdminHeaderComponent } from './admin-header.component';
 import { ModalComponent } from '../../shared/modal.component';
 import { ConfirmComponent } from '../../shared/confirm.component';
 import { StatusColorPipe } from '../../shared/status-color.pipe';
+import { CsvImportComponent } from '../../shared/csv-import.component';
+import { ImportResult } from '../../shared/import-result';
 
 @Component({
   selector: 'app-club-detail-page',
-  imports: [ReactiveFormsModule, RouterLink, AdminHeaderComponent, ModalComponent, ConfirmComponent, StatusColorPipe],
+  imports: [ReactiveFormsModule, RouterLink, AdminHeaderComponent, ModalComponent, ConfirmComponent, StatusColorPipe, CsvImportComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <div class="min-h-screen bg-slate-50 dark:bg-slate-950">
@@ -137,13 +139,22 @@ import { StatusColorPipe } from '../../shared/status-color.pipe';
 
         <div class="mt-10 flex items-center justify-between">
           <h2 class="font-mono text-lg font-semibold text-slate-900 dark:text-slate-100">Teams</h2>
-          <button
-            type="button"
-            (click)="teamDialogOpen.set(true)"
-            class="rounded-md border border-slate-300 dark:border-slate-700 px-3 py-1 font-mono text-xs text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800"
-          >
-            ＋ Add team
-          </button>
+          <div class="flex gap-2">
+            <button
+              type="button"
+              (click)="openImport('teams')"
+              class="rounded-md border border-slate-300 dark:border-slate-700 px-3 py-1 font-mono text-xs text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800"
+            >
+              Import CSV
+            </button>
+            <button
+              type="button"
+              (click)="teamDialogOpen.set(true)"
+              class="rounded-md border border-slate-300 dark:border-slate-700 px-3 py-1 font-mono text-xs text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800"
+            >
+              ＋ Add team
+            </button>
+          </div>
         </div>
         <ul class="mt-3 divide-y divide-slate-200 rounded-md border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900">
           @for (t of teams(); track t.id) {
@@ -203,13 +214,22 @@ import { StatusColorPipe } from '../../shared/status-color.pipe';
 
         <div class="mt-10 flex items-center justify-between">
           <h2 class="font-mono text-lg font-semibold text-slate-900 dark:text-slate-100">Venues</h2>
-          <button
-            type="button"
-            (click)="venueDialogOpen.set(true)"
-            class="rounded-md border border-slate-300 dark:border-slate-700 px-3 py-1 font-mono text-xs text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800"
-          >
-            ＋ Add venue
-          </button>
+          <div class="flex gap-2">
+            <button
+              type="button"
+              (click)="openImport('venues')"
+              class="rounded-md border border-slate-300 dark:border-slate-700 px-3 py-1 font-mono text-xs text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800"
+            >
+              Import CSV
+            </button>
+            <button
+              type="button"
+              (click)="venueDialogOpen.set(true)"
+              class="rounded-md border border-slate-300 dark:border-slate-700 px-3 py-1 font-mono text-xs text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800"
+            >
+              ＋ Add venue
+            </button>
+          </div>
         </div>
         <ul class="mt-3 divide-y divide-slate-200 rounded-md border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900">
           @for (v of venues(); track v.id) {
@@ -438,6 +458,17 @@ import { StatusColorPipe } from '../../shared/status-color.pipe';
           (confirmed)="runPending()"
           (cancelled)="pending.set(null)"
         />
+
+        <app-csv-import
+          [open]="importKind() !== null"
+          [title]="importKind() === 'venues' ? 'Import venues' : 'Import teams'"
+          [columns]="importKind() === 'venues' ? venueImportColumns : teamImportColumns"
+          [sample]="importKind() === 'venues' ? 'Main Hall,2' : 'Acme 1st,Mens'"
+          [result]="importResult()"
+          [busy]="importBusy()"
+          (submit)="onImport($event)"
+          (closed)="closeImport()"
+        />
       </main>
     </div>
   `,
@@ -473,6 +504,12 @@ export default class ClubDetailPage {
   protected readonly blockError = signal<string | null>(null);
   protected readonly adminDialogOpen = signal(false);
   protected readonly teamDialogOpen = signal(false);
+
+  protected readonly importKind = signal<'teams' | 'venues' | null>(null);
+  protected readonly importBusy = signal(false);
+  protected readonly importResult = signal<ImportResult | null>(null);
+  protected readonly teamImportColumns = ['name', 'gender'];
+  protected readonly venueImportColumns = ['name', 'capacity'];
   protected readonly venueDialogOpen = signal(false);
   protected readonly blockDialogOpen = signal(false);
   protected readonly pending = signal<{ message: string; action: () => void } | null>(null);
@@ -604,6 +641,38 @@ export default class ClubDetailPage {
 
   protected onWithdraw(m: MembershipSummary): void {
     this.api.withdrawMembership(m.leagueId, m.id).subscribe({ next: () => this.refreshMemberships() });
+  }
+
+  protected openImport(kind: 'teams' | 'venues'): void {
+    this.importResult.set(null);
+    this.importKind.set(kind);
+  }
+
+  protected closeImport(): void {
+    this.importKind.set(null);
+    this.importResult.set(null);
+  }
+
+  protected onImport(csv: string): void {
+    const kind = this.importKind();
+    if (kind === null) return;
+    this.importBusy.set(true);
+    const request =
+      kind === 'venues'
+        ? this.api.importVenues(this.clubId(), csv)
+        : this.api.importTeams(this.clubId(), csv);
+    request.subscribe({
+      next: (result) => {
+        this.importBusy.set(false);
+        this.importResult.set(result);
+        if (kind === 'venues') this.refreshVenues();
+        else this.refreshTeams();
+      },
+      error: () => {
+        this.importBusy.set(false);
+        this.importResult.set({ created: 0, updated: 0, errors: [{ row: 0, message: 'Import failed.' }] });
+      },
+    });
   }
 
   private refreshTeams(): void {

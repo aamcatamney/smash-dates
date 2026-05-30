@@ -8,6 +8,7 @@ public static class ClubEndpoints
             .RequireAuthorization();
 
         group.MapCreateClubEndpoint();
+        group.MapImportClubsEndpoint();
         group.MapListClubsEndpoint();
         group.MapGetClubEndpoint();
         group.MapUpdateClubEndpoint();

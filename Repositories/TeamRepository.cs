@@ -40,6 +40,21 @@ public sealed class TeamRepository : ITeamRepository
         return rows.Select(r => r.ToTeam()).ToList();
     }
 
+    public async Task<IReadOnlyList<Team>> ListByLeagueAcceptedMembersAsync(Guid leagueId, CancellationToken ct = default)
+    {
+        using var conn = _factory.Create();
+        var rows = await conn.QueryAsync<TeamRow>(
+            new CommandDefinition(
+                $@"SELECT {SelectColumns} FROM teams t
+                   WHERE EXISTS (
+                       SELECT 1 FROM club_league_memberships m
+                       WHERE m.club_id = t.club_id AND m.league_id = @leagueId AND m.status = 'Accepted')
+                   ORDER BY t.gender, t.name",
+                new { leagueId },
+                cancellationToken: ct));
+        return rows.Select(r => r.ToTeam()).ToList();
+    }
+
     public async Task<Guid> CreateAsync(Guid clubId, string name, DivisionGender gender, CancellationToken ct = default)
     {
         using var conn = _factory.Create();

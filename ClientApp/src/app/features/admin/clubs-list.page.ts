@@ -6,10 +6,12 @@ import { LeaguesApi } from './leagues.api';
 import { AuthStore } from '../../core/auth/auth.store';
 import { AdminHeaderComponent } from './admin-header.component';
 import { ModalComponent } from '../../shared/modal.component';
+import { CsvImportComponent } from '../../shared/csv-import.component';
+import { ImportResult } from '../../shared/import-result';
 
 @Component({
   selector: 'app-clubs-list-page',
-  imports: [ReactiveFormsModule, RouterLink, AdminHeaderComponent, ModalComponent],
+  imports: [ReactiveFormsModule, RouterLink, AdminHeaderComponent, ModalComponent, CsvImportComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <div class="min-h-screen bg-slate-50 dark:bg-slate-950">
@@ -19,15 +21,35 @@ import { ModalComponent } from '../../shared/modal.component';
         <div class="flex items-center justify-between">
           <h1 class="font-mono text-2xl font-semibold text-slate-900 dark:text-slate-100">Clubs</h1>
           @if (canCreate()) {
-            <button
-              type="button"
-              (click)="dialogOpen.set(true)"
-              class="rounded-md bg-slate-900 px-4 py-2 font-mono text-sm font-medium text-amber-300 hover:bg-slate-800 dark:bg-amber-400 dark:text-slate-900 dark:hover:bg-amber-300"
-            >
-              ＋ Create club
-            </button>
+            <div class="flex gap-2">
+              <button
+                type="button"
+                (click)="importOpen.set(true)"
+                class="rounded-md border border-slate-300 px-4 py-2 font-mono text-sm text-slate-700 hover:bg-slate-50 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800"
+              >
+                Import CSV
+              </button>
+              <button
+                type="button"
+                (click)="dialogOpen.set(true)"
+                class="rounded-md bg-slate-900 px-4 py-2 font-mono text-sm font-medium text-amber-300 hover:bg-slate-800 dark:bg-amber-400 dark:text-slate-900 dark:hover:bg-amber-300"
+              >
+                ＋ Create club
+              </button>
+            </div>
           }
         </div>
+
+        <app-csv-import
+          [open]="importOpen()"
+          title="Import clubs"
+          [columns]="importColumns"
+          sample="Thames Valley,TVB,info@thamesvalley.test,admin@thamesvalley.test,"
+          [result]="importResult()"
+          [busy]="importBusy()"
+          (submit)="onImport($event)"
+          (closed)="closeImport()"
+        />
 
         <app-modal [open]="dialogOpen()" title="Create club" (closed)="dialogOpen.set(false)">
           <form
@@ -126,6 +148,11 @@ export default class ClubsListPage {
   protected readonly loading = signal(true);
   protected readonly canCreate = computed(() => this.auth.isSystemAdmin());
 
+  protected readonly importOpen = signal(false);
+  protected readonly importBusy = signal(false);
+  protected readonly importResult = signal<ImportResult | null>(null);
+  protected readonly importColumns = ['name', 'shortCode', 'contactEmail', 'firstAdminEmail', 'notes'];
+
   protected readonly form = new FormGroup({
     name: new FormControl('', { nonNullable: true, validators: [Validators.required] }),
     shortCode: new FormControl('', {
@@ -145,6 +172,26 @@ export default class ClubsListPage {
 
   constructor() {
     this.refresh();
+  }
+
+  protected onImport(csv: string): void {
+    this.importBusy.set(true);
+    this.api.importClubs(csv).subscribe({
+      next: (result) => {
+        this.importBusy.set(false);
+        this.importResult.set(result);
+        this.refresh();
+      },
+      error: () => {
+        this.importBusy.set(false);
+        this.importResult.set({ created: 0, updated: 0, errors: [{ row: 0, message: 'Import failed.' }] });
+      },
+    });
+  }
+
+  protected closeImport(): void {
+    this.importOpen.set(false);
+    this.importResult.set(null);
   }
 
   private refresh(): void {
