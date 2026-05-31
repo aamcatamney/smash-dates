@@ -24,11 +24,12 @@ import { ImportResult } from '../../shared/import-result';
 import { ClubPlayersComponent } from './club-players.component';
 import { TeamSquadComponent } from './team-squad.component';
 import { TabsComponent, TabDef } from '../../shared/tabs.component';
+import { CalendarSubscribeComponent } from '../../shared/calendar-subscribe.component';
 import { PlayersApi } from './players.api';
 
 @Component({
   selector: 'app-club-detail-page',
-  imports: [ReactiveFormsModule, RouterLink, AdminHeaderComponent, ModalComponent, ConfirmComponent, StatusColorPipe, CsvImportComponent, ClubPlayersComponent, TeamSquadComponent, TabsComponent],
+  imports: [ReactiveFormsModule, RouterLink, AdminHeaderComponent, ModalComponent, ConfirmComponent, StatusColorPipe, CsvImportComponent, ClubPlayersComponent, TeamSquadComponent, TabsComponent, CalendarSubscribeComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <div class="min-h-screen bg-slate-50 dark:bg-slate-950">
@@ -49,6 +50,9 @@ import { PlayersApi } from './players.api';
           @if (c.notes) {
             <p class="mt-1 font-mono text-sm text-slate-500 dark:text-slate-400">{{ c.notes }}</p>
           }
+          <div class="mt-2">
+            <app-calendar-subscribe [endpoint]="'/api/calendar/club/' + clubId() + '/url'" label="Subscribe to fixtures (iCal)" />
+          </div>
         }
 
         <app-tabs #tabs [tabs]="clubTabs()" />
@@ -193,6 +197,9 @@ import { PlayersApi } from './players.api';
                     Delete
                   </button>
                 </div>
+              </div>
+              <div class="mt-2">
+                <app-calendar-subscribe [endpoint]="'/api/calendar/team/' + t.id + '/url'" label="iCal" />
               </div>
               @if (squadTeamId() === t.id) {
                 <app-team-squad [clubId]="clubId()" [teamId]="t.id" />

@@ -30,11 +30,12 @@ import { CsvImportComponent } from '../../shared/csv-import.component';
 import { ImportResult } from '../../shared/import-result';
 import { LeaguePlayerApprovalsComponent } from './league-player-approvals.component';
 import { TabsComponent, TabDef } from '../../shared/tabs.component';
+import { CalendarSubscribeComponent } from '../../shared/calendar-subscribe.component';
 import { PlayersApi } from './players.api';
 
 @Component({
   selector: 'app-league-detail-page',
-  imports: [ReactiveFormsModule, RouterLink, AdminHeaderComponent, ModalComponent, ConfirmComponent, StatusColorPipe, CsvImportComponent, LeaguePlayerApprovalsComponent, TabsComponent],
+  imports: [ReactiveFormsModule, RouterLink, AdminHeaderComponent, ModalComponent, ConfirmComponent, StatusColorPipe, CsvImportComponent, LeaguePlayerApprovalsComponent, TabsComponent, CalendarSubscribeComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <div class="min-h-screen bg-slate-50 dark:bg-slate-950">
@@ -51,6 +52,9 @@ import { PlayersApi } from './players.api';
             class="mt-2 inline-block font-mono text-xs uppercase tracking-wider text-slate-500 dark:text-slate-400 hover:underline"
             >manage admins →</a
           >
+          <div class="mt-2">
+            <app-calendar-subscribe [endpoint]="'/api/calendar/league/' + leagueId + '/url'" label="Subscribe to fixtures (iCal)" />
+          </div>
         }
 
         <app-tabs #tabs [tabs]="leagueTabs()" />
