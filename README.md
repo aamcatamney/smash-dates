@@ -12,7 +12,7 @@ The whole thing ships as a single container: a .NET 10 API that also serves the 
 
 **Access & roles**
 - Email/password accounts with cookie authentication; the first registered user becomes the **SystemAdmin**.
-- **Email verification** gates login — new sign-ups confirm their address via a one-time link before they can sign in (the bootstrap SystemAdmin is auto-verified). Self-service **password reset** and **resend verification** round out the flow; tokens are single-use, hashed at rest and expire. Links ride the notification outbox (logging sender by default).
+- **Email verification** gates login — new sign-ups confirm their address via a one-time link before they can sign in (the bootstrap SystemAdmin is auto-verified). Self-service **password reset** and **resend verification** round out the flow; tokens are single-use, hashed at rest and expire — re-issuing a link invalidates the previous one, and spent tokens are pruned by a background job. Links ride the notification outbox (logging sender by default).
 - Three role scopes: **SystemAdmin** (bootstrap), **LeagueAdmin@League** and **ClubAdmin@Club** — granted per league/club, with last-admin protection.
 
 **League setup**
@@ -61,7 +61,7 @@ The whole thing ships as a single container: a .NET 10 API that also serves the 
 | Data | **PostgreSQL** via **Dapper + Npgsql** (repository pattern, no EF Core) |
 | Migrations | **DbUp** — embedded SQL scripts applied idempotently on startup |
 | Auth | Cookie authentication + antiforgery; **BCrypt** password hashing; Data Protection keys persisted in Postgres |
-| Background work | `BackgroundService` hosted services (season transitions, notification delivery) |
+| Background work | `BackgroundService` hosted services (season transitions, schedule generation, notification delivery, auth-token cleanup) |
 | Frontend | **Angular 21** (standalone components, signals, reactive forms) + **Tailwind CSS**, served same-origin as static files |
 | Tests | **xUnit v3** + **Testcontainers** (integration, real Postgres) for the backend; **Vitest** for the frontend |
 | Packaging | Single multi-stage **Docker** image (Angular production bundle + .NET publish) |
