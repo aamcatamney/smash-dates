@@ -36,11 +36,13 @@ public sealed class PegboardSessionEndpointsTests : IntegrationTestBase
         var close = await Client.PostAsync($"/api/clubs/{clubId}/pegboard/sessions/{session!.Id}/close", null);
         close.StatusCode.Should().Be(HttpStatusCode.NoContent);
 
-        // Mutating a closed session is a 409. AddCourt isn't mapped until Task 13b, so assert
-        // the conflict against the close endpoint itself (closing an already-closed session).
-        // TODO(13b): also assert 409 on add-court after close
+        // Mutating a closed session is a 409: closing an already-closed session, and adding a court.
         var closeAgain = await Client.PostAsync($"/api/clubs/{clubId}/pegboard/sessions/{session.Id}/close", null);
         closeAgain.StatusCode.Should().Be(HttpStatusCode.Conflict);
+
+        var addCourt = await Client.PostAsJsonAsync(
+            $"/api/clubs/{clubId}/pegboard/sessions/{session.Id}/courts", new { label = "Court 1" });
+        addCourt.StatusCode.Should().Be(HttpStatusCode.Conflict);
     }
 
     private sealed record SessionRow(Guid Id, Guid ClubId, string Name, string Status);

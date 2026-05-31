@@ -16,7 +16,13 @@ public static class PegboardEndpoints
         group.MapOpenSessionEndpoint();
         group.MapCloseSessionEndpoint();
 
-        // Courts/attendances/games mapped by Tasks 13b/13c
+        // Courts & attendances (host/admin)
+        group.MapAddCourtEndpoint();
+        group.MapRemoveCourtEndpoint();
+        group.MapAddAttendanceEndpoint();
+        group.MapSetAttendanceStatusEndpoint();
+        group.MapRemoveAttendanceEndpoint();
+        // Games + suggest mapped by Task 13c
         return app;
     }
 }
