@@ -19,6 +19,7 @@ using smash_dates.Endpoints.Memberships;
 using smash_dates.Endpoints.Calendar;
 using smash_dates.Endpoints.Notifications;
 using smash_dates.Endpoints.Ops;
+using smash_dates.Endpoints.Pegboard;
 using smash_dates.Endpoints.Players;
 using smash_dates.Endpoints.Divisions;
 using smash_dates.Endpoints.SeasonEntries;
@@ -250,6 +251,7 @@ app.MapClubPlayersEndpoints();
 app.MapRegistrationEndpoints();
 app.MapTransferEndpoints();
 app.MapSessionHostEndpoints();
+app.MapPegboardEndpoints();
 
 if (Directory.Exists(clientAppPath))
 {
