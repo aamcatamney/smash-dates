@@ -3,6 +3,7 @@ using Npgsql;
 using smash_dates.Models;
 using smash_dates.Repositories;
 using smash_dates.Services.Auth;
+using smash_dates.Services.Notifications;
 
 namespace smash_dates.Endpoints.Players;
 
@@ -38,6 +39,7 @@ public static class RegistrationEndpoints
         IClubAdminRepository clubAdmins,
         IClubLeagueMembershipRepository memberships,
         IDisciplineRegistrationRepository registrations,
+        INotificationService notifications,
         CancellationToken ct)
     {
         if (await clubs.GetByIdAsync(clubId, ct) is null) return Results.NotFound();
@@ -67,6 +69,7 @@ public static class RegistrationEndpoints
         try
         {
             var id = await registrations.CreateAsync(playerId, clubId, request.LeagueId, discipline, userId, ct);
+            await notifications.RegistrationRequestedAsync(playerId, clubId, request.LeagueId, discipline, ct);
             return Results.Created($"/api/clubs/{clubId}/registrations", new { id });
         }
         catch (PostgresException ex) when (ex.SqlState == DuplicateSqlState)
@@ -99,6 +102,7 @@ public static class RegistrationEndpoints
         ClaimsPrincipal principal,
         ILeagueAdminRepository leagueAdmins,
         IDisciplineRegistrationRepository registrations,
+        INotificationService notifications,
         CancellationToken ct)
     {
         var authz = await LeagueAuthorizer.RequireLeagueAdminAsync(principal, leagueId, leagueAdmins, ct);
@@ -110,9 +114,10 @@ public static class RegistrationEndpoints
         var userId = principal.UserId()!.Value;
         try
         {
-            return await registrations.ConfirmAsync(id, userId, ct)
-                ? Results.NoContent()
-                : Results.Problem(statusCode: StatusCodes.Status409Conflict, title: "Registration is not pending");
+            if (!await registrations.ConfirmAsync(id, userId, ct))
+                return Results.Problem(statusCode: StatusCodes.Status409Conflict, title: "Registration is not pending");
+            await notifications.RegistrationRespondedAsync(reg.PlayerId, reg.ClubId, leagueId, reg.Discipline, RegistrationStatus.Confirmed, ct);
+            return Results.NoContent();
         }
         catch (PostgresException ex) when (ex.SqlState == DuplicateSqlState)
         {
@@ -126,6 +131,7 @@ public static class RegistrationEndpoints
         ClaimsPrincipal principal,
         ILeagueAdminRepository leagueAdmins,
         IDisciplineRegistrationRepository registrations,
+        INotificationService notifications,
         CancellationToken ct)
     {
         var authz = await LeagueAuthorizer.RequireLeagueAdminAsync(principal, leagueId, leagueAdmins, ct);
@@ -135,8 +141,9 @@ public static class RegistrationEndpoints
         if (reg is null || reg.LeagueId != leagueId) return Results.NotFound();
 
         var userId = principal.UserId()!.Value;
-        return await registrations.RejectAsync(id, userId, ct)
-            ? Results.NoContent()
-            : Results.Problem(statusCode: StatusCodes.Status409Conflict, title: "Registration is not pending");
+        if (!await registrations.RejectAsync(id, userId, ct))
+            return Results.Problem(statusCode: StatusCodes.Status409Conflict, title: "Registration is not pending");
+        await notifications.RegistrationRespondedAsync(reg.PlayerId, reg.ClubId, leagueId, reg.Discipline, RegistrationStatus.Rejected, ct);
+        return Results.NoContent();
     }
 }

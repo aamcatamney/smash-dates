@@ -10,6 +10,12 @@ public interface INotificationService
     Task MembershipInvitedAsync(Guid clubId, Guid leagueId, CancellationToken ct = default);
     Task MembershipRespondedAsync(Guid clubId, Guid leagueId, MembershipStatus status, CancellationToken ct = default);
     Task MatchStatusChangedAsync(Guid matchId, MatchStatus status, CancellationToken ct = default);
+
+    // Player registration / transfer events.
+    Task RegistrationRequestedAsync(Guid playerId, Guid clubId, Guid leagueId, Discipline discipline, CancellationToken ct = default);
+    Task RegistrationRespondedAsync(Guid playerId, Guid clubId, Guid leagueId, Discipline discipline, RegistrationStatus status, CancellationToken ct = default);
+    Task TransferOpenedAsync(Guid playerId, Guid fromClubId, Guid toClubId, Guid leagueId, Discipline discipline, CancellationToken ct = default);
+    Task TransferResolvedAsync(Guid playerId, Guid fromClubId, Guid toClubId, Guid leagueId, Discipline discipline, bool completed, CancellationToken ct = default);
 }
 
 public sealed class NotificationService : INotificationService
@@ -21,6 +27,7 @@ public sealed class NotificationService : INotificationService
     private readonly IUserRepository _users;
     private readonly ITeamRepository _teams;
     private readonly IMatchRepository _matches;
+    private readonly IPlayerRepository _players;
 
     public NotificationService(
         INotificationRepository outbox,
@@ -29,7 +36,8 @@ public sealed class NotificationService : INotificationService
         ILeagueAdminRepository leagueAdmins,
         IUserRepository users,
         ITeamRepository teams,
-        IMatchRepository matches)
+        IMatchRepository matches,
+        IPlayerRepository players)
     {
         _outbox = outbox;
         _clubs = clubs;
@@ -38,6 +46,73 @@ public sealed class NotificationService : INotificationService
         _users = users;
         _teams = teams;
         _matches = matches;
+        _players = players;
+    }
+
+    private async Task NotifyLeagueAdminsAsync(Guid leagueId, string subject, string body, CancellationToken ct)
+    {
+        foreach (var grant in await _leagueAdmins.ListByLeagueAsync(leagueId, ct))
+        {
+            var user = await _users.GetByIdAsync(grant.UserId, ct);
+            if (user is not null) await _outbox.EnqueueAsync(user.Email, subject, body, ct);
+        }
+    }
+
+    public async Task RegistrationRequestedAsync(Guid playerId, Guid clubId, Guid leagueId, Discipline discipline, CancellationToken ct = default)
+    {
+        var player = await _players.GetByIdAsync(playerId, ct);
+        var club = await _clubs.GetByIdAsync(clubId, ct);
+        var league = await _leagues.GetByIdAsync(leagueId, ct);
+        if (player is null || club is null || league is null) return;
+
+        await NotifyLeagueAdminsAsync(
+            leagueId,
+            $"Registration awaiting confirmation — {league.Name}",
+            $"{club.Name} has requested to register {player.FullName} for {discipline} in {league.Name}.",
+            ct);
+    }
+
+    public async Task RegistrationRespondedAsync(Guid playerId, Guid clubId, Guid leagueId, Discipline discipline, RegistrationStatus status, CancellationToken ct = default)
+    {
+        var player = await _players.GetByIdAsync(playerId, ct);
+        var club = await _clubs.GetByIdAsync(clubId, ct);
+        var league = await _leagues.GetByIdAsync(leagueId, ct);
+        if (player is null || club is null || league is null) return;
+
+        await _outbox.EnqueueAsync(
+            club.ContactEmail,
+            $"Registration {status} — {league.Name}",
+            $"{player.FullName}'s {discipline} registration in {league.Name} was {status.ToString().ToLowerInvariant()}.",
+            ct);
+    }
+
+    public async Task TransferOpenedAsync(Guid playerId, Guid fromClubId, Guid toClubId, Guid leagueId, Discipline discipline, CancellationToken ct = default)
+    {
+        var player = await _players.GetByIdAsync(playerId, ct);
+        var from = await _clubs.GetByIdAsync(fromClubId, ct);
+        var to = await _clubs.GetByIdAsync(toClubId, ct);
+        var league = await _leagues.GetByIdAsync(leagueId, ct);
+        if (player is null || from is null || to is null || league is null) return;
+
+        var subject = $"Transfer requested — {player.FullName} ({discipline})";
+        var body = $"{to.Name} has requested to transfer {player.FullName}'s {discipline} registration from {from.Name} in {league.Name}. The releasing club and the league must approve.";
+        await _outbox.EnqueueAsync(from.ContactEmail, subject, body, ct);
+        await NotifyLeagueAdminsAsync(leagueId, subject, body, ct);
+    }
+
+    public async Task TransferResolvedAsync(Guid playerId, Guid fromClubId, Guid toClubId, Guid leagueId, Discipline discipline, bool completed, CancellationToken ct = default)
+    {
+        var player = await _players.GetByIdAsync(playerId, ct);
+        var from = await _clubs.GetByIdAsync(fromClubId, ct);
+        var to = await _clubs.GetByIdAsync(toClubId, ct);
+        var league = await _leagues.GetByIdAsync(leagueId, ct);
+        if (player is null || from is null || to is null || league is null) return;
+
+        var outcome = completed ? "completed" : "rejected";
+        var subject = $"Transfer {outcome} — {player.FullName} ({discipline})";
+        var body = $"The transfer of {player.FullName}'s {discipline} registration from {from.Name} to {to.Name} in {league.Name} was {outcome}.";
+        await _outbox.EnqueueAsync(from.ContactEmail, subject, body, ct);
+        if (to.ContactEmail != from.ContactEmail) await _outbox.EnqueueAsync(to.ContactEmail, subject, body, ct);
     }
 
     public async Task MembershipInvitedAsync(Guid clubId, Guid leagueId, CancellationToken ct = default)
