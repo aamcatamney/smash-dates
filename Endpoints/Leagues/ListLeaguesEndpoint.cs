@@ -4,7 +4,8 @@ namespace smash_dates.Endpoints.Leagues;
 
 public static class ListLeaguesEndpoint
 {
-    public sealed record LeagueSummary(Guid Id, string Name, string? Description);
+    public sealed record LeagueSummary(
+        Guid Id, string Name, string? Description, int DivisionCount, int PlayerCount, string? ActiveSeasonName);
 
     public static IEndpointRouteBuilder MapListLeaguesEndpoint(this IEndpointRouteBuilder app)
     {
@@ -14,8 +15,10 @@ public static class ListLeaguesEndpoint
 
     private static async Task<IResult> Handle(ILeagueRepository leagues, CancellationToken ct)
     {
-        var rows = await leagues.ListAsync(ct);
-        var summaries = rows.Select(l => new LeagueSummary(l.Id, l.Name, l.Description)).ToArray();
+        var rows = await leagues.ListSummariesAsync(ct);
+        var summaries = rows
+            .Select(l => new LeagueSummary(l.Id, l.Name, l.Description, l.DivisionCount, l.PlayerCount, l.ActiveSeasonName))
+            .ToArray();
         return Results.Ok(summaries);
     }
 }
