@@ -63,10 +63,10 @@ public static class TeamSquadEndpoints
         if (required is { } rg && player.Gender != rg)
             return Results.Problem(statusCode: StatusCodes.Status409Conflict, title: $"Player gender does not match a {team.Gender} team");
 
-        if (!await squad.IsEligibleAsync(request.PlayerId, clubId, teamId, discipline, ct))
+        if (!await squad.IsEligibleAsync(request.PlayerId, clubId, discipline, ct))
             return Results.Problem(
                 statusCode: StatusCodes.Status409Conflict,
-                title: $"Player is not registered for {discipline} at this club in a league the team is entered in");
+                title: $"Player has no confirmed {discipline} registration at this club");
 
         await squad.AddAsync(teamId, request.PlayerId, ct);
         return Results.Created($"/api/clubs/{clubId}/teams/{teamId}/players", new { request.PlayerId });

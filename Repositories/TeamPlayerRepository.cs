@@ -50,22 +50,16 @@ public sealed class TeamPlayerRepository : ITeamPlayerRepository
         return rows > 0;
     }
 
-    public async Task<bool> IsEligibleAsync(Guid playerId, Guid clubId, Guid teamId, Discipline discipline, CancellationToken ct = default)
+    public async Task<bool> IsEligibleAsync(Guid playerId, Guid clubId, Discipline discipline, CancellationToken ct = default)
     {
         using var conn = _factory.Create();
         return await conn.ExecuteScalarAsync<bool>(
             new CommandDefinition(
                 @"SELECT EXISTS(
-                    SELECT 1 FROM discipline_registrations r
-                    WHERE r.player_id = @playerId AND r.club_id = @clubId
-                      AND r.discipline = @discipline AND r.status = 'Confirmed'
-                      AND r.league_id IN (
-                          SELECT DISTINCT d.league_id
-                          FROM season_entries e
-                          JOIN divisions d ON d.id = e.division_id
-                          JOIN seasons s ON s.id = e.season_id
-                          WHERE e.team_id = @teamId AND s.status <> 'Closed'))",
-                new { playerId, clubId, teamId, discipline = discipline.ToString() },
+                    SELECT 1 FROM discipline_registrations
+                    WHERE player_id = @playerId AND club_id = @clubId
+                      AND discipline = @discipline AND status = 'Confirmed')",
+                new { playerId, clubId, discipline = discipline.ToString() },
                 cancellationToken: ct));
     }
 }

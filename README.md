@@ -44,7 +44,7 @@ The whole thing ships as a single container: a .NET 10 API that also serves the 
 - **Players** are global, club-managed roster records (no login); clubs link them as **Member** or **Visitor**.
 - **Discipline registrations** (`Level` / `Mixed`) are scoped to `(player, club, league)`: a club registers a Member, the **league confirms**, and at most one club holds a player's discipline per league.
 - **Transfers** move a confirmed registration between clubs — the receiving club requests, the releasing club and the league both approve. See [ADR 0003](docs/adr/0003-player-discipline-registration.md).
-- **Team squads** — assign players to a team, with eligibility enforced: the player must be confirmed for the team's discipline at the club, in a league the team is entered in, with a matching gender.
+- **Team squads** — assign players to a team, with eligibility enforced: the player must be confirmed for the team's discipline at the club, with a matching gender (squads can be built before the team is entered in a season).
 
 **Interface**
 - **Light / dark theme** — follows the OS preference by default, with a toggle that persists an explicit choice (no flash on load).

@@ -83,18 +83,21 @@ public sealed class TeamSquadEndpointsTests : IntegrationTestBase
     }
 
     [Fact]
-    public async Task Add_RegisteredInDifferentLeague_Returns409()
+    public async Task Add_BeforeTeamEnteredInAnySeason_SucceedsWhenConfirmedAtClub()
     {
-        var s = await ArrangeAsync();
-        // A second league the club belongs to, but the team is NOT entered in.
-        var league2 = await Seeder.CreateLeagueAsync("L2", (await Seeder.CreateUserAsync("x@example.com", "correct-horse-battery")).Id);
-        await Seeder.CreateMembershipAsync(s.ClubId, league2, MembershipStatus.Accepted);
-        var playerId = await AddPlayerAsync(s.ClubId, "Sam Okafor", "Male");
-        await ConfirmLevelAsync(s.ClubId, playerId, league2); // confirmed in L2, team entered only in L1
+        // A brand-new team with NO season entry; eligibility is club+discipline, not entry-bound.
+        var admin = await Seeder.CreateSystemAdminUserAsync("sys@example.com", "correct-horse-battery");
+        var leagueId = await Seeder.CreateLeagueAsync("L1", admin.Id);
+        var clubId = await Seeder.CreateClubAsync("Acme", "ACME", contactEmail: "acme@club.test");
+        await Seeder.CreateMembershipAsync(clubId, leagueId, MembershipStatus.Accepted);
+        var teamId = await Seeder.CreateTeamAsync(clubId, "Acme 1st", DivisionGender.Mens);
+        await Client.PostAsJsonAsync("/api/auth/login", new { email = "sys@example.com", password = "correct-horse-battery" });
+        var playerId = await AddPlayerAsync(clubId, "Sam Okafor", "Male");
+        await ConfirmLevelAsync(clubId, playerId, leagueId);
 
-        var response = await Client.PostAsJsonAsync($"/api/clubs/{s.ClubId}/teams/{s.MensTeamId}/players", new { playerId });
+        var response = await Client.PostAsJsonAsync($"/api/clubs/{clubId}/teams/{teamId}/players", new { playerId });
 
-        response.StatusCode.Should().Be(HttpStatusCode.Conflict);
+        response.StatusCode.Should().Be(HttpStatusCode.Created);
     }
 
     [Fact]
