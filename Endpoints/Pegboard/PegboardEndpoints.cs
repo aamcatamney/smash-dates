@@ -22,7 +22,10 @@ public static class PegboardEndpoints
         group.MapAddAttendanceEndpoint();
         group.MapSetAttendanceStatusEndpoint();
         group.MapRemoveAttendanceEndpoint();
-        // Games + suggest mapped by Task 13c
+        group.MapSuggestFillEndpoint();
+        group.MapStartGameEndpoint();
+        group.MapFinishGameEndpoint();
+        group.MapCancelGameEndpoint();
         return app;
     }
 }
