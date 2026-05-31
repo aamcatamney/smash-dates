@@ -28,6 +28,24 @@ public sealed class LeagueRepository : ILeagueRepository
                 cancellationToken: ct));
     }
 
+    public async Task<IReadOnlyList<LeagueListItem>> ListSummariesAsync(CancellationToken ct = default)
+    {
+        using var conn = _factory.Create();
+        var rows = await conn.QueryAsync<LeagueListItem>(
+            new CommandDefinition(
+                @"SELECT l.id, l.name, l.description,
+                         (SELECT count(*) FROM divisions d WHERE d.league_id = l.id)::int AS division_count,
+                         (SELECT count(DISTINCT r.player_id) FROM discipline_registrations r
+                          WHERE r.league_id = l.id AND r.status = 'Confirmed')::int AS player_count,
+                         (SELECT s.name FROM seasons s
+                          WHERE s.league_id = l.id AND s.status = 'Active'
+                          ORDER BY s.start_date DESC LIMIT 1) AS active_season_name
+                  FROM leagues l
+                  ORDER BY l.name",
+                cancellationToken: ct));
+        return rows.AsList();
+    }
+
     public async Task<IReadOnlyList<League>> ListAsync(CancellationToken ct = default)
     {
         using var conn = _factory.Create();

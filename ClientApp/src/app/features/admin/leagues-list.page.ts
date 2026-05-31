@@ -87,6 +87,15 @@ import { ModalComponent } from '../../shared/modal.component';
                 @if (league.description) {
                   <span class="ml-2 font-mono text-sm text-slate-500 dark:text-slate-400">— {{ league.description }}</span>
                 }
+                <div class="mt-1 flex flex-wrap items-center gap-2 font-mono text-xs text-slate-500 dark:text-slate-400">
+                  <span class="rounded bg-slate-100 px-1.5 py-0.5 dark:bg-slate-800">{{ league.divisionCount }} {{ league.divisionCount === 1 ? 'division' : 'divisions' }}</span>
+                  <span class="rounded bg-slate-100 px-1.5 py-0.5 dark:bg-slate-800">{{ league.playerCount }} {{ league.playerCount === 1 ? 'player' : 'players' }}</span>
+                  @if (league.activeSeasonName) {
+                    <span class="rounded bg-emerald-100 px-1.5 py-0.5 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300">Active: {{ league.activeSeasonName }}</span>
+                  } @else {
+                    <span class="rounded bg-slate-100 px-1.5 py-0.5 dark:bg-slate-800">No active season</span>
+                  }
+                </div>
               </li>
             } @empty {
               <li class="px-4 py-3 font-mono text-sm text-slate-500 dark:text-slate-400">No leagues yet.</li>

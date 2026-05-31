@@ -9,6 +9,9 @@ export interface LeagueSummary {
   id: string;
   name: string;
   description: string | null;
+  divisionCount: number;
+  playerCount: number;
+  activeSeasonName: string | null;
 }
 
 export type LeagueDetail = LeagueSummary;
