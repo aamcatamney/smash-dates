@@ -53,6 +53,7 @@ interface LeagueOption {
         <div class="grid gap-2">
           <span class="text-xs uppercase tracking-wider text-slate-600 dark:text-slate-400">Link an existing player</span>
           <input type="text" [formControl]="searchControl" (input)="onSearch()" placeholder="Search by name…"
+            aria-label="Search existing players by name"
             class="rounded-md border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-slate-900 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 dark:focus:ring-slate-100" />
           @for (r of searchResults(); track r.id) {
             <div class="flex items-center justify-between rounded border border-slate-200 px-3 py-1.5 dark:border-slate-800">
@@ -66,14 +67,18 @@ interface LeagueOption {
         </div>
         <form [formGroup]="createForm" (ngSubmit)="createNew()" class="grid gap-2 border-t border-slate-200 pt-3 dark:border-slate-800">
           <span class="text-xs uppercase tracking-wider text-slate-600 dark:text-slate-400">Or create a new player</span>
-          <input type="text" formControlName="fullName" placeholder="Full name"
+          <input type="text" formControlName="fullName" (input)="onCreateNameInput()" placeholder="Full name"
+            aria-label="New player full name"
             class="rounded-md border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-slate-900 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 dark:focus:ring-slate-100" />
+          @if (createDup() > 0) {
+            <p class="text-xs text-amber-700 dark:text-amber-400" role="status">A player named that already exists — consider linking them above instead of creating a duplicate.</p>
+          }
           <div class="flex gap-2">
-            <select formControlName="gender" class="rounded-md border border-slate-300 px-2 py-1 text-sm dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100">
+            <select formControlName="gender" aria-label="New player gender" class="rounded-md border border-slate-300 px-2 py-1 text-sm dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100">
               <option value="Male">Male</option>
               <option value="Female">Female</option>
             </select>
-            <select formControlName="type" class="rounded-md border border-slate-300 px-2 py-1 text-sm dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100">
+            <select formControlName="type" aria-label="New player affiliation type" class="rounded-md border border-slate-300 px-2 py-1 text-sm dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100">
               <option value="Member">Member</option>
               <option value="Visitor">Visitor</option>
             </select>
@@ -87,11 +92,11 @@ interface LeagueOption {
     <app-modal [open]="registerFor() !== null" title="Register player" (closed)="registerFor.set(null)">
       <form [formGroup]="registerForm" (ngSubmit)="submitRegister()" class="grid gap-3 font-mono text-sm">
         <p class="text-slate-600 dark:text-slate-400">{{ registerFor()?.fullName }}</p>
-        <select formControlName="leagueId" class="rounded-md border border-slate-300 px-3 py-2 text-sm dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100">
+        <select formControlName="leagueId" aria-label="League" class="rounded-md border border-slate-300 px-3 py-2 text-sm dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100">
           <option value="">-- league --</option>
           @for (l of leagues(); track l.id) { <option [value]="l.id">{{ l.name }}</option> }
         </select>
-        <select formControlName="discipline" class="rounded-md border border-slate-300 px-3 py-2 text-sm dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100">
+        <select formControlName="discipline" aria-label="Discipline" class="rounded-md border border-slate-300 px-3 py-2 text-sm dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100">
           <option value="Level">Level</option>
           <option value="Mixed">Mixed</option>
         </select>
@@ -104,6 +109,7 @@ interface LeagueOption {
     <app-modal [open]="transferOpen()" title="Transfer a player in" (closed)="transferOpen.set(false)">
       <div class="grid gap-3 font-mono text-sm">
         <input type="text" [formControl]="transferSearchControl" (input)="onTransferSearch()" placeholder="Search player by name…"
+          aria-label="Search players by name"
           class="rounded-md border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-slate-900 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 dark:focus:ring-slate-100" />
         @for (r of transferResults(); track r.id) {
           <button type="button" (click)="pickTransferPlayer(r)" [class]="'rounded border px-3 py-1.5 text-left ' + (transferPlayer()?.id === r.id ? 'border-slate-900 dark:border-slate-100' : 'border-slate-200 dark:border-slate-800')">
@@ -111,11 +117,11 @@ interface LeagueOption {
           </button>
         }
         <form [formGroup]="transferForm" (ngSubmit)="submitTransfer()" class="grid gap-2 border-t border-slate-200 pt-3 dark:border-slate-800">
-          <select formControlName="leagueId" class="rounded-md border border-slate-300 px-3 py-2 text-sm dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100">
+          <select formControlName="leagueId" aria-label="League" class="rounded-md border border-slate-300 px-3 py-2 text-sm dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100">
             <option value="">-- league --</option>
             @for (l of leagues(); track l.id) { <option [value]="l.id">{{ l.name }}</option> }
           </select>
-          <select formControlName="discipline" class="rounded-md border border-slate-300 px-3 py-2 text-sm dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100">
+          <select formControlName="discipline" aria-label="Discipline" class="rounded-md border border-slate-300 px-3 py-2 text-sm dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100">
             <option value="Level">Level</option>
             <option value="Mixed">Mixed</option>
           </select>
@@ -163,6 +169,7 @@ export class ClubPlayersComponent {
   protected readonly searchResults = signal<Player[]>([]);
   protected readonly transferResults = signal<Player[]>([]);
   protected readonly transferPlayer = signal<Player | null>(null);
+  protected readonly createDup = signal(0);
 
   protected readonly searchControl = new FormControl('', { nonNullable: true });
   protected readonly transferSearchControl = new FormControl('', { nonNullable: true });
@@ -201,8 +208,21 @@ export class ClubPlayersComponent {
   protected openAdd(): void {
     this.searchControl.reset('');
     this.searchResults.set([]);
+    this.createDup.set(0);
     this.createForm.reset({ fullName: '', gender: 'Male', type: 'Member' });
     this.addOpen.set(true);
+  }
+
+  // Soft duplicate hint: flag if a player with the exact name already exists globally.
+  protected onCreateNameInput(): void {
+    const name = this.createForm.controls.fullName.value.trim();
+    if (name.length < 2) {
+      this.createDup.set(0);
+      return;
+    }
+    this.api.searchPlayers(name).subscribe({
+      next: (rows) => this.createDup.set(rows.filter((p) => p.fullName.toLowerCase() === name.toLowerCase()).length),
+    });
   }
 
   protected onSearch(): void {
