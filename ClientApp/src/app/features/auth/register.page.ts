@@ -16,6 +16,21 @@ import { ThemeToggleComponent } from '../../shared/theme-toggle.component';
         aria-labelledby="register-title"
       >
         <h1 id="register-title" class="text-2xl font-semibold text-slate-900 dark:text-slate-100 mb-1">Create account</h1>
+
+        @if (verificationSent(); as sentTo) {
+          <p class="text-sm text-slate-600 dark:text-slate-400 mb-6">Almost there — confirm your email to finish.</p>
+          <div
+            role="status"
+            class="rounded-md border border-emerald-200 dark:border-emerald-900 bg-emerald-50 dark:bg-emerald-950 px-4 py-3 text-sm text-emerald-800 dark:text-emerald-300"
+          >
+            <p class="font-medium">Check your inbox.</p>
+            <p class="mt-1">We've sent a verification link to <strong>{{ sentTo }}</strong>. Click it to activate your account, then sign in.</p>
+          </div>
+          <p class="mt-6 text-sm text-slate-600 dark:text-slate-400">
+            <a routerLink="/login" class="font-medium text-slate-900 dark:text-slate-100 underline">Back to sign in</a>
+          </p>
+        } @else {
+
         <p class="text-sm text-slate-600 dark:text-slate-400 mb-6">Set up a new account to get started.</p>
 
         @if (store.error(); as err) {
@@ -102,6 +117,7 @@ import { ThemeToggleComponent } from '../../shared/theme-toggle.component';
           Already have an account?
           <a routerLink="/login" [queryParams]="passThroughReturnUrl()" class="font-medium text-slate-900 dark:text-slate-100 underline">Sign in</a>.
         </p>
+        }
       </section>
     </main>
   `,
@@ -115,6 +131,8 @@ export default class RegisterPage implements OnInit {
   private readonly emailInput = viewChild<ElementRef<HTMLInputElement>>('emailInput');
 
   protected readonly passwordVisible = signal(false);
+  // Holds the email a verification link was sent to (null = form still showing).
+  protected readonly verificationSent = signal<string | null>(null);
   protected readonly form = this.fb.nonNullable.group({
     email: ['', [Validators.required, Validators.email]],
     displayName: [''],
@@ -146,14 +164,16 @@ export default class RegisterPage implements OnInit {
       return;
     }
     const raw = this.form.getRawValue();
-    const ok = await this.store.register({
+    const outcome = await this.store.register({
       email: raw.email,
       password: raw.password,
       displayName: raw.displayName.trim() === '' ? null : raw.displayName.trim(),
     });
-    if (ok) {
+    if (outcome === 'authed') {
       const target = safeReturnUrl(this.route.snapshot.queryParamMap.get('returnUrl'));
       this.router.navigateByUrl(target);
+    } else if (outcome === 'verify') {
+      this.verificationSent.set(raw.email);
     }
   }
 }

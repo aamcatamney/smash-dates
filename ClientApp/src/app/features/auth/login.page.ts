@@ -1,6 +1,8 @@
 import { ChangeDetectionStrategy, Component, ElementRef, OnInit, computed, inject, signal, viewChild } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
+import { firstValueFrom } from 'rxjs';
+import { AuthApi } from '../../core/auth/auth.api';
 import { AuthStore } from '../../core/auth/auth.store';
 import { ThemeToggleComponent } from '../../shared/theme-toggle.component';
 
@@ -23,7 +25,21 @@ import { ThemeToggleComponent } from '../../shared/theme-toggle.component';
             role="alert"
             class="mb-4 rounded-md border border-red-200 dark:border-red-900 bg-red-50 dark:bg-red-950 px-3 py-2 text-sm text-red-800 dark:text-red-300"
           >
-            {{ err.message }}
+            <p>{{ err.message }}</p>
+            @if (err.kind === 'email-unverified') {
+              @if (resendState() === 'sent') {
+                <p class="mt-2 text-emerald-700 dark:text-emerald-400">Verification email sent — check your inbox.</p>
+              } @else {
+                <button
+                  type="button"
+                  (click)="resendVerification()"
+                  [disabled]="resendState() === 'sending'"
+                  class="mt-2 font-medium underline hover:no-underline disabled:opacity-60"
+                >
+                  {{ resendState() === 'sending' ? 'Sending…' : 'Resend verification email' }}
+                </button>
+              }
+            }
           </div>
         }
 
@@ -49,7 +65,7 @@ import { ThemeToggleComponent } from '../../shared/theme-toggle.component';
             <div>
               <div class="flex items-baseline justify-between mb-1">
                 <label for="password" class="block text-sm font-medium text-slate-700 dark:text-slate-300">Password</label>
-                <span class="text-xs text-slate-500 dark:text-slate-400">12+ characters</span>
+                <a routerLink="/forgot-password" class="text-xs font-medium text-slate-600 dark:text-slate-400 underline hover:text-slate-900 dark:hover:text-slate-100">Forgot password?</a>
               </div>
               <div class="relative">
                 <input
@@ -108,9 +124,11 @@ export default class LoginPage implements OnInit {
   private readonly fb = inject(FormBuilder);
   private readonly router = inject(Router);
   private readonly route = inject(ActivatedRoute);
+  private readonly api = inject(AuthApi);
   private readonly emailInput = viewChild<ElementRef<HTMLInputElement>>('emailInput');
 
   protected readonly passwordVisible = signal(false);
+  protected readonly resendState = signal<'idle' | 'sending' | 'sent'>('idle');
   protected readonly form = this.fb.nonNullable.group({
     email: ['', [Validators.required, Validators.email]],
     password: ['', [Validators.required, Validators.minLength(12)]],
@@ -129,6 +147,18 @@ export default class LoginPage implements OnInit {
 
   protected togglePassword(): void {
     this.passwordVisible.update((v) => !v);
+  }
+
+  protected async resendVerification(): Promise<void> {
+    const email = this.form.controls.email.value.trim();
+    if (email === '') return;
+    this.resendState.set('sending');
+    try {
+      await firstValueFrom(this.api.resendVerification(email));
+    } catch {
+      // Endpoint always returns 200 for valid input; ignore transient failures.
+    }
+    this.resendState.set('sent');
   }
 
   protected showError(name: 'email' | 'password'): boolean {

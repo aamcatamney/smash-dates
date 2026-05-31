@@ -44,6 +44,14 @@ public static class LoginEndpoint
             return Results.Problem(statusCode: StatusCodes.Status401Unauthorized, title: "Invalid credentials");
         }
 
+        // Credentials are valid but the email hasn't been verified — block login and let the
+        // client offer to resend the verification email.
+        if (!user.EmailVerified)
+        {
+            logger.LogWarning("Login blocked (unverified email). UserId={UserId}", user.Id);
+            return Results.Problem(statusCode: StatusCodes.Status403Forbidden, title: "Email not verified");
+        }
+
         var claims = new List<Claim>
         {
             new(ClaimTypes.NameIdentifier, user.Id.ToString()),

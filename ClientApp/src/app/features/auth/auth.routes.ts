@@ -14,4 +14,21 @@ export const AUTH_ROUTES: Routes = [
     canActivate: [redirectIfAuthedGuard],
     loadComponent: () => import('./register.page'),
   },
+  {
+    path: 'forgot-password',
+    title: 'Reset password · smash-dates',
+    canActivate: [redirectIfAuthedGuard],
+    loadComponent: () => import('./forgot-password.page'),
+  },
+  {
+    // Reached from an emailed link; no auth guard so a signed-out user can complete it.
+    path: 'reset-password',
+    title: 'Choose a new password · smash-dates',
+    loadComponent: () => import('./reset-password.page'),
+  },
+  {
+    path: 'verify-email',
+    title: 'Verify email · smash-dates',
+    loadComponent: () => import('./verify-email.page'),
+  },
 ];

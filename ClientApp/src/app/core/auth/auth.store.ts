@@ -1,10 +1,12 @@
 import { computed, inject } from '@angular/core';
 import { signalStore, withComputed, withMethods, withState } from '@ngrx/signals';
 import { firstValueFrom } from 'rxjs';
-import { AuthApi, LoginPayload, RegisterPayload } from './auth.api';
+import { AuthApi, LoginPayload, RegisterPayload, isVerificationRequired } from './auth.api';
 import { AuthError, toAuthError } from './auth-error';
 import { AuthStatus, AuthenticatedUser } from './user.model';
 import { patchState } from '@ngrx/signals';
+
+export type RegisterOutcome = 'authed' | 'verify' | 'error';
 
 interface AuthState {
   user: AuthenticatedUser | null;
@@ -56,18 +58,23 @@ export const AuthStore = signalStore(
         return false;
       }
     },
-    async register(payload: RegisterPayload): Promise<boolean> {
+    async register(payload: RegisterPayload): Promise<RegisterOutcome> {
       patchState(store, { pending: true, error: null });
       try {
-        const user = await firstValueFrom(api.register(payload));
-        patchState(store, { user, status: 'authed', error: null, pending: false });
-        return true;
+        const result = await firstValueFrom(api.register(payload));
+        if (isVerificationRequired(result)) {
+          // Non-bootstrap sign-up: no session yet, user must verify their email first.
+          patchState(store, { error: null, pending: false });
+          return 'verify';
+        }
+        patchState(store, { user: result, status: 'authed', error: null, pending: false });
+        return 'authed';
       } catch (error) {
         patchState(store, {
           error: toAuthError(error, 'register'),
           pending: false,
         });
-        return false;
+        return 'error';
       }
     },
     async logout(): Promise<void> {
