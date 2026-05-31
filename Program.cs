@@ -23,6 +23,7 @@ using smash_dates.Endpoints.Players;
 using smash_dates.Endpoints.Divisions;
 using smash_dates.Endpoints.SeasonEntries;
 using smash_dates.Endpoints.Seasons;
+using smash_dates.Endpoints.SessionHosts;
 using smash_dates.Endpoints.Teams;
 using smash_dates.Endpoints.Venues;
 using smash_dates.Endpoints.LeagueAdmins;
@@ -248,6 +249,7 @@ app.MapCalendarEndpoints();
 app.MapClubPlayersEndpoints();
 app.MapRegistrationEndpoints();
 app.MapTransferEndpoints();
+app.MapSessionHostEndpoints();
 
 if (Directory.Exists(clientAppPath))
 {
