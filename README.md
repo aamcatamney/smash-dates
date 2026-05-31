@@ -36,6 +36,7 @@ The whole thing ships as a single container: a .NET 10 API that also serves the 
 - **Postpone** a Confirmed match back into the pool for re-scheduling.
 - Record **results** and **walkovers**; **standings** are derived live per division (played/won/drawn/lost, rubbers for/against/diff, points) with a head-to-head tiebreak.
 - Club admins get a "my club's matches" view to act on their own fixtures.
+- **Calendar feed (iCal)** — subscribe a calendar app to a club's, league's or team's fixtures via a tokenised, login-free `.ics` URL.
 
 **Notifications**
 - Domain events (invites, membership responses, match confirmations/rejections/postponements) are written to an **outbox** and delivered by a background sender (logging sender by default; real SMTP is a config swap).
