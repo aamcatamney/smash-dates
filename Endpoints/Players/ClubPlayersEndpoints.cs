@@ -13,7 +13,7 @@ public static class ClubPlayersEndpoints
 
     public sealed record AddClubPlayerRequest(Guid? PlayerId, string? FullName, string? Gender, string Type);
     public sealed record UpdateLinkRequest(string Type);
-    public sealed record PlayerDto(Guid Id, string FullName, string Gender);
+    public sealed record PlayerDto(Guid Id, string FullName, string Gender, int? Grade);
 
     public static IEndpointRouteBuilder MapClubPlayersEndpoints(this IEndpointRouteBuilder app)
     {
@@ -25,6 +25,7 @@ public static class ClubPlayersEndpoints
         group.MapPost("/", AddClubPlayer);
         group.MapPatch("/{playerId:guid}", UpdateLink);
         group.MapDelete("/{playerId:guid}", Unlink);
+        group.MapSetPlayerGradeEndpoint();
         return app;
     }
 
@@ -43,7 +44,7 @@ public static class ClubPlayersEndpoints
             return Results.Forbid();
 
         var rows = await players.SearchAsync(search ?? string.Empty, 20, ct);
-        return Results.Ok(rows.Select(p => new PlayerDto(p.Id, p.FullName, p.Gender.ToString())));
+        return Results.Ok(rows.Select(p => new PlayerDto(p.Id, p.FullName, p.Gender.ToString(), p.Grade)));
     }
 
     private static async Task<IResult> ListClubPlayers(Guid clubId, IClubRepository clubs, IPlayerRepository players, CancellationToken ct)
@@ -86,7 +87,7 @@ public static class ClubPlayersEndpoints
 
         await players.LinkAsync(playerId, clubId, type, ct);
         var player = await players.GetByIdAsync(playerId, ct)!;
-        return Results.Created($"/api/clubs/{clubId}/players", new PlayerDto(playerId, player!.FullName, player.Gender.ToString()));
+        return Results.Created($"/api/clubs/{clubId}/players", new PlayerDto(playerId, player!.FullName, player.Gender.ToString(), player.Grade));
     }
 
     private static async Task<IResult> UpdateLink(
