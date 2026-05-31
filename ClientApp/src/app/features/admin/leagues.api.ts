@@ -72,6 +72,7 @@ export interface SeasonSummary {
   startDate: string;
   endDate: string;
   status: SeasonStatus;
+  schedulingError: string | null;
 }
 
 export interface SeasonDetail extends SeasonSummary {

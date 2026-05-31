@@ -60,6 +60,8 @@ builder.Services.AddScoped<IBlockedDateRepository, BlockedDateRepository>();
 builder.Services.AddScoped<IMatchRepository, MatchRepository>();
 builder.Services.AddSingleton<smash_dates.Services.Scheduling.IScheduler, smash_dates.Services.Scheduling.Scheduler>();
 builder.Services.AddScoped<smash_dates.Services.Scheduling.IScheduleGenerator, smash_dates.Services.Scheduling.ScheduleGenerator>();
+builder.Services.AddScoped<smash_dates.Services.Scheduling.ScheduleRunner>();
+builder.Services.AddHostedService<smash_dates.Services.Scheduling.ScheduleRunnerHostedService>();
 builder.Services.AddScoped<IPlayerRepository, PlayerRepository>();
 builder.Services.AddScoped<IDisciplineRegistrationRepository, DisciplineRegistrationRepository>();
 builder.Services.AddScoped<IRegistrationTransferRepository, RegistrationTransferRepository>();

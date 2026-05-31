@@ -29,4 +29,10 @@ public interface ISeasonRepository
     // Moves the season from one status to another only if it is currently `from`.
     // Returns false otherwise (caller maps to 409).
     Task<bool> TransitionStatusAsync(Guid id, SeasonStatus from, SeasonStatus to, CancellationToken ct = default);
+
+    // Draft -> Scheduling, clearing any prior scheduling error. False if not Draft (race).
+    Task<bool> BeginSchedulingAsync(Guid id, CancellationToken ct = default);
+
+    // Scheduling -> Draft, recording why generation failed.
+    Task FailSchedulingAsync(Guid id, string error, CancellationToken ct = default);
 }

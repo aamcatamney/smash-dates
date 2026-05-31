@@ -8,6 +8,8 @@ public sealed class Season
     public DateOnly StartDate { get; init; }
     public DateOnly EndDate { get; init; }
     public SeasonStatus Status { get; init; }
+    // Set when an async generation fails (and the season falls back to Draft); null otherwise.
+    public string? SchedulingError { get; init; }
     public DateTime CreatedAt { get; init; }
     public DateTime UpdatedAt { get; init; }
 }

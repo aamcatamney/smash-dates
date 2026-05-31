@@ -1,6 +1,8 @@
 using System.Net;
 using System.Net.Http.Json;
+using Microsoft.Extensions.DependencyInjection;
 using smash_dates.Models;
+using smash_dates.Services.Scheduling;
 using smash_dates.IntegrationTests.Infrastructure;
 
 namespace smash_dates.IntegrationTests.Endpoints;
@@ -43,37 +45,48 @@ public sealed class GenerateScheduleEndpointTests : IntegrationTestBase
     private Task LoginSystemAdmin() =>
         Client.PostAsJsonAsync("/api/auth/login", new { email = "sys@example.com", password = "correct-horse-battery" });
 
+    // Drive the background runner explicitly (the hosted service is disabled in tests).
+    private async Task RunSchedulerAsync()
+    {
+        using var scope = Factory.Services.CreateScope();
+        await scope.ServiceProvider.GetRequiredService<ScheduleRunner>().RunAsync(default);
+    }
+
+    private Task<SeasonStatusDto?> GetSeasonAsync(Setup s) =>
+        Client.GetFromJsonAsync<SeasonStatusDto>($"/api/leagues/{s.LeagueId}/seasons/{s.SeasonId}");
+
     [Fact]
-    public async Task Post_Feasible_Returns200_AndMovesSeasonToProposed()
+    public async Task Post_Feasible_Accepts_MovesToScheduling_ThenRunnerProposes()
     {
         var s = await ArrangeSchedulableSeason();
         await LoginSystemAdmin();
 
         var response = await Client.PostAsync($"/api/leagues/{s.LeagueId}/seasons/{s.SeasonId}/generate", null);
 
-        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        response.StatusCode.Should().Be(HttpStatusCode.Accepted);
+        (await GetSeasonAsync(s))!.Status.Should().Be("Scheduling");
 
-        var season = await Client.GetFromJsonAsync<SeasonStatusDto>($"/api/leagues/{s.LeagueId}/seasons/{s.SeasonId}");
-        season!.Status.Should().Be("Proposed");
+        await RunSchedulerAsync();
+        (await GetSeasonAsync(s))!.Status.Should().Be("Proposed");
     }
 
     [Fact]
-    public async Task Post_Feasible_PersistsProposedMatches()
+    public async Task RunnerPersistsProposedMatches()
     {
         var s = await ArrangeSchedulableSeason();
         await LoginSystemAdmin();
-
         await Client.PostAsync($"/api/leagues/{s.LeagueId}/seasons/{s.SeasonId}/generate", null);
 
+        await RunSchedulerAsync();
+
         var matches = await Client.GetFromJsonAsync<MatchDto[]>($"/api/leagues/{s.LeagueId}/seasons/{s.SeasonId}/matches");
-        matches.Should().NotBeNull();
         matches!.Length.Should().Be(2); // double round-robin of two teams
         matches.Should().OnlyContain(m => m.Status == "Proposed");
         matches.Should().OnlyContain(m => m.HomeTeamName.Length > 0 && m.AwayTeamName.Length > 0 && m.VenueName.Length > 0);
     }
 
     [Fact]
-    public async Task Post_AsLeagueAdmin_Returns200()
+    public async Task Post_AsLeagueAdmin_Returns202()
     {
         var s = await ArrangeSchedulableSeason();
         var la = await Seeder.CreateUserAsync("la@example.com", "correct-horse-battery");
@@ -82,7 +95,7 @@ public sealed class GenerateScheduleEndpointTests : IntegrationTestBase
 
         var response = await Client.PostAsync($"/api/leagues/{s.LeagueId}/seasons/{s.SeasonId}/generate", null);
 
-        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        response.StatusCode.Should().Be(HttpStatusCode.Accepted);
     }
 
     [Fact]
@@ -119,20 +132,20 @@ public sealed class GenerateScheduleEndpointTests : IntegrationTestBase
     }
 
     [Fact]
-    public async Task Post_Infeasible_NoWeeks_Returns422_AndStaysDraft()
+    public async Task Infeasible_NoWeeks_RunnerFallsBackToDraftWithError()
     {
         var s = await ArrangeSchedulableSeason(withWeeks: false);
         await LoginSystemAdmin();
+        await Client.PostAsync($"/api/leagues/{s.LeagueId}/seasons/{s.SeasonId}/generate", null);
 
-        var response = await Client.PostAsync($"/api/leagues/{s.LeagueId}/seasons/{s.SeasonId}/generate", null);
+        await RunSchedulerAsync();
 
-        response.StatusCode.Should().Be(HttpStatusCode.UnprocessableEntity);
-
-        var season = await Client.GetFromJsonAsync<SeasonStatusDto>($"/api/leagues/{s.LeagueId}/seasons/{s.SeasonId}");
+        var season = await GetSeasonAsync(s);
         season!.Status.Should().Be("Draft");
+        season.SchedulingError.Should().NotBeNullOrEmpty();
     }
 
-    private sealed record SeasonStatusDto(Guid Id, string Status);
+    private sealed record SeasonStatusDto(Guid Id, string Status, string? SchedulingError);
     private sealed record MatchDto(
         Guid Id, Guid DivisionId, string DivisionName, Guid HomeTeamId, string HomeTeamName,
         Guid AwayTeamId, string AwayTeamName, Guid VenueId, string VenueName, string MatchDate, string Status);

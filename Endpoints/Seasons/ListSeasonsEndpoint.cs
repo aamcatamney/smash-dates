@@ -5,7 +5,7 @@ namespace smash_dates.Endpoints.Seasons;
 public static class ListSeasonsEndpoint
 {
     public sealed record SeasonSummary(
-        Guid Id, Guid LeagueId, string Name, DateOnly StartDate, DateOnly EndDate, string Status);
+        Guid Id, Guid LeagueId, string Name, DateOnly StartDate, DateOnly EndDate, string Status, string? SchedulingError);
 
     public static IEndpointRouteBuilder MapListSeasonsEndpoint(this IEndpointRouteBuilder app)
     {
@@ -17,7 +17,7 @@ public static class ListSeasonsEndpoint
     {
         var rows = await seasons.ListByLeagueAsync(leagueId, ct);
         return Results.Ok(rows
-            .Select(s => new SeasonSummary(s.Id, s.LeagueId, s.Name, s.StartDate, s.EndDate, s.Status.ToString()))
+            .Select(s => new SeasonSummary(s.Id, s.LeagueId, s.Name, s.StartDate, s.EndDate, s.Status.ToString(), s.SchedulingError))
             .ToArray());
     }
 }
