@@ -22,10 +22,11 @@ import { StatusColorPipe } from '../../shared/status-color.pipe';
 import { CsvImportComponent } from '../../shared/csv-import.component';
 import { ImportResult } from '../../shared/import-result';
 import { ClubPlayersComponent } from './club-players.component';
+import { TeamSquadComponent } from './team-squad.component';
 
 @Component({
   selector: 'app-club-detail-page',
-  imports: [ReactiveFormsModule, RouterLink, AdminHeaderComponent, ModalComponent, ConfirmComponent, StatusColorPipe, CsvImportComponent, ClubPlayersComponent],
+  imports: [ReactiveFormsModule, RouterLink, AdminHeaderComponent, ModalComponent, ConfirmComponent, StatusColorPipe, CsvImportComponent, ClubPlayersComponent, TeamSquadComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <div class="min-h-screen bg-slate-50 dark:bg-slate-950">
@@ -159,19 +160,33 @@ import { ClubPlayersComponent } from './club-players.component';
         </div>
         <ul class="mt-3 divide-y divide-slate-200 rounded-md border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900">
           @for (t of teams(); track t.id) {
-            <li class="flex items-center justify-between px-4 py-3 font-mono text-sm">
-              <span>
-                {{ t.name }}
-                <span class="ml-2 inline-block rounded bg-slate-200 dark:bg-slate-700 px-2 py-0.5 text-xs uppercase">{{ t.gender }}</span>
-              </span>
-              <button
-                type="button"
-                [attr.aria-label]="'Delete team ' + t.name"
-                (click)="askDeleteTeam(t)"
-                class="rounded-md border border-red-300 dark:border-red-800 px-3 py-1 text-xs text-red-700 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950"
-              >
-                Delete
-              </button>
+            <li class="px-4 py-3 font-mono text-sm">
+              <div class="flex items-center justify-between">
+                <span>
+                  {{ t.name }}
+                  <span class="ml-2 inline-block rounded bg-slate-200 dark:bg-slate-700 px-2 py-0.5 text-xs uppercase">{{ t.gender }}</span>
+                </span>
+                <div class="flex gap-2">
+                  <button
+                    type="button"
+                    (click)="toggleSquad(t.id)"
+                    class="rounded-md border border-slate-300 dark:border-slate-700 px-3 py-1 text-xs text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800"
+                  >
+                    {{ squadTeamId() === t.id ? 'Close' : 'Squad' }}
+                  </button>
+                  <button
+                    type="button"
+                    [attr.aria-label]="'Delete team ' + t.name"
+                    (click)="askDeleteTeam(t)"
+                    class="rounded-md border border-red-300 dark:border-red-800 px-3 py-1 text-xs text-red-700 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950"
+                  >
+                    Delete
+                  </button>
+                </div>
+              </div>
+              @if (squadTeamId() === t.id) {
+                <app-team-squad [clubId]="clubId()" [teamId]="t.id" />
+              }
             </li>
           } @empty {
             <li class="px-4 py-3 font-mono text-sm text-slate-500 dark:text-slate-400">No teams.</li>
@@ -513,6 +528,7 @@ export default class ClubDetailPage {
   protected readonly blockError = signal<string | null>(null);
   protected readonly adminDialogOpen = signal(false);
   protected readonly teamDialogOpen = signal(false);
+  protected readonly squadTeamId = signal<string | null>(null);
 
   protected readonly importKind = signal<'teams' | 'venues' | null>(null);
   protected readonly importBusy = signal(false);
@@ -650,6 +666,10 @@ export default class ClubDetailPage {
 
   protected onWithdraw(m: MembershipSummary): void {
     this.api.withdrawMembership(m.leagueId, m.id).subscribe({ next: () => this.refreshMemberships() });
+  }
+
+  protected toggleSquad(teamId: string): void {
+    this.squadTeamId.set(this.squadTeamId() === teamId ? null : teamId);
   }
 
   protected openImport(kind: 'teams' | 'venues'): void {

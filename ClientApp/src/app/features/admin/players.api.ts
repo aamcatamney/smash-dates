@@ -34,6 +34,12 @@ export interface Registration {
   status: RegistrationStatus;
 }
 
+export interface SquadMember {
+  playerId: string;
+  fullName: string;
+  gender: Gender;
+}
+
 export interface Transfer {
   id: string;
   playerId: string;
@@ -127,5 +133,18 @@ export class PlayersApi {
 
   leagueRejectTransfer(leagueId: string, id: string): Observable<void> {
     return this.http.post<void>(`/api/leagues/${leagueId}/transfers/${id}/reject`, null);
+  }
+
+  // --- team squads ---
+  listSquad(clubId: string, teamId: string): Observable<SquadMember[]> {
+    return this.http.get<SquadMember[]>(`/api/clubs/${clubId}/teams/${teamId}/players`);
+  }
+
+  addToSquad(clubId: string, teamId: string, playerId: string): Observable<unknown> {
+    return this.http.post(`/api/clubs/${clubId}/teams/${teamId}/players`, { playerId });
+  }
+
+  removeFromSquad(clubId: string, teamId: string, playerId: string): Observable<void> {
+    return this.http.delete<void>(`/api/clubs/${clubId}/teams/${teamId}/players/${playerId}`);
   }
 }
