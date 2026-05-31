@@ -138,6 +138,8 @@ Put `[skip release]` in the merge commit message to skip a release.
 docker pull ghcr.io/aamcatamney/smash-dates:latest
 ```
 
+A running container exposes `GET /health` (liveness) and `GET /api/version` (the CalVer version stamped in at build).
+
 ---
 
 ## Screenshots
