@@ -27,6 +27,8 @@ public static class RegisterEndpoint
         IUserRepository users,
         IPasswordHasher hasher,
         IAntiforgery antiforgery,
+        IAuthTokenRepository tokens,
+        INotificationRepository outbox,
         ILoggerFactory loggerFactory,
         CancellationToken ct)
     {
@@ -59,15 +61,27 @@ public static class RegisterEndpoint
         var created = await users.GetByIdAsync(id, ct)
             ?? throw new InvalidOperationException("User vanished immediately after creation.");
 
+        // New sign-ups must verify their email before logging in. The bootstrap SystemAdmin
+        // (first user) is auto-verified and signed straight in.
+        if (!created.IsSystemAdmin)
+        {
+            var verifyToken = await tokens.IssueAsync(id, "EmailVerification", TimeSpan.FromDays(7), ct);
+            var verifyLink = AuthEndpoints.AppLink(http, "/verify-email", verifyToken);
+            await outbox.EnqueueAsync(
+                email.ToLowerInvariant(),
+                "Verify your smash-dates email",
+                $"Welcome to smash-dates! Confirm your email address to finish setting up your account:\n{verifyLink}",
+                ct);
+            logger.LogInformation("Register pending verification. UserId={UserId}", id);
+            return Results.Ok(new { emailVerificationRequired = true });
+        }
+
         var claims = new List<Claim>
         {
             new(ClaimTypes.NameIdentifier, id.ToString()),
             new(ClaimTypes.Email, email.ToLowerInvariant()),
+            new(AuthorizationPolicies.SystemAdminClaim, "true"),
         };
-        if (created.IsSystemAdmin)
-        {
-            claims.Add(new Claim(AuthorizationPolicies.SystemAdminClaim, "true"));
-        }
         var identity = new ClaimsIdentity(claims, CookieAuthenticationDefaults.AuthenticationScheme);
 
         await http.SignInAsync(
@@ -77,8 +91,8 @@ public static class RegisterEndpoint
 
         AuthEndpoints.IssueXsrfCookie(http, antiforgery);
 
-        logger.LogInformation("Register success. UserId={UserId}", id);
+        logger.LogInformation("Register success (bootstrap admin). UserId={UserId}", id);
 
-        return Results.Ok(new LoginEndpoint.UserResponse(id, email.ToLowerInvariant(), displayName, created.IsSystemAdmin));
+        return Results.Ok(new LoginEndpoint.UserResponse(id, email.ToLowerInvariant(), displayName, true));
     }
 }

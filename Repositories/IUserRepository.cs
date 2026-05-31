@@ -9,4 +9,5 @@ public interface IUserRepository
     Task<Guid> CreateAsync(string email, string passwordHash, string? displayName, CancellationToken ct = default);
     Task<bool> UpdatePasswordAsync(Guid id, string passwordHash, CancellationToken ct = default);
     Task<bool> SetActiveAsync(Guid id, bool isActive, CancellationToken ct = default);
+    Task<bool> SetEmailVerifiedAsync(Guid id, CancellationToken ct = default);
 }

@@ -101,16 +101,30 @@ describe('AuthStore', () => {
     expect(store.user()).toBeNull();
   });
 
-  it('register success signs the user in', async () => {
+  it('register signs in the bootstrap admin (user response)', async () => {
     api = createApiMock({ register: () => asObservable(sampleUser) });
     TestBed.resetTestingModule();
     TestBed.configureTestingModule({ providers: [{ provide: AuthApi, useFactory: () => api }] });
     const store = TestBed.inject(AuthStore);
 
-    const ok = await store.register({ email: 'a@b.co', password: 'a'.repeat(12), displayName: 'Jane' });
+    const outcome = await store.register({ email: 'a@b.co', password: 'a'.repeat(12), displayName: 'Jane' });
 
-    expect(ok).toBe(true);
+    expect(outcome).toBe('authed');
     expect(store.status()).toBe('authed');
+  });
+
+  it('register returns verify (no session) when verification is required', async () => {
+    api = createApiMock({ register: () => asObservable({ emailVerificationRequired: true }) });
+    TestBed.resetTestingModule();
+    TestBed.configureTestingModule({ providers: [{ provide: AuthApi, useFactory: () => api }] });
+    const store = TestBed.inject(AuthStore);
+
+    const outcome = await store.register({ email: 'a@b.co', password: 'a'.repeat(12), displayName: null });
+
+    expect(outcome).toBe('verify');
+    expect(store.status()).not.toBe('authed');
+    expect(store.user()).toBeNull();
+    expect(store.error()).toBeNull();
   });
 
   it('register conflict surfaces email-taken', async () => {

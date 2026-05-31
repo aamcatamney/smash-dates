@@ -3,6 +3,7 @@ import { ProblemDetails } from './user.model';
 
 export type AuthErrorKind =
   | 'invalid-credentials'
+  | 'email-unverified'
   | 'email-taken'
   | 'validation'
   | 'rate-limited'
@@ -16,6 +17,7 @@ export interface AuthError {
 
 const messages: Record<AuthErrorKind, string> = {
   'invalid-credentials': 'Invalid email or password.',
+  'email-unverified': 'Please verify your email before signing in.',
   'email-taken': 'That email is already registered.',
   validation: 'Please check the details you entered.',
   'rate-limited': 'Too many attempts. Try again shortly.',
@@ -45,6 +47,8 @@ export function toAuthError(error: unknown, context: 'login' | 'register' | 'me'
         kind: 'invalid-credentials',
         message: context === 'login' ? messages['invalid-credentials'] : 'Your session has expired. Please sign in again.',
       };
+    case 403:
+      return { kind: 'email-unverified', message: messages['email-unverified'] };
     case 409:
       return { kind: 'email-taken', message: messages['email-taken'] };
     case 429:
