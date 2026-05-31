@@ -26,6 +26,16 @@ public sealed class ClubAdminRepository : IClubAdminRepository
                 cancellationToken: ct));
     }
 
+    public async Task<bool> IsAdminOfAnyClubAsync(Guid userId, CancellationToken ct = default)
+    {
+        using var conn = _factory.Create();
+        return await conn.ExecuteScalarAsync<bool>(
+            new CommandDefinition(
+                "SELECT EXISTS(SELECT 1 FROM club_admins WHERE user_id = @userId)",
+                new { userId },
+                cancellationToken: ct));
+    }
+
     public async Task<IReadOnlyList<ClubAdminGrant>> ListByClubAsync(Guid clubId, CancellationToken ct = default)
     {
         using var conn = _factory.Create();
