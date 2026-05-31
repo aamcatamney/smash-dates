@@ -31,4 +31,9 @@ export const ADMIN_ROUTES: Routes = [
     title: 'Club · smash-dates',
     loadComponent: () => import('./club-detail.page'),
   },
+  {
+    path: 'clubs/:id/pegboard/:sessionId',
+    title: 'Pegboard · smash-dates',
+    loadComponent: () => import('./pegboard-board.page'),
+  },
 ];

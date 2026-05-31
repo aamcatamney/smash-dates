@@ -1,7 +1,7 @@
 import { HttpClient } from '@angular/common/http';
 import { Injectable, NgZone, inject } from '@angular/core';
 import { Observable } from 'rxjs';
-import { Gender } from './clubs.api';
+import { Gender } from './players.api';
 
 export type PegSessionStatus = 'Open' | 'Closed';
 export type AttendanceStatus = 'Waiting' | 'Playing' | 'Resting' | 'Left';
