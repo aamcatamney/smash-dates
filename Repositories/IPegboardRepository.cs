@@ -51,4 +51,7 @@ public interface IPegboardRepository
 
     // Read model
     Task<BoardView?> GetBoardAsync(Guid sessionId, CancellationToken ct = default);
+
+    // Unordered attendance-id pairs that have shared a finished game this session (for variety).
+    Task<IReadOnlyList<(Guid A, Guid B)>> ListPlayedPairsAsync(Guid sessionId, CancellationToken ct = default);
 }

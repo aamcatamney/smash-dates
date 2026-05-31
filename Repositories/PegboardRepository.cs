@@ -301,6 +301,19 @@ public sealed class PegboardRepository : IPegboardRepository
         return new BoardView(session, boardCourts, boardAttendees);
     }
 
+    public async Task<IReadOnlyList<(Guid A, Guid B)>> ListPlayedPairsAsync(Guid sessionId, CancellationToken ct = default)
+    {
+        using var conn = _factory.Create();
+        var rows = await conn.QueryAsync<PairRow>(new CommandDefinition(
+            @"SELECT gp1.attendance_id AS a, gp2.attendance_id AS b
+              FROM pegboard_game_players gp1
+              JOIN pegboard_game_players gp2 ON gp1.game_id = gp2.game_id AND gp1.attendance_id < gp2.attendance_id
+              JOIN pegboard_games g ON g.id = gp1.game_id
+              WHERE g.session_id = @sessionId AND g.status = 'Finished'",
+            new { sessionId }, cancellationToken: ct));
+        return rows.Select(r => (r.A, r.B)).ToList();
+    }
+
     private static async Task OpenConnAsync(IDbConnection conn, CancellationToken ct)
     {
         if (conn is System.Data.Common.DbConnection db) await db.OpenAsync(ct);
@@ -314,4 +327,5 @@ public sealed class PegboardRepository : IPegboardRepository
     private sealed record AttendeeRow(
         Guid Id, Guid? PlayerId, string DisplayName, string Gender, int? Grade,
         string Status, DateTime WaitingSince, int GamesPlayed, int GamesWon);
+    private sealed record PairRow(Guid A, Guid B);
 }
