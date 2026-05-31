@@ -22,7 +22,7 @@ Alternatives considered:
 
 Use **SSE** for live Pegboard updates.
 
-- A streaming endpoint, e.g. `GET /api/clubs/{clubId}/sessions/{sessionId}/stream` (`text/event-stream`), authorized for any authenticated User (same as viewing the board).
+- A streaming endpoint, `GET /api/clubs/{clubId}/pegboard/sessions/{sessionId}/stream` (`text/event-stream`), authorized for any authenticated User (same as viewing the board).
 - All board mutations remain ordinary REST endpoints (`SessionHost`/`ClubAdmin`/`SystemAdmin` only). On a successful mutation the server publishes a board-changed event for that Session through an **in-process publisher**.
 - The client opens an `EventSource` for the active Session and, on each event, re-fetches (or patches) the board view. On `Closed`, the stream ends.
 
