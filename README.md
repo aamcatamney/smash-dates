@@ -40,6 +40,11 @@ The whole thing ships as a single container: a .NET 10 API that also serves the 
 **Notifications**
 - Domain events (invites, membership responses, match confirmations/rejections/postponements) are written to an **outbox** and delivered by a background sender (logging sender by default; real SMTP is a config swap).
 
+**Players & registrations**
+- **Players** are global, club-managed roster records (no login); clubs link them as **Member** or **Visitor**.
+- **Discipline registrations** (`Level` / `Mixed`) are scoped to `(player, club, league)`: a club registers a Member, the **league confirms**, and at most one club holds a player's discipline per league.
+- **Transfers** move a confirmed registration between clubs — the receiving club requests, the releasing club and the league both approve. See [ADR 0003](docs/adr/0003-player-discipline-registration.md).
+
 **Interface**
 - **Light / dark theme** — follows the OS preference by default, with a toggle that persists an explicit choice (no flash on load).
 
@@ -166,6 +171,11 @@ Manage a club's teams, venues, blocked dates and its matches in one place.
 Import clubs, teams, venues or season entries from a CSV — partial import with a per-row result and a downloadable template.
 
 ![CSV import with per-row result](docs/screenshots/csv-import.png)
+
+### Players & registrations
+The league confirms discipline registrations and adjudicates transfers between clubs.
+
+![Player registrations & transfers awaiting league approval](docs/screenshots/players.png)
 
 ### Light & dark themes
 Every screen supports light and dark, following the OS preference with a persisted toggle.

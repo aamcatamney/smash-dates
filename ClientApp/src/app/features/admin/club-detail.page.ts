@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, inject, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
 import { FormControl, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import { ActivatedRoute, RouterLink } from '@angular/router';
 import { switchMap, tap } from 'rxjs';
@@ -21,10 +21,11 @@ import { ConfirmComponent } from '../../shared/confirm.component';
 import { StatusColorPipe } from '../../shared/status-color.pipe';
 import { CsvImportComponent } from '../../shared/csv-import.component';
 import { ImportResult } from '../../shared/import-result';
+import { ClubPlayersComponent } from './club-players.component';
 
 @Component({
   selector: 'app-club-detail-page',
-  imports: [ReactiveFormsModule, RouterLink, AdminHeaderComponent, ModalComponent, ConfirmComponent, StatusColorPipe, CsvImportComponent],
+  imports: [ReactiveFormsModule, RouterLink, AdminHeaderComponent, ModalComponent, ConfirmComponent, StatusColorPipe, CsvImportComponent, ClubPlayersComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <div class="min-h-screen bg-slate-50 dark:bg-slate-950">
@@ -453,6 +454,10 @@ import { ImportResult } from '../../shared/import-result';
         </form>
         </app-modal>
 
+        @if (clubId()) {
+          <app-club-players [clubId]="clubId()" [leagues]="acceptedLeagues()" />
+        }
+
         <app-confirm
           [message]="pending()?.message ?? null"
           (confirmed)="runPending()"
@@ -483,6 +488,10 @@ export default class ClubDetailPage {
   protected readonly admins = signal<ClubAdminSummary[]>([]);
   protected readonly memberships = signal<MembershipSummary[]>([]);
   protected readonly leagueList = signal<LeagueSummary[]>([]);
+  protected readonly acceptedLeagues = computed(() =>
+    this.memberships()
+      .filter((m) => m.status === 'Accepted')
+      .map((m) => ({ id: m.leagueId, name: this.leagueName(m.leagueId) })));
   protected readonly teams = signal<TeamSummary[]>([]);
   protected readonly venues = signal<VenueSummary[]>([]);
   protected readonly blockedDates = signal<BlockedDateSummary[]>([]);

@@ -8,7 +8,7 @@
 - **SystemAdmin** — bootstrap role. Creates Leagues; assigns first LeagueAdmin per League. First registered user becomes SystemAdmin.
 - **LeagueAdmin@League** — per-League role-grant. Manages Divisions, invites Clubs into the League, manages Teams' Season assignments, configures Seasons + Weeks, runs the scheduler, force-confirms Matches. Many Users can hold the LeagueAdmin grant for the same League; any holder can grant or revoke the role for another User. A League must always have at least one LeagueAdmin (last-admin removal rejected with 409 unless the caller is `SystemAdmin`, who may force the League adminless pending re-bootstrap). A LeagueAdmin may resign as long as another LeagueAdmin remains. League-scoped endpoints (Division CRUD, Season setup, etc.) authorize either `LeagueAdmin@<thisLeague>` **or** `SystemAdmin`.
 - **ClubAdmin@Club** — per-Club role-grant. Manages Venues, enters blocked dates (Club-wide and per-Team), accepts/rejects proposed Matches for the Club. Many Users can hold the ClubAdmin grant for the same Club; any holder can grant or revoke the role for another User. A Club must always have at least one ClubAdmin (the last-admin removal is rejected with 409 unless the caller is `SystemAdmin`, who may force the Club into an adminless state pending re-bootstrap). A ClubAdmin may resign as long as another ClubAdmin remains.
-- Authenticated Users may **read** any League's schedule. No `Player` role and no anonymous public view in v1.
+- Authenticated Users may **read** any League's schedule. There is no `Player` **login** role (Players are admin-managed roster records — see [Player](#player)) and no anonymous public view.
 - One User may hold many role-grants simultaneously (e.g. LeagueAdmin of League A + ClubAdmin of Club B).
 
 ## Terms
@@ -125,3 +125,38 @@ Blocked dates may be added freely while Season is `Draft` or `Proposed`. From `A
 
 ### Season
 Belongs to one League. Has a **Name** (a human handle, e.g. "2025/26", unique within its League), a start date, an end date, and an **explicit ordered list of Weeks**. Week order is derived from each Week's `StartDate` (Weeks never overlap), not a separate ordinal. Each Week has `(StartDate, EndDate, WeekType)` — a calendar range (typically Mon–Sun) within which Matches scheduled in that week may land on any night. Admin enters the week list when creating the Season; gaps (Christmas, tournaments) are handled by simply omitting weeks from the list.
+
+### Player
+A persistent person record, **global** (not owned by a single Club), so the same Player can be affiliated with several Clubs. Created and edited by any `ClubAdmin`. Attributes: a **FullName** and a **Gender** (`Male` | `Female`). A Player is **not** a login account — there is no Player role; Players are managed entirely by Club admins.
+
+Gender exists so the [Level discipline](#discipline) resolves to the right gendered play: a `Male` Player playing Level is a Mens player, a `Female` Player playing Level is a Ladies player.
+
+### Player–Club Affiliation
+A link between a Player and a Club with a **type**: `Member` or `Visitor`.
+- **Member** — the Club may **register** this Player for [disciplines](#discipline-registration). A Player may be a Member of more than one Club.
+- **Visitor** — the Player is listed at this Club as a guest only; their registration lives at the Club where they are a Member. A Visitor cannot be registered by this Club.
+
+Set by the Club when adding the Player. Adding an existing global Player to a second Club creates a second affiliation; it does not duplicate the Player.
+
+### Discipline
+The category of play a Player registers for. Two values, mirroring [Week Type](#week-type):
+- **Level** — same-gender play; resolves to Mens or Ladies by the Player's gender.
+- **Mixed** — mixed play.
+
+A Player may hold registrations in both disciplines.
+
+### Discipline Registration
+A record that a Player is registered to play a **Discipline** for a **Club** in a specific **League** — i.e. scoped to `(Player, Club, League, Discipline)`. Requires the Player to be a **Member** of that Club and the Club to be an Accepted member of that League.
+
+Lifecycle: `Pending → Confirmed | Rejected`.
+- A `ClubAdmin@Club` requests a registration for one of its Members → `Pending`.
+- A `LeagueAdmin@League` **Confirms** (→ `Confirmed`) or **Rejects** (→ `Rejected`).
+
+**Exclusivity:** within one `(Player, League, Discipline)` there is at most one `Confirmed` registration — a Player plays a given discipline for a single Club in a given League. Confirming a second club for the same `(Player, League, Discipline)` is rejected; the only way to move it is a [Transfer](#registration-transfer). Registrations in different Leagues, or in the other Discipline, are independent.
+
+### Registration Transfer
+Moving a `Confirmed` Discipline Registration from one Club to another within the same `(League, Discipline)`. Initiated by the **receiving** Club; both the **releasing** `ClubAdmin@Club` and the `LeagueAdmin@League` must approve.
+
+- The receiving Club's admin opens a transfer for a Player's confirmed registration; the request counts as the receiving Club's agreement.
+- The releasing Club and the League each Approve or Reject.
+- All three agreeing → the registration moves to the receiving Club (which gains a `Member` affiliation if it lacks one); any Rejection cancels it and the registration stays put.

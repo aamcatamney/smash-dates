@@ -28,10 +28,11 @@ import { ConfirmComponent } from '../../shared/confirm.component';
 import { StatusColorPipe } from '../../shared/status-color.pipe';
 import { CsvImportComponent } from '../../shared/csv-import.component';
 import { ImportResult } from '../../shared/import-result';
+import { LeaguePlayerApprovalsComponent } from './league-player-approvals.component';
 
 @Component({
   selector: 'app-league-detail-page',
-  imports: [ReactiveFormsModule, RouterLink, AdminHeaderComponent, ModalComponent, ConfirmComponent, StatusColorPipe, CsvImportComponent],
+  imports: [ReactiveFormsModule, RouterLink, AdminHeaderComponent, ModalComponent, ConfirmComponent, StatusColorPipe, CsvImportComponent, LeaguePlayerApprovalsComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <div class="min-h-screen bg-slate-50 dark:bg-slate-950">
@@ -607,6 +608,10 @@ import { ImportResult } from '../../shared/import-result';
             </button>
           </form>
         </app-modal>
+
+        @if (leagueId) {
+          <app-league-player-approvals [leagueId]="leagueId" />
+        }
 
         <app-confirm
           [message]="pending()?.message ?? null"
