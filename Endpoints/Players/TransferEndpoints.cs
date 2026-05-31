@@ -3,6 +3,7 @@ using Npgsql;
 using smash_dates.Models;
 using smash_dates.Repositories;
 using smash_dates.Services.Auth;
+using smash_dates.Services.Notifications;
 
 namespace smash_dates.Endpoints.Players;
 
@@ -39,6 +40,7 @@ public static class TransferEndpoints
         IClubLeagueMembershipRepository memberships,
         IDisciplineRegistrationRepository registrations,
         IRegistrationTransferRepository transfers,
+        INotificationService notifications,
         CancellationToken ct)
     {
         if (await clubs.GetByIdAsync(clubId, ct) is null) return Results.NotFound();
@@ -61,6 +63,7 @@ public static class TransferEndpoints
         try
         {
             var id = await transfers.CreateAsync(request.PlayerId, request.LeagueId, discipline, confirmed.ClubId, clubId, userId, ct);
+            await notifications.TransferOpenedAsync(request.PlayerId, confirmed.ClubId, clubId, request.LeagueId, discipline, ct);
             return Results.Created($"/api/clubs/{clubId}/transfers", new { id });
         }
         catch (PostgresException ex) when (ex.SqlState == DuplicateSqlState)
@@ -71,7 +74,7 @@ public static class TransferEndpoints
 
     private static async Task<IResult> ClubApprove(
         Guid clubId, Guid id, ClaimsPrincipal principal,
-        IClubAdminRepository clubAdmins, IRegistrationTransferRepository transfers, CancellationToken ct)
+        IClubAdminRepository clubAdmins, IRegistrationTransferRepository transfers, INotificationService notifications, CancellationToken ct)
     {
         var transfer = await transfers.GetByIdAsync(id, ct);
         if (transfer is null || transfer.FromClubId != clubId) return Results.NotFound();
@@ -79,12 +82,12 @@ public static class TransferEndpoints
         if (authz is not null) return authz;
 
         var both = await transfers.SetReleasingApprovedAsync(id, ct);
-        return await ResolveAsync(both, transfer, transfers, ct);
+        return await ResolveAsync(both, transfer, transfers, notifications, ct);
     }
 
     private static async Task<IResult> LeagueApprove(
         Guid leagueId, Guid id, ClaimsPrincipal principal,
-        ILeagueAdminRepository leagueAdmins, IRegistrationTransferRepository transfers, CancellationToken ct)
+        ILeagueAdminRepository leagueAdmins, IRegistrationTransferRepository transfers, INotificationService notifications, CancellationToken ct)
     {
         var transfer = await transfers.GetByIdAsync(id, ct);
         if (transfer is null || transfer.LeagueId != leagueId) return Results.NotFound();
@@ -92,43 +95,51 @@ public static class TransferEndpoints
         if (authz is not null) return authz;
 
         var both = await transfers.SetLeagueApprovedAsync(id, ct);
-        return await ResolveAsync(both, transfer, transfers, ct);
+        return await ResolveAsync(both, transfer, transfers, notifications, ct);
     }
 
     // both == null → was not pending; true → both approvals in, complete it; false → wait.
-    private static async Task<IResult> ResolveAsync(bool? both, RegistrationTransfer transfer, IRegistrationTransferRepository transfers, CancellationToken ct)
+    private static async Task<IResult> ResolveAsync(bool? both, RegistrationTransfer t, IRegistrationTransferRepository transfers, INotificationService notifications, CancellationToken ct)
     {
         if (both is null) return Results.Problem(statusCode: StatusCodes.Status409Conflict, title: "Transfer is not pending");
-        if (both is true) await transfers.CompleteAsync(transfer, ct);
+        if (both is true)
+        {
+            await transfers.CompleteAsync(t, ct);
+            await notifications.TransferResolvedAsync(t.PlayerId, t.FromClubId, t.ToClubId, t.LeagueId, t.Discipline, completed: true, ct);
+        }
         return Results.NoContent();
     }
 
     private static async Task<IResult> ClubReject(
         Guid clubId, Guid id, ClaimsPrincipal principal,
-        IClubAdminRepository clubAdmins, IRegistrationTransferRepository transfers, CancellationToken ct)
+        IClubAdminRepository clubAdmins, IRegistrationTransferRepository transfers, INotificationService notifications, CancellationToken ct)
     {
         var transfer = await transfers.GetByIdAsync(id, ct);
         if (transfer is null || transfer.FromClubId != clubId) return Results.NotFound();
         var authz = await ClubAuthorizer.RequireClubAdminAsync(principal, clubId, clubAdmins, ct);
         if (authz is not null) return authz;
 
-        return await transfers.RejectAsync(id, ct)
-            ? Results.NoContent()
-            : Results.Problem(statusCode: StatusCodes.Status409Conflict, title: "Transfer is not pending");
+        return await RejectAndNotify(transfer, transfers, notifications, ct);
     }
 
     private static async Task<IResult> LeagueReject(
         Guid leagueId, Guid id, ClaimsPrincipal principal,
-        ILeagueAdminRepository leagueAdmins, IRegistrationTransferRepository transfers, CancellationToken ct)
+        ILeagueAdminRepository leagueAdmins, IRegistrationTransferRepository transfers, INotificationService notifications, CancellationToken ct)
     {
         var transfer = await transfers.GetByIdAsync(id, ct);
         if (transfer is null || transfer.LeagueId != leagueId) return Results.NotFound();
         var authz = await LeagueAuthorizer.RequireLeagueAdminAsync(principal, leagueId, leagueAdmins, ct);
         if (authz is not null) return authz;
 
-        return await transfers.RejectAsync(id, ct)
-            ? Results.NoContent()
-            : Results.Problem(statusCode: StatusCodes.Status409Conflict, title: "Transfer is not pending");
+        return await RejectAndNotify(transfer, transfers, notifications, ct);
+    }
+
+    private static async Task<IResult> RejectAndNotify(RegistrationTransfer t, IRegistrationTransferRepository transfers, INotificationService notifications, CancellationToken ct)
+    {
+        if (!await transfers.RejectAsync(t.Id, ct))
+            return Results.Problem(statusCode: StatusCodes.Status409Conflict, title: "Transfer is not pending");
+        await notifications.TransferResolvedAsync(t.PlayerId, t.FromClubId, t.ToClubId, t.LeagueId, t.Discipline, completed: false, ct);
+        return Results.NoContent();
     }
 
     private static async Task<IResult> ListForClub(Guid clubId, IClubRepository clubs, IRegistrationTransferRepository transfers, CancellationToken ct)
