@@ -47,6 +47,7 @@ builder.Services.AddSingleton<IDbConnectionFactory, NpgsqlConnectionFactory>();
 builder.Services.AddSingleton<IPasswordHasher, BCryptPasswordHasher>();
 builder.Services.AddScoped<IUserRepository, UserRepository>();
 builder.Services.AddScoped<IAuthTokenRepository, AuthTokenRepository>();
+builder.Services.AddHostedService<smash_dates.Services.Auth.AuthTokenCleanupHostedService>();
 builder.Services.AddScoped<ILeagueRepository, LeagueRepository>();
 builder.Services.AddScoped<IDivisionRepository, DivisionRepository>();
 builder.Services.AddScoped<ILeagueAdminRepository, LeagueAdminRepository>();

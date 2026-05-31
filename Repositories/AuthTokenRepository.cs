@@ -17,13 +17,27 @@ public sealed class AuthTokenRepository : IAuthTokenRepository
     {
         var token = AuthTokenCodec.NewToken();
         using var conn = _factory.Create();
+        // Invalidate the user's prior unused tokens of this purpose, then insert the new one —
+        // so only the most recently emailed link is ever live. Both statements run inside
+        // Npgsql's implicit single-command transaction.
         await conn.ExecuteAsync(
             new CommandDefinition(
-                @"INSERT INTO auth_tokens (user_id, purpose, token_hash, expires_at)
+                @"UPDATE auth_tokens SET used_at = now()
+                  WHERE user_id = @userId AND purpose = @purpose AND used_at IS NULL;
+                  INSERT INTO auth_tokens (user_id, purpose, token_hash, expires_at)
                   VALUES (@userId, @purpose, @hash, now() + @ttl)",
                 new { userId, purpose, hash = AuthTokenCodec.Hash(token), ttl },
                 cancellationToken: ct));
         return token;
+    }
+
+    public async Task<int> DeleteSpentAsync(CancellationToken ct = default)
+    {
+        using var conn = _factory.Create();
+        return await conn.ExecuteAsync(
+            new CommandDefinition(
+                "DELETE FROM auth_tokens WHERE used_at IS NOT NULL OR expires_at < now()",
+                cancellationToken: ct));
     }
 
     public async Task<Guid?> ConsumeAsync(string rawToken, string purpose, CancellationToken ct = default)
