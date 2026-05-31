@@ -29,10 +29,11 @@ import { StatusColorPipe } from '../../shared/status-color.pipe';
 import { CsvImportComponent } from '../../shared/csv-import.component';
 import { ImportResult } from '../../shared/import-result';
 import { LeaguePlayerApprovalsComponent } from './league-player-approvals.component';
+import { TabsComponent, TabDef } from '../../shared/tabs.component';
 
 @Component({
   selector: 'app-league-detail-page',
-  imports: [ReactiveFormsModule, RouterLink, AdminHeaderComponent, ModalComponent, ConfirmComponent, StatusColorPipe, CsvImportComponent, LeaguePlayerApprovalsComponent],
+  imports: [ReactiveFormsModule, RouterLink, AdminHeaderComponent, ModalComponent, ConfirmComponent, StatusColorPipe, CsvImportComponent, LeaguePlayerApprovalsComponent, TabsComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <div class="min-h-screen bg-slate-50 dark:bg-slate-950">
@@ -51,6 +52,10 @@ import { LeaguePlayerApprovalsComponent } from './league-player-approvals.compon
           >
         }
 
+        <app-tabs #tabs [tabs]="leagueTabs" />
+
+        @if (tabs.active() === 'divisions') {
+        <section role="tabpanel" id="panel-divisions" aria-labelledby="tab-divisions">
         <div class="mt-8 flex items-center justify-between">
           <h2 class="font-mono text-lg font-semibold text-slate-900 dark:text-slate-100">Divisions</h2>
           <button
@@ -156,7 +161,11 @@ import { LeaguePlayerApprovalsComponent } from './league-player-approvals.compon
           }
         </form>
         </app-modal>
+        </section>
+        }
 
+        @if (tabs.active() === 'seasons') {
+        <section role="tabpanel" id="panel-seasons" aria-labelledby="tab-seasons">
         <div class="mt-10 flex items-center justify-between">
           <h2 class="font-mono text-lg font-semibold text-slate-900 dark:text-slate-100">Seasons</h2>
           <button
@@ -505,7 +514,11 @@ import { LeaguePlayerApprovalsComponent } from './league-player-approvals.compon
           }
         </form>
         </app-modal>
+        </section>
+        }
 
+        @if (tabs.active() === 'clubs') {
+        <section role="tabpanel" id="panel-clubs" aria-labelledby="tab-clubs">
         <div class="mt-10 flex items-center justify-between">
           <h2 class="font-mono text-lg font-semibold text-slate-900 dark:text-slate-100">Member clubs</h2>
           <button
@@ -563,7 +576,11 @@ import { LeaguePlayerApprovalsComponent } from './league-player-approvals.compon
           </button>
         </form>
         </app-modal>
+        </section>
+        }
 
+        @if (tabs.active() === 'scheduler') {
+        <section role="tabpanel" id="panel-scheduler" aria-labelledby="tab-scheduler">
         @if (schedulingConfig(); as c) {
           <div class="mt-10 flex items-center justify-between">
             <h2 class="font-mono text-lg font-semibold text-slate-900 dark:text-slate-100">Scheduler tuning</h2>
@@ -608,9 +625,15 @@ import { LeaguePlayerApprovalsComponent } from './league-player-approvals.compon
             </button>
           </form>
         </app-modal>
+        </section>
+        }
 
+        @if (tabs.active() === 'players') {
+        <section role="tabpanel" id="panel-players" aria-labelledby="tab-players">
         @if (leagueId) {
           <app-league-player-approvals [leagueId]="leagueId" />
+        }
+        </section>
         }
 
         <app-confirm
@@ -677,6 +700,13 @@ export default class LeagueDetailPage {
   protected readonly schedulingConfig = signal<SchedulingConfig | null>(null);
   protected readonly configDialogOpen = signal(false);
   protected leagueId = '';
+  protected readonly leagueTabs: TabDef[] = [
+    { id: 'divisions', label: 'Divisions' },
+    { id: 'seasons', label: 'Seasons' },
+    { id: 'clubs', label: 'Clubs' },
+    { id: 'players', label: 'Players' },
+    { id: 'scheduler', label: 'Scheduler' },
+  ];
 
   protected readonly configForm = new FormGroup({
     spreadWeight: new FormControl(2, { nonNullable: true, validators: [Validators.required, Validators.min(0)] }),

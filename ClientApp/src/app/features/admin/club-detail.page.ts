@@ -23,10 +23,11 @@ import { CsvImportComponent } from '../../shared/csv-import.component';
 import { ImportResult } from '../../shared/import-result';
 import { ClubPlayersComponent } from './club-players.component';
 import { TeamSquadComponent } from './team-squad.component';
+import { TabsComponent, TabDef } from '../../shared/tabs.component';
 
 @Component({
   selector: 'app-club-detail-page',
-  imports: [ReactiveFormsModule, RouterLink, AdminHeaderComponent, ModalComponent, ConfirmComponent, StatusColorPipe, CsvImportComponent, ClubPlayersComponent, TeamSquadComponent],
+  imports: [ReactiveFormsModule, RouterLink, AdminHeaderComponent, ModalComponent, ConfirmComponent, StatusColorPipe, CsvImportComponent, ClubPlayersComponent, TeamSquadComponent, TabsComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <div class="min-h-screen bg-slate-50 dark:bg-slate-950">
@@ -49,6 +50,10 @@ import { TeamSquadComponent } from './team-squad.component';
           }
         }
 
+        <app-tabs #tabs [tabs]="clubTabs" />
+
+        @if (tabs.active() === 'admins') {
+        <section role="tabpanel" id="panel-admins" aria-labelledby="tab-admins">
         <div class="mt-8 flex items-center justify-between">
           <h2 class="font-mono text-lg font-semibold text-slate-900 dark:text-slate-100">Club admins</h2>
           <button
@@ -138,7 +143,11 @@ import { TeamSquadComponent } from './team-squad.component';
             <li class="px-4 py-3 font-mono text-sm text-slate-500 dark:text-slate-400">No memberships.</li>
           }
         </ul>
+        </section>
+        }
 
+        @if (tabs.active() === 'teams') {
+        <section role="tabpanel" id="panel-teams" aria-labelledby="tab-teams">
         <div class="mt-10 flex items-center justify-between">
           <h2 class="font-mono text-lg font-semibold text-slate-900 dark:text-slate-100">Teams</h2>
           <div class="flex gap-2">
@@ -227,7 +236,11 @@ import { TeamSquadComponent } from './team-squad.component';
           }
         </form>
         </app-modal>
+        </section>
+        }
 
+        @if (tabs.active() === 'venues') {
+        <section role="tabpanel" id="panel-venues" aria-labelledby="tab-venues">
         <div class="mt-10 flex items-center justify-between">
           <h2 class="font-mono text-lg font-semibold text-slate-900 dark:text-slate-100">Venues</h2>
           <div class="flex gap-2">
@@ -303,7 +316,11 @@ import { TeamSquadComponent } from './team-squad.component';
           }
         </form>
         </app-modal>
+        </section>
+        }
 
+        @if (tabs.active() === 'matches') {
+        <section role="tabpanel" id="panel-matches" aria-labelledby="tab-matches">
         <h2 class="mt-10 font-mono text-lg font-semibold text-slate-900 dark:text-slate-100">Matches</h2>
         <ul class="mt-3 divide-y divide-slate-200 rounded-md border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900">
           @for (m of matches(); track m.id) {
@@ -346,7 +363,11 @@ import { TeamSquadComponent } from './team-squad.component';
             <li class="px-4 py-3 font-mono text-sm text-slate-500 dark:text-slate-400">No matches.</li>
           }
         </ul>
+        </section>
+        }
 
+        @if (tabs.active() === 'blocked') {
+        <section role="tabpanel" id="panel-blocked" aria-labelledby="tab-blocked">
         <div class="mt-10 flex items-center justify-between">
           <h2 class="font-mono text-lg font-semibold text-slate-900 dark:text-slate-100">Blocked dates</h2>
           <button
@@ -468,9 +489,15 @@ import { TeamSquadComponent } from './team-squad.component';
           }
         </form>
         </app-modal>
+        </section>
+        }
 
+        @if (tabs.active() === 'players') {
+        <section role="tabpanel" id="panel-players" aria-labelledby="tab-players">
         @if (clubId()) {
           <app-club-players [clubId]="clubId()" [leagues]="acceptedLeagues()" />
+        }
+        </section>
         }
 
         <app-confirm
@@ -499,6 +526,14 @@ export default class ClubDetailPage {
   private readonly leagues = inject(LeaguesApi);
 
   protected readonly clubId = signal('');
+  protected readonly clubTabs: TabDef[] = [
+    { id: 'teams', label: 'Teams' },
+    { id: 'venues', label: 'Venues' },
+    { id: 'players', label: 'Players' },
+    { id: 'matches', label: 'Matches' },
+    { id: 'blocked', label: 'Blocked dates' },
+    { id: 'admins', label: 'Admins' },
+  ];
   protected readonly club = signal<ClubDetail | null>(null);
   protected readonly admins = signal<ClubAdminSummary[]>([]);
   protected readonly memberships = signal<MembershipSummary[]>([]);
