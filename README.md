@@ -48,6 +48,11 @@ The whole thing ships as a single container: a .NET 10 API that also serves the 
 - **Transfers** move a confirmed registration between clubs — the receiving club requests, the releasing club and the league both approve. See [ADR 0003](docs/adr/0003-player-discipline-registration.md).
 - **Team squads** — assign players to a team, with eligibility enforced: the player must be confirmed for the team's discipline at the club, with a matching gender (squads can be built before the team is entered in a season).
 
+**Club night (pegboard)**
+- A live **pegboard session** replaces the physical club-night board: track who turned up (roster players or ad-hoc guests), a fair waiting queue, courts you add/remove on the fly, and the games on them — singles, level doubles, mixed, or a "funny" (e.g. 3+1) — with a required winner, optional score, and per-night played/won stats.
+- Fill a free court three ways — **manual**, **suggest**, or **auto-fill** — balancing longest-waiting, valid gender makeup, partner/opponent variety, and player **grade**. A makeup that breaks the game type's rule warns but never blocks the host.
+- Run by a new per-club **Session Host** role (or any club admin / SystemAdmin); any signed-in user can watch. The board streams live to every viewer over **Server-Sent Events** — see [ADR 0004](docs/adr/0004-sse-for-pegboard-live-updates.md).
+
 **Interface**
 - **Light / dark theme** — follows the OS preference by default, with a toggle that persists an explicit choice (no flash on load).
 
@@ -62,6 +67,7 @@ The whole thing ships as a single container: a .NET 10 API that also serves the 
 | Migrations | **DbUp** — embedded SQL scripts applied idempotently on startup |
 | Auth | Cookie authentication + antiforgery; **BCrypt** password hashing; Data Protection keys persisted in Postgres |
 | Background work | `BackgroundService` hosted services (season transitions, schedule generation, notification delivery, auth-token cleanup) |
+| Real-time | **Server-Sent Events** for the live club-night pegboard (in-process pub/sub) |
 | Frontend | **Angular 21** (standalone components, signals, reactive forms) + **Tailwind CSS**, served same-origin as static files |
 | Tests | **xUnit v3** + **Testcontainers** (integration, real Postgres) for the backend; **Vitest** for the frontend |
 | Packaging | Single multi-stage **Docker** image (Angular production bundle + .NET publish) |
