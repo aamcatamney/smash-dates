@@ -75,7 +75,7 @@ public sealed class PlayerRepository : IPlayerRepository
         using var conn = _factory.Create();
         var rows = await conn.QueryAsync<PlayerClubView>(
             new CommandDefinition(
-                @"SELECT p.id AS player_id, p.full_name, p.gender, pc.type, p.grade
+                @"SELECT p.id AS player_id, p.full_name, p.gender, pc.type, p.grade::int
                   FROM player_clubs pc
                   JOIN players p ON p.id = pc.player_id
                   WHERE pc.club_id = @clubId
