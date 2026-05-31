@@ -145,13 +145,13 @@ A running container exposes `GET /health` (liveness) and `GET /api/version` (the
 
 ## Screenshots
 
-> Images live in [`docs/screenshots/`](docs/screenshots/).
+> Images live in [`docs/screenshots/`](docs/screenshots/). The league and club pages organise their sections into tabs (the active tab is kept in the URL).
 
 ### Leagues & divisions
-The admin entry point: leagues with their divisions, admins and seasons.
+The admin entry point: the league page, tabbed into Divisions · Seasons · Clubs · Players · Scheduler.
 
 ![Leagues list](docs/screenshots/leagues.png)
-![League detail — divisions, seasons, member clubs](docs/screenshots/league-detail.png)
+![League page — Divisions tab](docs/screenshots/league-detail.png)
 
 ### Season setup & scheduling
 Configure a season's weeks, assign teams to divisions, then generate the fixture list.
@@ -166,9 +166,9 @@ Confirm, reject or record results on fixtures; standings update live with colour
 ![Division standings](docs/screenshots/standings.png)
 
 ### Clubs
-Manage a club's teams, venues, blocked dates and its matches in one place.
+The club page, tabbed into Teams · Venues · Players · Matches · Blocked dates · Admins (Teams shows squads).
 
-![Club detail](docs/screenshots/club-detail.png)
+![Club page — Teams tab with a squad](docs/screenshots/club-detail.png)
 
 ### Bulk CSV import
 Import clubs, teams, venues or season entries from a CSV — partial import with a per-row result and a downloadable template.
