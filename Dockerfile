@@ -34,6 +34,10 @@ RUN apt-get update \
     && apt-get install -y --no-install-recommends libgssapi-krb5-2 \
     && rm -rf /var/lib/apt/lists/*
 
+# Stamped from the CalVer release tag (see .github/workflows/release.yml); surfaced at /api/version.
+ARG VERSION=dev
+ENV APP_VERSION=$VERSION
+
 ENV ASPNETCORE_URLS=http://+:8080 \
     ASPNETCORE_ENVIRONMENT=Production \
     DOTNET_RUNNING_IN_CONTAINER=true
