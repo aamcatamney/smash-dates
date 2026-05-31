@@ -162,3 +162,6 @@ Moving a `Confirmed` Discipline Registration from one Club to another within the
 - The receiving Club's admin opens a transfer for a Player's confirmed registration; the request counts as the receiving Club's agreement.
 - The releasing Club and the League each Approve or Reject.
 - All three agreeing → the registration moves to the receiving Club (which gains a `Member` affiliation if it lacks one); any Rejection cancels it and the registration stays put.
+
+### Team Squad
+A Team's persistent list of Players, managed by a `ClubAdmin@Club`. A Player may be added to a Team's squad only if **eligible**: they hold a `Confirmed` [Discipline Registration](#discipline-registration) at the Team's Club, for the Team's discipline (`Mens`/`Ladies` Team → `Level`, `Mixed` Team → `Mixed`), in a League the Team is **currently entered in** (via a Season Entry in a non-`Closed` Season). For a `Level` Team the Player's gender must also match (`Male` → Mens Team, `Female` → Ladies Team). Ineligible adds are rejected (409). The squad is the roster only — Matches remain atomic ties with no per-Match lineup.

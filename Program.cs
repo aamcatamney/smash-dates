@@ -62,6 +62,7 @@ builder.Services.AddScoped<smash_dates.Services.Scheduling.IScheduleGenerator, s
 builder.Services.AddScoped<IPlayerRepository, PlayerRepository>();
 builder.Services.AddScoped<IDisciplineRegistrationRepository, DisciplineRegistrationRepository>();
 builder.Services.AddScoped<IRegistrationTransferRepository, RegistrationTransferRepository>();
+builder.Services.AddScoped<ITeamPlayerRepository, TeamPlayerRepository>();
 builder.Services.AddScoped<INotificationRepository, NotificationRepository>();
 builder.Services.AddScoped<smash_dates.Services.Notifications.INotificationService, smash_dates.Services.Notifications.NotificationService>();
 builder.Services.AddSingleton<smash_dates.Services.Notifications.INotificationSender, smash_dates.Services.Notifications.LoggingNotificationSender>();
@@ -224,6 +225,7 @@ app.MapClubEndpoints();
 app.MapClubAdminEndpoints();
 app.MapMembershipEndpoints();
 app.MapTeamEndpoints();
+app.MapTeamSquadEndpoints();
 app.MapVenueEndpoints();
 app.MapSeasonEndpoints();
 app.MapSeasonEntryEndpoints();
