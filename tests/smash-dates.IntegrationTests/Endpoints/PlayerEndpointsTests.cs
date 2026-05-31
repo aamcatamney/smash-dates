@@ -73,6 +73,16 @@ public sealed class PlayerEndpointsTests : IntegrationTestBase
     }
 
     [Fact]
+    public async Task Search_AsNonClubAdmin_Returns403()
+    {
+        await Client.LoginAsAsync("plain@example.com", "correct-horse-battery", Seeder);
+
+        var response = await Client.GetAsync("/api/players?search=jane");
+
+        response.StatusCode.Should().Be(HttpStatusCode.Forbidden);
+    }
+
+    [Fact]
     public async Task Search_FindsByName()
     {
         var clubId = await Seeder.CreateClubAsync("Acme", "ACME");

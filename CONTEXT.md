@@ -131,6 +131,8 @@ A persistent person record, **global** (not owned by a single Club), so the same
 
 Gender exists so the [Level discipline](#discipline) resolves to the right gendered play: a `Male` Player playing Level is a Mens player, a `Female` Player playing Level is a Ladies player.
 
+Player rosters follow the same open-registry read model as Clubs (any authenticated user may read a Club's roster; only its admins write). The **cross-club player search** is the exception — it can enumerate people across every Club, so it is limited to `ClubAdmin` (of any Club) or `SystemAdmin`.
+
 ### Player–Club Affiliation
 A link between a Player and a Club with a **type**: `Member` or `Visitor`.
 - **Member** — the Club may **register** this Player for [disciplines](#discipline-registration). A Player may be a Member of more than one Club.

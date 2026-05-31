@@ -28,8 +28,20 @@ public static class ClubPlayersEndpoints
         return app;
     }
 
-    private static async Task<IResult> SearchPlayers(string? search, IPlayerRepository players, CancellationToken ct)
+    // Cross-club search exposes people across every club, so it's limited to club admins
+    // (and SystemAdmin) — the users who legitimately link/transfer players.
+    private static async Task<IResult> SearchPlayers(
+        string? search,
+        ClaimsPrincipal principal,
+        IPlayerRepository players,
+        IClubAdminRepository clubAdmins,
+        CancellationToken ct)
     {
+        var userId = principal.UserId();
+        if (userId is null) return Results.Unauthorized();
+        if (!principal.IsSystemAdmin() && !await clubAdmins.IsAdminOfAnyClubAsync(userId.Value, ct))
+            return Results.Forbid();
+
         var rows = await players.SearchAsync(search ?? string.Empty, 20, ct);
         return Results.Ok(rows.Select(p => new PlayerDto(p.Id, p.FullName, p.Gender.ToString())));
     }
