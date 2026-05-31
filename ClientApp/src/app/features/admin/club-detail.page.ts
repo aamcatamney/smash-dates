@@ -24,6 +24,7 @@ import { ImportResult } from '../../shared/import-result';
 import { ClubPlayersComponent } from './club-players.component';
 import { TeamSquadComponent } from './team-squad.component';
 import { TabsComponent, TabDef } from '../../shared/tabs.component';
+import { PlayersApi } from './players.api';
 
 @Component({
   selector: 'app-club-detail-page',
@@ -50,7 +51,7 @@ import { TabsComponent, TabDef } from '../../shared/tabs.component';
           }
         }
 
-        <app-tabs #tabs [tabs]="clubTabs" />
+        <app-tabs #tabs [tabs]="clubTabs()" />
 
         @if (tabs.active() === 'admins') {
         <section role="tabpanel" id="panel-admins" aria-labelledby="tab-admins">
@@ -495,7 +496,7 @@ import { TabsComponent, TabDef } from '../../shared/tabs.component';
         @if (tabs.active() === 'players') {
         <section role="tabpanel" id="panel-players" aria-labelledby="tab-players">
         @if (clubId()) {
-          <app-club-players [clubId]="clubId()" [leagues]="acceptedLeagues()" />
+          <app-club-players [clubId]="clubId()" [leagues]="acceptedLeagues()" (playerCount)="playerCount.set($event)" />
         }
         </section>
         }
@@ -526,14 +527,16 @@ export default class ClubDetailPage {
   private readonly leagues = inject(LeaguesApi);
 
   protected readonly clubId = signal('');
-  protected readonly clubTabs: TabDef[] = [
-    { id: 'teams', label: 'Teams' },
-    { id: 'venues', label: 'Venues' },
-    { id: 'players', label: 'Players' },
-    { id: 'matches', label: 'Matches' },
-    { id: 'blocked', label: 'Blocked dates' },
-    { id: 'admins', label: 'Admins' },
-  ];
+  private readonly playersApi = inject(PlayersApi);
+  protected readonly playerCount = signal(0);
+  protected readonly clubTabs = computed<TabDef[]>(() => [
+    { id: 'teams', label: 'Teams', count: this.teams().length },
+    { id: 'venues', label: 'Venues', count: this.venues().length },
+    { id: 'players', label: 'Players', count: this.playerCount() },
+    { id: 'matches', label: 'Matches', count: this.matches().length },
+    { id: 'blocked', label: 'Blocked dates', count: this.blockedDates().length },
+    { id: 'admins', label: 'Admins', count: this.admins().length },
+  ]);
   protected readonly club = signal<ClubDetail | null>(null);
   protected readonly admins = signal<ClubAdminSummary[]>([]);
   protected readonly memberships = signal<MembershipSummary[]>([]);
@@ -637,6 +640,7 @@ export default class ClubDetailPage {
           this.refreshVenues();
           this.refreshBlockedDates();
           this.refreshMatches();
+          this.refreshPlayerCount();
         },
       });
     this.leagues.list().subscribe({ next: (rows) => this.leagueList.set(rows) });
@@ -847,6 +851,11 @@ export default class ClubDetailPage {
 
   protected onDeleteBlockedDate(b: BlockedDateSummary): void {
     this.api.deleteBlockedDate(this.clubId(), b.id).subscribe({ next: () => this.refreshBlockedDates() });
+  }
+
+  // Eager count for the Players tab pill (the players child only mounts when that tab is open).
+  private refreshPlayerCount(): void {
+    this.playersApi.listClubPlayers(this.clubId()).subscribe({ next: (p) => this.playerCount.set(p.length) });
   }
 
   private refreshMatches(): void {

@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, effect, inject, input, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, effect, inject, input, output, signal } from '@angular/core';
 import { PlayersApi, Registration, Transfer } from './players.api';
 import { StatusColorPipe } from '../../shared/status-color.pipe';
 
@@ -53,6 +53,8 @@ export class LeaguePlayerApprovalsComponent {
   private readonly api = inject(PlayersApi);
 
   readonly leagueId = input.required<string>();
+  // Emits the number of items awaiting the league's attention (pending regs + transfers).
+  readonly pendingCount = output<number>();
 
   protected readonly registrations = signal<Registration[]>([]);
   protected readonly transfers = signal<Transfer[]>([]);
@@ -66,8 +68,15 @@ export class LeaguePlayerApprovalsComponent {
   }
 
   private refresh(id: string): void {
-    this.api.listLeagueRegistrations(id).subscribe({ next: (r) => this.registrations.set(r) });
-    this.api.listLeagueTransfers(id).subscribe({ next: (t) => this.transfers.set(t) });
+    this.api.listLeagueRegistrations(id).subscribe({ next: (r) => { this.registrations.set(r); this.emitPending(); } });
+    this.api.listLeagueTransfers(id).subscribe({ next: (t) => { this.transfers.set(t); this.emitPending(); } });
+  }
+
+  private emitPending(): void {
+    const pending =
+      this.registrations().filter((r) => r.status === 'Pending').length +
+      this.transfers().filter((t) => t.status === 'Pending').length;
+    this.pendingCount.emit(pending);
   }
 
   protected confirmReg(r: Registration): void {
