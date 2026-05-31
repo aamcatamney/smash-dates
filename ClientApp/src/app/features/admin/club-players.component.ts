@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, effect, inject, input, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, effect, inject, input, output, signal } from '@angular/core';
 import { FormControl, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import { Discipline, Player, PlayerClubType, PlayersApi, PlayerLink, Registration, Transfer } from './players.api';
 import { ModalComponent } from '../../shared/modal.component';
@@ -156,6 +156,7 @@ export class ClubPlayersComponent {
 
   readonly clubId = input.required<string>();
   readonly leagues = input<LeagueOption[]>([]);
+  readonly playerCount = output<number>();
 
   protected readonly players = signal<PlayerLink[]>([]);
   protected readonly registrations = signal<Registration[]>([]);
@@ -200,7 +201,7 @@ export class ClubPlayersComponent {
 
   private refresh(): void {
     const id = this.clubId();
-    this.api.listClubPlayers(id).subscribe({ next: (p) => this.players.set(p) });
+    this.api.listClubPlayers(id).subscribe({ next: (p) => { this.players.set(p); this.playerCount.emit(p.length); } });
     this.api.listClubRegistrations(id).subscribe({ next: (r) => this.registrations.set(r) });
     this.api.listClubTransfers(id).subscribe({ next: (t) => this.transfers.set(t) });
   }

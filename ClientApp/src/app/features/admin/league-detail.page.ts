@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, inject, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
 import { FormArray, FormControl, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import { ActivatedRoute, RouterLink } from '@angular/router';
 import { forkJoin, switchMap, tap } from 'rxjs';
@@ -30,6 +30,7 @@ import { CsvImportComponent } from '../../shared/csv-import.component';
 import { ImportResult } from '../../shared/import-result';
 import { LeaguePlayerApprovalsComponent } from './league-player-approvals.component';
 import { TabsComponent, TabDef } from '../../shared/tabs.component';
+import { PlayersApi } from './players.api';
 
 @Component({
   selector: 'app-league-detail-page',
@@ -52,7 +53,7 @@ import { TabsComponent, TabDef } from '../../shared/tabs.component';
           >
         }
 
-        <app-tabs #tabs [tabs]="leagueTabs" />
+        <app-tabs #tabs [tabs]="leagueTabs()" />
 
         @if (tabs.active() === 'divisions') {
         <section role="tabpanel" id="panel-divisions" aria-labelledby="tab-divisions">
@@ -631,7 +632,7 @@ import { TabsComponent, TabDef } from '../../shared/tabs.component';
         @if (tabs.active() === 'players') {
         <section role="tabpanel" id="panel-players" aria-labelledby="tab-players">
         @if (leagueId) {
-          <app-league-player-approvals [leagueId]="leagueId" />
+          <app-league-player-approvals [leagueId]="leagueId" (pendingCount)="playersPending.set($event)" />
         }
         </section>
         }
@@ -700,13 +701,15 @@ export default class LeagueDetailPage {
   protected readonly schedulingConfig = signal<SchedulingConfig | null>(null);
   protected readonly configDialogOpen = signal(false);
   protected leagueId = '';
-  protected readonly leagueTabs: TabDef[] = [
-    { id: 'divisions', label: 'Divisions' },
-    { id: 'seasons', label: 'Seasons' },
-    { id: 'clubs', label: 'Clubs' },
-    { id: 'players', label: 'Players' },
+  private readonly playersApi = inject(PlayersApi);
+  protected readonly playersPending = signal(0);
+  protected readonly leagueTabs = computed<TabDef[]>(() => [
+    { id: 'divisions', label: 'Divisions', count: this.divisions().length },
+    { id: 'seasons', label: 'Seasons', count: this.seasons().length },
+    { id: 'clubs', label: 'Clubs', count: this.memberships().length },
+    { id: 'players', label: 'Players', count: this.playersPending() },
     { id: 'scheduler', label: 'Scheduler' },
-  ];
+  ]);
 
   protected readonly configForm = new FormGroup({
     spreadWeight: new FormControl(2, { nonNullable: true, validators: [Validators.required, Validators.min(0)] }),
@@ -774,6 +777,7 @@ export default class LeagueDetailPage {
           this.refreshAvailableClubs();
           this.refreshSeasons();
           this.loadConfig();
+          this.refreshPlayersPending();
         }),
         switchMap((l) => this.api.listDivisions(l.id)),
       )
@@ -1149,6 +1153,20 @@ export default class LeagueDetailPage {
   private loadConfig(): void {
     if (!this.leagueId) return;
     this.api.getSchedulingConfig(this.leagueId).subscribe({ next: (c) => this.schedulingConfig.set(c) });
+  }
+
+  // Eager count for the Players tab pill (the approvals child only mounts when that tab is open).
+  private refreshPlayersPending(): void {
+    const id = this.leagueId;
+    if (!id) return;
+    let regs = 0;
+    let transfers = 0;
+    this.playersApi.listLeagueRegistrations(id).subscribe({
+      next: (r) => { regs = r.filter((x) => x.status === 'Pending').length; this.playersPending.set(regs + transfers); },
+    });
+    this.playersApi.listLeagueTransfers(id).subscribe({
+      next: (t) => { transfers = t.filter((x) => x.status === 'Pending').length; this.playersPending.set(regs + transfers); },
+    });
   }
 
   protected onEditConfig(): void {

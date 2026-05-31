@@ -5,6 +5,7 @@ import { ActivatedRoute, Router } from '@angular/router';
 export interface TabDef {
   id: string;
   label: string;
+  count?: number | null;
 }
 
 // Accessible tab bar. The active tab lives in a query param (default `tab`) so it survives
@@ -32,6 +33,17 @@ export interface TabDef {
           "
         >
           {{ t.label }}
+          @if (t.count != null) {
+            <span
+              [class]="
+                'ml-2 inline-block rounded-full px-1.5 py-0.5 text-xs ' +
+                (active() === t.id
+                  ? 'bg-slate-900 text-amber-300 dark:bg-amber-400 dark:text-slate-900'
+                  : 'bg-slate-200 text-slate-600 dark:bg-slate-700 dark:text-slate-300')
+              "
+              >{{ t.count }}</span
+            >
+          }
         </button>
       }
     </div>
