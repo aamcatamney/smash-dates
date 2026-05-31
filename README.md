@@ -23,7 +23,7 @@ The whole thing ships as a single container: a .NET 10 API that also serves the 
 **Seasons**
 - **Seasons** with an explicit ordered list of **Weeks** (Level vs Mixed), validated for non-overlap and in-range.
 - **Season entries** assign teams to divisions per season (promotion/relegation without losing identity), gated by gender match and accepted membership.
-- Lifecycle `Draft → Proposed → Active → Closed`, with **automatic date-driven transitions** (and manual admin overrides).
+- Lifecycle `Draft → Scheduling → Proposed → Active → Closed`. **Generation runs as a background job** (the season sits in `Scheduling` while a worker builds the fixtures, then moves to `Proposed`, or back to `Draft` with a reason if it can't); season transitions are otherwise **automatic and date-driven** (with manual admin overrides).
 - **Blocked dates** at Venue, Club or Team scope, locked once a season is Active.
 
 **The scheduler**

@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, OnDestroy, computed, inject, signal } from '@angular/core';
 import { FormArray, FormControl, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import { ActivatedRoute, RouterLink } from '@angular/router';
 import { forkJoin, switchMap, tap } from 'rxjs';
@@ -229,6 +229,8 @@ import { PlayersApi } from './players.api';
                     >
                       Delete
                     </button>
+                  } @else if (s.status === 'Scheduling') {
+                    <span class="font-mono text-xs text-blue-700 dark:text-blue-300">Generating schedule…</span>
                   } @else {
                     <button
                       type="button"
@@ -382,6 +384,9 @@ import { PlayersApi } from './players.api';
 
               @if (generateError() && generateErrorSeasonId() === s.id) {
                 <p class="mt-2 text-xs text-red-600 dark:text-red-400" role="alert">{{ generateError() }}</p>
+              }
+              @if (s.schedulingError && s.status === 'Draft') {
+                <p class="mt-2 text-xs text-red-600 dark:text-red-400" role="alert">Last generation failed: {{ s.schedulingError }}</p>
               }
 
               @if (fixturesSeasonId() === s.id) {
@@ -661,7 +666,7 @@ import { PlayersApi } from './players.api';
     </div>
   `,
 })
-export default class LeagueDetailPage {
+export default class LeagueDetailPage implements OnDestroy {
   private readonly route = inject(ActivatedRoute);
   private readonly api = inject(LeaguesApi);
   private readonly clubsApi = inject(ClubsApi);
@@ -886,8 +891,28 @@ export default class LeagueDetailPage {
   private refreshSeasons(): void {
     if (!this.leagueId) return;
     this.api.listSeasons(this.leagueId).subscribe({
-      next: (rows) => this.seasons.set(rows),
+      next: (rows) => {
+        this.seasons.set(rows);
+        this.pollWhileScheduling();
+      },
     });
+  }
+
+  private schedulingPoll: ReturnType<typeof setTimeout> | null = null;
+
+  // While any season is being generated in the background, re-fetch until it settles.
+  private pollWhileScheduling(): void {
+    const anyScheduling = this.seasons().some((s) => s.status === 'Scheduling');
+    if (anyScheduling && this.schedulingPoll === null) {
+      this.schedulingPoll = setTimeout(() => {
+        this.schedulingPoll = null;
+        this.refreshSeasons();
+      }, 4000);
+    }
+  }
+
+  ngOnDestroy(): void {
+    if (this.schedulingPoll !== null) clearTimeout(this.schedulingPoll);
   }
 
   protected onCreateSeason(): void {
@@ -1061,6 +1086,8 @@ export default class LeagueDetailPage {
     });
   }
 
+  // Generation is async: the request returns 202 and moves the season to Scheduling; a
+  // background worker builds the schedule. We refresh and poll until it settles.
   protected onGenerate(s: SeasonSummary): void {
     this.generatingSeasonId.set(s.id);
     this.generateError.set(null);
@@ -1069,7 +1096,6 @@ export default class LeagueDetailPage {
       next: () => {
         this.generatingSeasonId.set(null);
         this.refreshSeasons();
-        this.openFixtures(s.id);
       },
       error: (err: { error?: { title?: string } }) => {
         this.generatingSeasonId.set(null);

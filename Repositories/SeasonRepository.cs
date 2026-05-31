@@ -7,7 +7,7 @@ namespace smash_dates.Repositories;
 public sealed class SeasonRepository : ISeasonRepository
 {
     private const string SeasonColumns =
-        "id, league_id, name, start_date, end_date, status, created_at, updated_at";
+        "id, league_id, name, start_date, end_date, status, scheduling_error, created_at, updated_at";
 
     private readonly IDbConnectionFactory _factory;
 
@@ -162,6 +162,29 @@ public sealed class SeasonRepository : ISeasonRepository
         return rows > 0;
     }
 
+    public async Task<bool> BeginSchedulingAsync(Guid id, CancellationToken ct = default)
+    {
+        using var conn = _factory.Create();
+        var rows = await conn.ExecuteAsync(
+            new CommandDefinition(
+                @"UPDATE seasons SET status = 'Scheduling', scheduling_error = NULL, updated_at = now()
+                  WHERE id = @id AND status = 'Draft'",
+                new { id },
+                cancellationToken: ct));
+        return rows > 0;
+    }
+
+    public async Task FailSchedulingAsync(Guid id, string error, CancellationToken ct = default)
+    {
+        using var conn = _factory.Create();
+        await conn.ExecuteAsync(
+            new CommandDefinition(
+                @"UPDATE seasons SET status = 'Draft', scheduling_error = @error, updated_at = now()
+                  WHERE id = @id AND status = 'Scheduling'",
+                new { id, error },
+                cancellationToken: ct));
+    }
+
     private sealed class SeasonRow
     {
         public Guid Id { get; init; }
@@ -170,6 +193,7 @@ public sealed class SeasonRepository : ISeasonRepository
         public DateOnly StartDate { get; init; }
         public DateOnly EndDate { get; init; }
         public string Status { get; init; } = string.Empty;
+        public string? SchedulingError { get; init; }
         public DateTime CreatedAt { get; init; }
         public DateTime UpdatedAt { get; init; }
 
@@ -181,6 +205,7 @@ public sealed class SeasonRepository : ISeasonRepository
             StartDate = StartDate,
             EndDate = EndDate,
             Status = Enum.Parse<SeasonStatus>(Status),
+            SchedulingError = SchedulingError,
             CreatedAt = CreatedAt,
             UpdatedAt = UpdatedAt,
         };

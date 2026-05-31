@@ -13,6 +13,7 @@ public static class GetSeasonEndpoint
         DateOnly StartDate,
         DateOnly EndDate,
         string Status,
+        string? SchedulingError,
         WeekDetail[] Weeks);
 
     public static IEndpointRouteBuilder MapGetSeasonEndpoint(this IEndpointRouteBuilder app)
@@ -38,6 +39,7 @@ public static class GetSeasonEndpoint
             season.StartDate,
             season.EndDate,
             season.Status.ToString(),
+            season.SchedulingError,
             weeks.Select(w => new WeekDetail(w.StartDate, w.EndDate, w.WeekType.ToString())).ToArray()));
     }
 }
