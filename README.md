@@ -40,7 +40,7 @@ The whole thing ships as a single container: a .NET 10 API that also serves the 
 - **Calendar feed (iCal)** — subscribe a calendar app to a club's, league's or team's fixtures via a tokenised, login-free `.ics` URL.
 
 **Notifications**
-- Domain events (invites, membership responses, match confirmations/rejections/postponements) are written to an **outbox** and delivered by a background sender (logging sender by default; real SMTP is a config swap).
+- Domain events (invites, membership responses, match confirmations/rejections/postponements) plus auth emails (verification, password reset) are written to an **outbox** and delivered by a background sender. **Set `Smtp:Host`** to deliver over **SMTP** (MailKit); with no host configured it falls back to a logging sender, so dev and tests need no mail server.
 
 **Players & registrations**
 - **Players** are global, club-managed roster records (no login); clubs link them as **Member** or **Visitor**.
@@ -92,6 +92,8 @@ docker run -p 8080:8080 \
 Open <http://localhost:8080> and register — the first account becomes the SystemAdmin.
 
 > **HTTPS in production:** auth/antiforgery cookies are `Secure`, so a production deployment must be reached over HTTPS. The container is built to sit behind a TLS-terminating reverse proxy / ingress and honours `X-Forwarded-Proto` / `X-Forwarded-For` (`UseForwardedHeaders`). Over plain HTTP, cookie-issuing endpoints (register/login) return 500 by design.
+
+> **Email delivery:** verification and password-reset links (and all other notifications) only reach users once SMTP is configured. Set the `Smtp__*` env vars — at minimum `Smtp__Host` — e.g. `-e "Smtp__Host=smtp.example.com" -e "Smtp__Port=587" -e "Smtp__Username=…" -e "Smtp__Password=…" -e "Smtp__FromAddress=no-reply@yourdomain"`. With no host set, mail is written to the application log instead.
 
 ### Run locally (dev loop)
 

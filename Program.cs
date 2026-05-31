@@ -33,6 +33,7 @@ using smash_dates.Migrations;
 using smash_dates.Repositories;
 using smash_dates.Services.Auth;
 using smash_dates.Services.DataProtection;
+using smash_dates.Services.Notifications;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -70,7 +71,7 @@ builder.Services.AddScoped<ITeamPlayerRepository, TeamPlayerRepository>();
 builder.Services.AddScoped<ICalendarRepository, CalendarRepository>();
 builder.Services.AddScoped<INotificationRepository, NotificationRepository>();
 builder.Services.AddScoped<smash_dates.Services.Notifications.INotificationService, smash_dates.Services.Notifications.NotificationService>();
-builder.Services.AddSingleton<smash_dates.Services.Notifications.INotificationSender, smash_dates.Services.Notifications.LoggingNotificationSender>();
+builder.Services.AddNotificationSender(builder.Configuration);
 builder.Services.AddScoped<smash_dates.Services.Notifications.NotificationDrainer>();
 builder.Services.AddHostedService<smash_dates.Services.Notifications.NotificationDrainerHostedService>();
 builder.Services.AddScoped<smash_dates.Services.Seasons.SeasonTransitioner>();
