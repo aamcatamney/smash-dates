@@ -256,6 +256,7 @@ import { FillDialogComponent, StartGamePayload } from './pegboard/fill-dialog.co
       [waiting]="waiting()"
       [suggestion]="fillSuggestion()"
       (suggest)="onSuggest($event)"
+      (autoFill)="onAutoFill($event)"
       (start)="onStart($event)"
       (closed)="closeFill()"
     />
@@ -513,6 +514,20 @@ export default class PegboardBoardPage {
     this.notice.set(null);
     this.api.suggest(this.clubId(), this.sessionId(), type).subscribe({
       next: (s) => this.fillSuggestion.set(s),
+      error: (e) => this.onMutationError(e),
+    });
+  }
+
+  // Auto-rotate: the board picks the lineup and starts the game in one step.
+  protected onAutoFill(type: GameType): void {
+    const court = this.fillCourt();
+    if (!court) return;
+    this.notice.set(null);
+    this.api.autoFill(this.clubId(), this.sessionId(), court.id, type).subscribe({
+      next: () => {
+        this.closeFill();
+        this.refresh();
+      },
       error: (e) => this.onMutationError(e),
     });
   }

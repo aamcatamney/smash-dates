@@ -79,6 +79,21 @@ describe('FillDialogComponent', () => {
     expect(payload).toEqual({ type: 'Singles', sideA: ['a1'], sideB: ['a2'] });
   });
 
+  it('emits autoFill with the current type', () => {
+    const fixture = render();
+    const c = fixture.componentInstance as unknown as Record<string, any>;
+    let emitted: string | null = null;
+    fixture.componentInstance.autoFill.subscribe((t) => (emitted = t));
+    c['type'].set('Mixed');
+    fixture.detectChanges();
+
+    const buttons = Array.from(
+      (fixture.nativeElement as HTMLElement).querySelectorAll<HTMLButtonElement>('button'),
+    );
+    buttons.find((b) => /Auto-fill/.test(b.textContent ?? ''))?.dispatchEvent(new Event('click'));
+    expect(emitted!).toBe('Mixed');
+  });
+
   it('seeds the assignment from a pushed suggestion', () => {
     const fixture = render();
     fixture.componentRef.setInput('suggestion', { sideA: ['a1'], sideB: ['a2'] });
