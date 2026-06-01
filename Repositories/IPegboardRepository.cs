@@ -13,7 +13,11 @@ public sealed record BoardAttendee(
 public sealed record BoardView(
     PegboardSession Session,
     IReadOnlyList<BoardCourt> Courts,
-    IReadOnlyList<BoardAttendee> Attendees);
+    IReadOnlyList<BoardAttendee> Attendees,
+    // Caller-scoped: true when the requester may run this session (SessionHost/ClubAdmin/SystemAdmin).
+    // The repo always builds it false; the endpoint sets it from the principal. Drives the client's
+    // host-vs-viewer chrome — viewers get a read-only board (see GetBoardEndpoint).
+    bool CanManage = false);
 
 // One attendee's makeup-relevant facts, used by the fill engine.
 public sealed record WaitingAttendee(Guid Id, Gender Gender, int? Grade, DateTime WaitingSince, int GamesPlayed);

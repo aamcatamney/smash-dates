@@ -49,9 +49,9 @@ The whole thing ships as a single container: a .NET 10 API that also serves the 
 - **Team squads** — assign players to a team, with eligibility enforced: the player must be confirmed for the team's discipline at the club, with a matching gender (squads can be built before the team is entered in a season).
 
 **Club night (pegboard)**
-- A live **pegboard session** replaces the physical club-night board: track who turned up (roster players or ad-hoc guests), a fair waiting queue, courts you add/remove on the fly, and the games on them — singles, level doubles, mixed, or a "funny" (e.g. 3+1) — with a required winner, optional score, and per-night played/won stats.
+- A live **pegboard session** replaces the physical club-night board: track who turned up (roster players or ad-hoc guests), a fair waiting queue (with each player's wait time), courts you add/remove on the fly, and the games on them — singles, level doubles, mixed, or a "funny" (e.g. 3+1) — with a required winner, optional score, and per-night played/won stats.
 - Fill a free court three ways — **manual**, **suggest**, or **auto-fill** — balancing longest-waiting, valid gender makeup, partner/opponent variety, and player **grade**. A makeup that breaks the game type's rule warns but never blocks the host.
-- Run by a new per-club **Session Host** role (or any club admin / SystemAdmin); any signed-in user can watch. The board streams live to every viewer over **Server-Sent Events** — see [ADR 0004](docs/adr/0004-sse-for-pegboard-live-updates.md).
+- Run by a new per-club **Session Host** role (or any club admin / SystemAdmin); any signed-in user can watch. The board streams live to every viewer over **Server-Sent Events** — see [ADR 0004](docs/adr/0004-sse-for-pegboard-live-updates.md). Viewers get the same board **read-only** (host controls hidden), and a **closed** session stays viewable as a read-only history with each attendee's final stats.
 
 **Interface**
 - **Light / dark theme** — follows the OS preference by default, with a toggle that persists an explicit choice (no flash on load).
