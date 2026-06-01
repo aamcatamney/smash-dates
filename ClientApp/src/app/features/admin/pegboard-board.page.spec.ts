@@ -46,6 +46,7 @@ const board: BoardView = {
       gamesWon: 1,
     },
   ],
+  canManage: true,
 };
 
 function apiMock(overrides: Partial<PegboardApi> = {}): PegboardApi {
@@ -121,5 +122,52 @@ describe('PegboardBoardPage', () => {
     c['onFinish']();
 
     expect(api.finishGame).toHaveBeenCalledWith('club-1', 'session-1', 'game-1', 'A', '21-15');
+  });
+
+  // Court controls live inside <app-court-card>; counting its buttons isolates host chrome from
+  // the always-rendered (but closed) modals, whose titles would otherwise pollute a text match.
+  function courtButtons(fixture: ReturnType<typeof create>): number {
+    return (fixture.nativeElement as HTMLElement).querySelectorAll('app-court-card button').length;
+  }
+
+  it('shows host controls when canManage is true and the session is open', () => {
+    const fixture = create(apiMock());
+    const c = fixture.componentInstance as unknown as Record<string, any>;
+    const text = (fixture.nativeElement as HTMLElement).textContent ?? '';
+
+    expect(c['isLive']()).toBe(true);
+    expect(text).toContain('Close session');
+    expect(courtButtons(fixture)).toBeGreaterThan(0); // Finish/Cancel + Fill on the free court
+  });
+
+  it('hides host controls and shows a read-only badge for a viewer', () => {
+    const viewerBoard: BoardView = { ...board, canManage: false };
+    const fixture = create(apiMock({ getBoard: vi.fn(() => of(viewerBoard)) }));
+    const c = fixture.componentInstance as unknown as Record<string, any>;
+    const text = (fixture.nativeElement as HTMLElement).textContent ?? '';
+
+    expect(c['isLive']()).toBe(false);
+    expect(text).toContain('Viewing · read-only');
+    expect(text).not.toContain('Close session');
+    expect(courtButtons(fixture)).toBe(0);
+    // Courts and players still render read-only.
+    expect(text).toContain('Court 1');
+    expect(text).toContain('Carol');
+  });
+
+  it('shows a closed-history badge and no controls for a closed session', () => {
+    const closedBoard: BoardView = {
+      ...board,
+      session: { ...board.session, status: 'Closed' },
+      canManage: true, // a host viewing history — still read-only
+    };
+    const fixture = create(apiMock({ getBoard: vi.fn(() => of(closedBoard)) }));
+    const c = fixture.componentInstance as unknown as Record<string, any>;
+    const text = (fixture.nativeElement as HTMLElement).textContent ?? '';
+
+    expect(c['isLive']()).toBe(false);
+    expect(text).toContain('Closed · history');
+    expect(text).not.toContain('Close session');
+    expect(courtButtons(fixture)).toBe(0);
   });
 });

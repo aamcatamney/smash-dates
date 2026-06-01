@@ -48,6 +48,8 @@ export interface BoardView {
   session: { id: string; clubId: string; name: string; status: PegSessionStatus };
   courts: BoardCourt[];
   attendees: BoardAttendee[];
+  // True when the requester may run this session; drives host-vs-viewer chrome.
+  canManage: boolean;
 }
 
 export interface FillSuggestion { sideA: string[]; sideB: string[]; }

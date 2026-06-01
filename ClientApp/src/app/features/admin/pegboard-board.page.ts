@@ -6,8 +6,8 @@ import { switchMap } from 'rxjs';
 import {
   BoardAttendee,
   BoardCourt,
-  BoardGamePlayer,
   BoardView,
+  FillSuggestion,
   GameSide,
   GameType,
   PegboardApi,
@@ -16,25 +16,24 @@ import { Gender } from './players.api';
 import { ModalComponent } from '../../shared/modal.component';
 import { ConfirmComponent } from '../../shared/confirm.component';
 import { AdminHeaderComponent } from './admin-header.component';
-
-// The set of game types offered in the Fill flow, in display order.
-const GAME_TYPES: readonly GameType[] = ['Singles', 'Doubles', 'Mixed', 'Funny'];
-
-// Local view-model: a court paired with its players already split by side, so the template
-// never has to filter (no arrow functions allowed in templates).
-interface CourtView {
-  readonly court: BoardCourt;
-  readonly sideA: readonly BoardGamePlayer[];
-  readonly sideB: readonly BoardGamePlayer[];
-}
+import { CourtCardComponent } from './pegboard/court-card.component';
+import { WaitingQueueComponent } from './pegboard/waiting-queue.component';
+import { FillDialogComponent, StartGamePayload } from './pegboard/fill-dialog.component';
 
 // Full-screen, live club-night board. Subscribes to the SSE stream and re-fetches the board on
-// every event. Host controls (add court/attendee, fill/start, finish/cancel, close) are rendered
-// unconditionally; the board is host-facing and the API returns 403 to non-hosts, surfaced as a
-// non-blocking notice rather than gating reads.
+// every event. The board read returns `canManage`: host controls render only on a live session
+// the caller may run; viewers and closed-history boards get the same layout, read-only.
 @Component({
   selector: 'app-pegboard-board-page',
-  imports: [ReactiveFormsModule, ModalComponent, ConfirmComponent, AdminHeaderComponent],
+  imports: [
+    ReactiveFormsModule,
+    ModalComponent,
+    ConfirmComponent,
+    AdminHeaderComponent,
+    CourtCardComponent,
+    WaitingQueueComponent,
+    FillDialogComponent,
+  ],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <div class="min-h-screen bg-slate-50 dark:bg-slate-950">
@@ -42,9 +41,13 @@ interface CourtView {
 
       <main class="mx-auto w-full max-w-[120rem] px-4 py-6 sm:px-6">
         @if (board(); as b) {
-          <header class="flex flex-wrap items-end justify-between gap-4 border-b-2 border-slate-900 pb-4 dark:border-amber-400">
+          <header
+            class="flex flex-wrap items-end justify-between gap-4 border-b-2 border-slate-900 pb-4 dark:border-amber-400"
+          >
             <div>
-              <p class="font-mono text-xs uppercase tracking-[0.2em] text-slate-500 dark:text-slate-400">
+              <p
+                class="font-mono text-xs uppercase tracking-[0.2em] text-slate-500 dark:text-slate-400"
+              >
                 Club night · live board
               </p>
               <h1 class="mt-1 font-mono text-3xl font-semibold text-slate-900 dark:text-slate-100">
@@ -52,24 +55,37 @@ interface CourtView {
               </h1>
             </div>
             <div class="flex flex-wrap items-center gap-3">
-              <span
-                class="inline-flex items-center gap-2 rounded-md border border-slate-300 px-3 py-1.5 font-mono text-xs uppercase tracking-wider text-slate-600 dark:border-slate-700 dark:text-slate-300"
-              >
-                <span class="font-semibold text-slate-900 dark:text-slate-100">{{ playingCount() }}</span> playing
-                ·
-                <span class="font-semibold text-slate-900 dark:text-slate-100">{{ waiting().length }}</span> waiting
-              </span>
-              @if (b.session.status === 'Open') {
+              @if (isLive()) {
+                <span
+                  class="inline-flex items-center gap-2 rounded-md border border-slate-300 px-3 py-1.5 font-mono text-xs uppercase tracking-wider text-slate-600 dark:border-slate-700 dark:text-slate-300"
+                >
+                  <span class="font-semibold text-slate-900 dark:text-slate-100">{{
+                    playingCount()
+                  }}</span>
+                  playing ·
+                  <span class="font-semibold text-slate-900 dark:text-slate-100">{{
+                    waitingCount()
+                  }}</span>
+                  waiting
+                </span>
                 <button
                   type="button"
                   (click)="askClose()"
-                  class="rounded-md border border-red-300 px-4 py-2 font-mono text-sm font-medium text-red-700 hover:bg-red-50 focus:outline-none focus:ring-2 focus:ring-red-600 dark:border-red-800 dark:text-red-400 dark:hover:bg-red-950"
+                  class="min-h-11 rounded-md border border-red-300 px-4 py-2 font-mono text-sm font-medium text-red-700 hover:bg-red-50 focus:outline-none focus:ring-2 focus:ring-red-600 dark:border-red-800 dark:text-red-400 dark:hover:bg-red-950"
                 >
                   Close session
                 </button>
+              } @else if (b.session.status === 'Closed') {
+                <span
+                  class="rounded-md bg-slate-200 px-4 py-2 font-mono text-sm uppercase tracking-wider text-slate-600 dark:bg-slate-800 dark:text-slate-300"
+                >
+                  Closed · history
+                </span>
               } @else {
-                <span class="rounded-md bg-slate-200 px-4 py-2 font-mono text-sm uppercase tracking-wider text-slate-600 dark:bg-slate-800 dark:text-slate-300">
-                  Closed
+                <span
+                  class="rounded-md border border-slate-300 px-4 py-2 font-mono text-sm uppercase tracking-wider text-slate-500 dark:border-slate-700 dark:text-slate-400"
+                >
+                  Viewing · read-only
                 </span>
               }
             </div>
@@ -88,191 +104,63 @@ interface CourtView {
             <!-- Courts grid -->
             <section aria-label="Courts">
               <div class="flex items-center justify-between">
-                <h2 class="font-mono text-sm font-semibold uppercase tracking-wider text-slate-900 dark:text-slate-100">
+                <h2
+                  class="font-mono text-sm font-semibold uppercase tracking-wider text-slate-900 dark:text-slate-100"
+                >
                   Courts
                 </h2>
-                <button
-                  type="button"
-                  (click)="courtDialogOpen.set(true)"
-                  class="rounded-md border border-slate-300 px-3 py-1.5 font-mono text-xs text-slate-700 hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-slate-900 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800 dark:focus:ring-slate-100"
-                >
-                  ＋ Add court
-                </button>
+                @if (isLive()) {
+                  <button
+                    type="button"
+                    (click)="courtDialogOpen.set(true)"
+                    class="inline-flex min-h-11 items-center rounded-md border border-slate-300 px-3 py-1.5 font-mono text-xs text-slate-700 hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-slate-900 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800 dark:focus:ring-slate-100"
+                  >
+                    ＋ Add court
+                  </button>
+                }
               </div>
 
               <div class="mt-3 grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-                @for (cv of courtViews(); track cv.court.id) {
-                  <article
-                    class="flex flex-col rounded-lg border-2 bg-white p-4 dark:bg-slate-900"
-                    [class.border-amber-500]="cv.court.activeGame !== null"
-                    [class.dark:border-amber-400]="cv.court.activeGame !== null"
-                    [class.border-slate-200]="cv.court.activeGame === null"
-                    [class.dark:border-slate-800]="cv.court.activeGame === null"
-                  >
-                    <div class="flex items-center justify-between">
-                      <h3 class="font-mono text-lg font-semibold text-slate-900 dark:text-slate-100">
-                        {{ cv.court.label }}
-                      </h3>
-                      @if (cv.court.activeGame; as g) {
-                        <span class="rounded bg-amber-200 px-2 py-0.5 font-mono text-xs uppercase tracking-wider text-amber-900 dark:bg-amber-400 dark:text-slate-900">
-                          {{ g.type }}
-                        </span>
-                      } @else {
-                        <button
-                          type="button"
-                          [attr.aria-label]="'Remove ' + cv.court.label"
-                          (click)="askRemoveCourt(cv.court)"
-                          class="rounded px-2 py-0.5 font-mono text-xs text-slate-400 hover:text-red-600 dark:hover:text-red-400"
-                        >
-                          ✕
-                        </button>
-                      }
-                    </div>
-
-                    @if (cv.court.activeGame; as g) {
-                      <div class="mt-3 grid flex-1 grid-cols-[1fr_auto_1fr] items-stretch gap-2">
-                        <div class="rounded-md bg-slate-50 p-3 dark:bg-slate-800/60">
-                          <p class="font-mono text-xs uppercase tracking-wider text-slate-500 dark:text-slate-400">Side A</p>
-                          <ul class="mt-1 space-y-1">
-                            @for (p of cv.sideA; track p.attendanceId) {
-                              <li class="font-mono text-sm font-medium text-slate-900 dark:text-slate-100">{{ p.displayName }}</li>
-                            }
-                          </ul>
-                        </div>
-                        <div class="flex items-center font-mono text-xs font-semibold uppercase text-slate-400">v</div>
-                        <div class="rounded-md bg-slate-50 p-3 dark:bg-slate-800/60">
-                          <p class="font-mono text-xs uppercase tracking-wider text-slate-500 dark:text-slate-400">Side B</p>
-                          <ul class="mt-1 space-y-1">
-                            @for (p of cv.sideB; track p.attendanceId) {
-                              <li class="font-mono text-sm font-medium text-slate-900 dark:text-slate-100">{{ p.displayName }}</li>
-                            }
-                          </ul>
-                        </div>
-                      </div>
-                      <div class="mt-3 flex gap-2">
-                        <button
-                          type="button"
-                          (click)="openFinish(cv.court)"
-                          class="flex-1 rounded-md bg-slate-900 px-3 py-2.5 font-mono text-sm font-medium text-amber-300 hover:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-slate-900 dark:bg-amber-400 dark:text-slate-900 dark:hover:bg-amber-300 dark:focus:ring-slate-100"
-                        >
-                          Finish
-                        </button>
-                        <button
-                          type="button"
-                          (click)="askCancelGame(cv.court)"
-                          class="rounded-md border border-slate-300 px-3 py-2.5 font-mono text-sm text-slate-600 hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-slate-900 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800 dark:focus:ring-slate-100"
-                        >
-                          Cancel
-                        </button>
-                      </div>
-                    } @else {
-                      <div class="mt-3 flex flex-1 flex-col items-center justify-center rounded-md border-2 border-dashed border-slate-200 py-6 dark:border-slate-800">
-                        <p class="font-mono text-xs uppercase tracking-wider text-slate-400">Court free</p>
-                        <button
-                          type="button"
-                          (click)="openFill(cv.court)"
-                          class="mt-3 rounded-md bg-slate-900 px-5 py-2.5 font-mono text-sm font-medium text-amber-300 hover:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-slate-900 dark:bg-amber-400 dark:text-slate-900 dark:hover:bg-amber-300 dark:focus:ring-slate-100"
-                        >
-                          Fill court
-                        </button>
-                      </div>
-                    }
-                  </article>
+                @for (c of b.courts; track c.id) {
+                  <app-court-card
+                    [court]="c"
+                    [live]="isLive()"
+                    (fill)="openFill(c)"
+                    (finish)="openFinish(c)"
+                    (cancel)="askCancelGame(c)"
+                    (remove)="askRemoveCourt(c)"
+                  />
                 } @empty {
-                  <p class="rounded-md border border-dashed border-slate-300 px-4 py-6 text-center font-mono text-sm text-slate-500 dark:border-slate-700 dark:text-slate-400 sm:col-span-2 xl:col-span-3">
-                    No courts yet. Add one to start play.
+                  <p
+                    class="rounded-md border border-dashed border-slate-300 px-4 py-6 text-center font-mono text-sm text-slate-500 dark:border-slate-700 dark:text-slate-400 sm:col-span-2 xl:col-span-3"
+                  >
+                    No courts yet.
+                    @if (isLive()) {
+                      Add one to start play.
+                    }
                   </p>
                 }
               </div>
             </section>
 
-            <!-- Waiting queue + status columns -->
+            <!-- Players -->
             <aside aria-label="Players" class="lg:sticky lg:top-6 lg:self-start">
-              <div class="flex items-center justify-between">
-                <h2 class="font-mono text-sm font-semibold uppercase tracking-wider text-slate-900 dark:text-slate-100">
-                  Waiting <span class="text-slate-400">({{ waiting().length }})</span>
-                </h2>
-                <button
-                  type="button"
-                  (click)="attendeeDialogOpen.set(true)"
-                  class="rounded-md border border-slate-300 px-3 py-1.5 font-mono text-xs text-slate-700 hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-slate-900 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800 dark:focus:ring-slate-100"
-                >
-                  ＋ Add player
-                </button>
-              </div>
-
-              <ol class="mt-3 space-y-2">
-                @for (a of waiting(); track a.id) {
-                  <li class="rounded-md border border-slate-200 bg-white p-3 dark:border-slate-800 dark:bg-slate-900">
-                    <div class="flex items-center justify-between gap-2">
-                      <span class="font-mono text-sm font-medium text-slate-900 dark:text-slate-100">{{ a.displayName }}</span>
-                      <span class="font-mono text-xs uppercase tracking-wider text-slate-500 dark:text-slate-400">
-                        {{ a.gender }}@if (a.grade !== null) { · G{{ a.grade }} }
-                      </span>
-                    </div>
-                    <div class="mt-2 flex items-center justify-between gap-2">
-                      <span class="font-mono text-xs text-slate-500 dark:text-slate-400">
-                        {{ a.gamesPlayed }} played · {{ a.gamesWon }} won
-                      </span>
-                      <div class="flex gap-1">
-                        <button
-                          type="button"
-                          [attr.aria-label]="'Rest ' + a.displayName"
-                          (click)="rest(a)"
-                          class="rounded border border-slate-300 px-2 py-1 font-mono text-xs text-slate-600 hover:bg-slate-50 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800"
-                        >
-                          Rest
-                        </button>
-                        <button
-                          type="button"
-                          [attr.aria-label]="a.displayName + ' has left'"
-                          (click)="leave(a)"
-                          class="rounded border border-slate-300 px-2 py-1 font-mono text-xs text-slate-600 hover:bg-slate-50 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800"
-                        >
-                          Leave
-                        </button>
-                        <button
-                          type="button"
-                          [attr.aria-label]="'Remove ' + a.displayName"
-                          (click)="askRemove(a)"
-                          class="rounded border border-red-300 px-2 py-1 font-mono text-xs text-red-700 hover:bg-red-50 dark:border-red-800 dark:text-red-400 dark:hover:bg-red-950"
-                        >
-                          ✕
-                        </button>
-                      </div>
-                    </div>
-                  </li>
-                } @empty {
-                  <li class="rounded-md border border-dashed border-slate-300 px-3 py-4 text-center font-mono text-sm text-slate-500 dark:border-slate-700 dark:text-slate-400">
-                    Queue is empty.
-                  </li>
-                }
-              </ol>
-
-              @if (resting().length > 0) {
-                <h2 class="mt-6 font-mono text-sm font-semibold uppercase tracking-wider text-slate-900 dark:text-slate-100">
-                  Resting <span class="text-slate-400">({{ resting().length }})</span>
-                </h2>
-                <ol class="mt-3 space-y-2">
-                  @for (a of resting(); track a.id) {
-                    <li class="flex items-center justify-between gap-2 rounded-md border border-slate-200 bg-white px-3 py-2 dark:border-slate-800 dark:bg-slate-900">
-                      <span class="font-mono text-sm text-slate-700 dark:text-slate-300">{{ a.displayName }}</span>
-                      <button
-                        type="button"
-                        [attr.aria-label]="'Return ' + a.displayName + ' to the queue'"
-                        (click)="unrest(a)"
-                        class="rounded border border-slate-300 px-2 py-1 font-mono text-xs text-slate-600 hover:bg-slate-50 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800"
-                      >
-                        Back
-                      </button>
-                    </li>
-                  }
-                </ol>
-              }
+              <app-waiting-queue
+                [attendees]="b.attendees"
+                [live]="isLive()"
+                [now]="now()"
+                (addPlayer)="attendeeDialogOpen.set(true)"
+                (rest)="rest($event)"
+                (leave)="leave($event)"
+                (unrest)="unrest($event)"
+                (remove)="askRemove($event)"
+              />
             </aside>
           </div>
         } @else {
-          <p class="mt-10 text-center font-mono text-sm text-slate-500 dark:text-slate-400">Loading board…</p>
+          <p class="mt-10 text-center font-mono text-sm text-slate-500 dark:text-slate-400">
+            Loading board…
+          </p>
         }
       </main>
     </div>
@@ -281,7 +169,10 @@ interface CourtView {
     <app-modal [open]="courtDialogOpen()" title="Add court" (closed)="courtDialogOpen.set(false)">
       <form [formGroup]="courtForm" (ngSubmit)="onAddCourt()" class="grid gap-3">
         <label class="grid gap-1">
-          <span class="font-mono text-xs uppercase tracking-wider text-slate-600 dark:text-slate-400">Court label</span>
+          <span
+            class="font-mono text-xs uppercase tracking-wider text-slate-600 dark:text-slate-400"
+            >Court label</span
+          >
           <input
             type="text"
             formControlName="label"
@@ -292,7 +183,7 @@ interface CourtView {
         <button
           type="submit"
           [disabled]="courtForm.invalid"
-          class="justify-self-start rounded-md bg-slate-900 px-4 py-2 font-mono text-sm font-medium text-amber-300 disabled:opacity-50 dark:bg-amber-400 dark:text-slate-900"
+          class="min-h-11 justify-self-start rounded-md bg-slate-900 px-4 py-2 font-mono text-sm font-medium text-amber-300 disabled:opacity-50 dark:bg-amber-400 dark:text-slate-900"
         >
           Add court
         </button>
@@ -300,10 +191,17 @@ interface CourtView {
     </app-modal>
 
     <!-- Add attendee (guest) -->
-    <app-modal [open]="attendeeDialogOpen()" title="Add player" (closed)="attendeeDialogOpen.set(false)">
+    <app-modal
+      [open]="attendeeDialogOpen()"
+      title="Add player"
+      (closed)="attendeeDialogOpen.set(false)"
+    >
       <form [formGroup]="attendeeForm" (ngSubmit)="onAddAttendee()" class="grid gap-3">
         <label class="grid gap-1">
-          <span class="font-mono text-xs uppercase tracking-wider text-slate-600 dark:text-slate-400">Name</span>
+          <span
+            class="font-mono text-xs uppercase tracking-wider text-slate-600 dark:text-slate-400"
+            >Name</span
+          >
           <input
             type="text"
             formControlName="name"
@@ -312,7 +210,10 @@ interface CourtView {
           />
         </label>
         <label class="grid gap-1">
-          <span class="font-mono text-xs uppercase tracking-wider text-slate-600 dark:text-slate-400">Gender</span>
+          <span
+            class="font-mono text-xs uppercase tracking-wider text-slate-600 dark:text-slate-400"
+            >Gender</span
+          >
           <select
             formControlName="gender"
             class="rounded-md border border-slate-300 px-3 py-2 font-mono text-sm focus:outline-none focus:ring-2 focus:ring-slate-900 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 dark:focus:ring-slate-100"
@@ -322,7 +223,10 @@ interface CourtView {
           </select>
         </label>
         <label class="grid gap-1">
-          <span class="font-mono text-xs uppercase tracking-wider text-slate-600 dark:text-slate-400">Grade (optional)</span>
+          <span
+            class="font-mono text-xs uppercase tracking-wider text-slate-600 dark:text-slate-400"
+            >Grade (optional)</span
+          >
           <select
             formControlName="grade"
             class="rounded-md border border-slate-300 px-3 py-2 font-mono text-sm focus:outline-none focus:ring-2 focus:ring-slate-900 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 dark:focus:ring-slate-100"
@@ -338,7 +242,7 @@ interface CourtView {
         <button
           type="submit"
           [disabled]="attendeeForm.invalid"
-          class="justify-self-start rounded-md bg-slate-900 px-4 py-2 font-mono text-sm font-medium text-amber-300 disabled:opacity-50 dark:bg-amber-400 dark:text-slate-900"
+          class="min-h-11 justify-self-start rounded-md bg-slate-900 px-4 py-2 font-mono text-sm font-medium text-amber-300 disabled:opacity-50 dark:bg-amber-400 dark:text-slate-900"
         >
           Add player
         </button>
@@ -346,91 +250,43 @@ interface CourtView {
     </app-modal>
 
     <!-- Fill court -->
-    <app-modal [open]="fillCourt() !== null" [title]="fillTitle()" (closed)="closeFill()">
-      <div class="grid gap-4">
-        <label class="grid gap-1">
-          <span class="font-mono text-xs uppercase tracking-wider text-slate-600 dark:text-slate-400">Game type</span>
-          <select
-            [value]="fillType()"
-            (change)="onFillTypeChange($event)"
-            class="rounded-md border border-slate-300 px-3 py-2 font-mono text-sm focus:outline-none focus:ring-2 focus:ring-slate-900 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 dark:focus:ring-slate-100"
-          >
-            @for (t of gameTypes; track t) {
-              <option [value]="t">{{ t }}</option>
-            }
-          </select>
-        </label>
-
-        <button
-          type="button"
-          (click)="onSuggest()"
-          class="justify-self-start rounded-md border border-slate-300 px-3 py-1.5 font-mono text-xs text-slate-700 hover:bg-slate-50 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800"
-        >
-          Suggest a lineup
-        </button>
-
-        <fieldset class="grid gap-2">
-          <legend class="font-mono text-xs uppercase tracking-wider text-slate-600 dark:text-slate-400">
-            Tap to assign — A then B
-          </legend>
-          <ul class="max-h-64 space-y-1 overflow-y-auto">
-            @for (a of waiting(); track a.id) {
-              <li>
-                <button
-                  type="button"
-                  (click)="cycleSide(a.id)"
-                  [attr.aria-pressed]="sideOf(a.id) !== null"
-                  class="flex w-full items-center justify-between rounded-md border px-3 py-2 text-left font-mono text-sm"
-                  [class.border-slate-200]="sideOf(a.id) === null"
-                  [class.dark:border-slate-800]="sideOf(a.id) === null"
-                  [class.text-slate-700]="sideOf(a.id) === null"
-                  [class.dark:text-slate-300]="sideOf(a.id) === null"
-                  [class.border-slate-900]="sideOf(a.id) !== null"
-                  [class.dark:border-amber-400]="sideOf(a.id) !== null"
-                  [class.bg-slate-50]="sideOf(a.id) !== null"
-                  [class.dark:bg-slate-800]="sideOf(a.id) !== null"
-                >
-                  <span>{{ a.displayName }}</span>
-                  @if (sideOf(a.id); as s) {
-                    <span class="rounded bg-slate-900 px-2 py-0.5 text-xs text-amber-300 dark:bg-amber-400 dark:text-slate-900">{{ s }}</span>
-                  } @else {
-                    <span class="text-xs text-slate-400">tap</span>
-                  }
-                </button>
-              </li>
-            } @empty {
-              <li class="font-mono text-sm text-slate-500 dark:text-slate-400">No one waiting.</li>
-            }
-          </ul>
-        </fieldset>
-
-        <button
-          type="button"
-          (click)="onStart()"
-          [disabled]="!canStart()"
-          class="justify-self-start rounded-md bg-slate-900 px-4 py-2 font-mono text-sm font-medium text-amber-300 disabled:opacity-50 dark:bg-amber-400 dark:text-slate-900"
-        >
-          Start game
-        </button>
-      </div>
-    </app-modal>
+    <app-fill-dialog
+      [open]="fillCourt() !== null"
+      [courtLabel]="fillCourt()?.label ?? ''"
+      [waiting]="waiting()"
+      [suggestion]="fillSuggestion()"
+      (suggest)="onSuggest($event)"
+      (start)="onStart($event)"
+      (closed)="closeFill()"
+    />
 
     <!-- Finish game -->
     <app-modal [open]="finishCourt() !== null" title="Finish game" (closed)="closeFinish()">
       <form [formGroup]="finishForm" (ngSubmit)="onFinish()" class="grid gap-3">
         <fieldset class="grid gap-1">
-          <legend class="font-mono text-xs uppercase tracking-wider text-slate-600 dark:text-slate-400">Winner</legend>
+          <legend
+            class="font-mono text-xs uppercase tracking-wider text-slate-600 dark:text-slate-400"
+          >
+            Winner
+          </legend>
           <div class="flex gap-2">
-            <label class="flex flex-1 cursor-pointer items-center justify-center gap-2 rounded-md border border-slate-300 px-3 py-3 font-mono text-sm dark:border-slate-700">
+            <label
+              class="flex min-h-11 flex-1 cursor-pointer items-center justify-center gap-2 rounded-md border border-slate-300 px-3 py-3 font-mono text-sm dark:border-slate-700"
+            >
               <input type="radio" formControlName="winnerSide" value="A" /> Side A
             </label>
-            <label class="flex flex-1 cursor-pointer items-center justify-center gap-2 rounded-md border border-slate-300 px-3 py-3 font-mono text-sm dark:border-slate-700">
+            <label
+              class="flex min-h-11 flex-1 cursor-pointer items-center justify-center gap-2 rounded-md border border-slate-300 px-3 py-3 font-mono text-sm dark:border-slate-700"
+            >
               <input type="radio" formControlName="winnerSide" value="B" /> Side B
             </label>
           </div>
         </fieldset>
         <label class="grid gap-1">
-          <span class="font-mono text-xs uppercase tracking-wider text-slate-600 dark:text-slate-400">Score (optional)</span>
+          <span
+            class="font-mono text-xs uppercase tracking-wider text-slate-600 dark:text-slate-400"
+            >Score (optional)</span
+          >
           <input
             type="text"
             formControlName="score"
@@ -441,7 +297,7 @@ interface CourtView {
         <button
           type="submit"
           [disabled]="finishForm.invalid"
-          class="justify-self-start rounded-md bg-slate-900 px-4 py-2 font-mono text-sm font-medium text-amber-300 disabled:opacity-50 dark:bg-amber-400 dark:text-slate-900"
+          class="min-h-11 justify-self-start rounded-md bg-slate-900 px-4 py-2 font-mono text-sm font-medium text-amber-300 disabled:opacity-50 dark:bg-amber-400 dark:text-slate-900"
         >
           Record result
         </button>
@@ -460,57 +316,43 @@ export default class PegboardBoardPage {
   private readonly router = inject(Router);
   private readonly api = inject(PegboardApi);
 
-  protected readonly gameTypes = GAME_TYPES;
-
   protected readonly clubId = signal('');
   protected readonly sessionId = signal('');
   protected readonly board = signal<BoardView | null>(null);
   protected readonly notice = signal<string | null>(null);
+  // Reference clock captured each time the board loads — drives wait-time display.
+  protected readonly now = signal(0);
 
   protected readonly courtDialogOpen = signal(false);
   protected readonly attendeeDialogOpen = signal(false);
 
-  // Fill flow state.
+  // Fill flow state. The dialog owns the assignment UI; the page owns the court + suggestion.
   protected readonly fillCourt = signal<BoardCourt | null>(null);
-  protected readonly fillType = signal<GameType>('Doubles');
-  // attendanceId -> assigned side. A plain map signal keeps template lookups arrow-free.
-  protected readonly fillAssignments = signal<ReadonlyMap<string, GameSide>>(new Map());
+  protected readonly fillSuggestion = signal<FillSuggestion | null>(null);
 
   // Finish flow state.
   protected readonly finishCourt = signal<BoardCourt | null>(null);
 
   protected readonly pending = signal<{ message: string; action: () => void } | null>(null);
 
-  // Waiting queue, sorted oldest-first (server sorts, but keep it stable here too).
+  // The caller may run host controls only on an open session they manage. Viewers and
+  // closed-history boards collapse to the same read-only mode.
+  protected readonly canManage = computed(() => this.board()?.canManage ?? false);
+  protected readonly isLive = computed(
+    () => this.canManage() && this.board()?.session.status === 'Open',
+  );
+
+  private readonly attendees = computed(() => this.board()?.attendees ?? []);
   protected readonly waiting = computed(() =>
-    (this.board()?.attendees ?? [])
+    this.attendees()
       .filter((a) => a.status === 'Waiting')
       .slice()
       .sort((x, y) => x.waitingSince.localeCompare(y.waitingSince)),
   );
-  protected readonly resting = computed(() =>
-    (this.board()?.attendees ?? []).filter((a) => a.status === 'Resting'),
-  );
+  protected readonly waitingCount = computed(() => this.waiting().length);
   protected readonly playingCount = computed(
-    () => (this.board()?.attendees ?? []).filter((a) => a.status === 'Playing').length,
+    () => this.attendees().filter((a) => a.status === 'Playing').length,
   );
-
-  // Each court with its active-game players already split by side.
-  protected readonly courtViews = computed<CourtView[]>(() =>
-    (this.board()?.courts ?? []).map((court) => {
-      const players = court.activeGame?.players ?? [];
-      return {
-        court,
-        sideA: players.filter((p) => p.side === 'A'),
-        sideB: players.filter((p) => p.side === 'B'),
-      };
-    }),
-  );
-
-  protected readonly fillTitle = computed(() => {
-    const c = this.fillCourt();
-    return c ? `Fill ${c.label}` : 'Fill court';
-  });
 
   protected readonly courtForm = new FormGroup({
     label: new FormControl('', { nonNullable: true, validators: [Validators.required] }),
@@ -518,7 +360,10 @@ export default class PegboardBoardPage {
 
   protected readonly attendeeForm = new FormGroup({
     name: new FormControl('', { nonNullable: true, validators: [Validators.required] }),
-    gender: new FormControl<Gender>('Male', { nonNullable: true, validators: [Validators.required] }),
+    gender: new FormControl<Gender>('Male', {
+      nonNullable: true,
+      validators: [Validators.required],
+    }),
     grade: new FormControl('', { nonNullable: true }),
   });
 
@@ -540,14 +385,19 @@ export default class PegboardBoardPage {
         takeUntilDestroyed(),
       )
       .subscribe({
-        next: (b) => this.board.set(b),
+        next: (b) => this.setBoard(b),
         error: () => this.notice.set('Lost connection to the board.'),
       });
   }
 
+  private setBoard(b: BoardView): void {
+    this.now.set(Date.now());
+    this.board.set(b);
+  }
+
   private refresh(): void {
     this.api.getBoard(this.clubId(), this.sessionId()).subscribe({
-      next: (b) => this.board.set(b),
+      next: (b) => this.setBoard(b),
     });
   }
 
@@ -650,70 +500,36 @@ export default class PegboardBoardPage {
 
   // ---- Fill flow ----
   protected openFill(court: BoardCourt): void {
-    this.fillType.set('Doubles');
-    this.fillAssignments.set(new Map());
+    this.fillSuggestion.set(null);
     this.fillCourt.set(court);
   }
 
   protected closeFill(): void {
     this.fillCourt.set(null);
-    this.fillAssignments.set(new Map());
+    this.fillSuggestion.set(null);
   }
 
-  protected onFillTypeChange(event: Event): void {
-    this.fillType.set((event.target as HTMLSelectElement).value as GameType);
-  }
-
-  protected sideOf(attendanceId: string): GameSide | null {
-    return this.fillAssignments().get(attendanceId) ?? null;
-  }
-
-  // Tap an attendee to cycle unassigned -> A -> B -> unassigned.
-  protected cycleSide(attendanceId: string): void {
-    const next = new Map(this.fillAssignments());
-    const current = next.get(attendanceId);
-    if (current === undefined) next.set(attendanceId, 'A');
-    else if (current === 'A') next.set(attendanceId, 'B');
-    else next.delete(attendanceId);
-    this.fillAssignments.set(next);
-  }
-
-  protected canStart(): boolean {
-    const assignments = this.fillAssignments();
-    let a = 0;
-    let b = 0;
-    for (const side of assignments.values()) {
-      if (side === 'A') a++;
-      else b++;
-    }
-    return a > 0 && b > 0;
-  }
-
-  protected onSuggest(): void {
+  protected onSuggest(type: GameType): void {
     this.notice.set(null);
-    this.api.suggest(this.clubId(), this.sessionId(), this.fillType()).subscribe({
-      next: (s) => {
-        const map = new Map<string, GameSide>();
-        for (const id of s.sideA) map.set(id, 'A');
-        for (const id of s.sideB) map.set(id, 'B');
-        this.fillAssignments.set(map);
-      },
+    this.api.suggest(this.clubId(), this.sessionId(), type).subscribe({
+      next: (s) => this.fillSuggestion.set(s),
       error: (e) => this.onMutationError(e),
     });
   }
 
-  protected onStart(): void {
+  protected onStart(payload: StartGamePayload): void {
     const court = this.fillCourt();
-    if (!court || !this.canStart()) return;
-    const sideA: string[] = [];
-    const sideB: string[] = [];
-    for (const [id, side] of this.fillAssignments()) {
-      if (side === 'A') sideA.push(id);
-      else sideB.push(id);
-    }
+    if (!court) return;
     this.notice.set(null);
     this.api
-      .startGame(this.clubId(), this.sessionId(), court.id, this.fillType(), sideA, sideB)
+      .startGame(
+        this.clubId(),
+        this.sessionId(),
+        court.id,
+        payload.type,
+        payload.sideA,
+        payload.sideB,
+      )
       .subscribe({
         next: (r) => {
           if (r.makeupWarning) {
@@ -745,7 +561,13 @@ export default class PegboardBoardPage {
     const trimmed = score.trim();
     this.notice.set(null);
     this.api
-      .finishGame(this.clubId(), this.sessionId(), game.id, winnerSide, trimmed === '' ? null : trimmed)
+      .finishGame(
+        this.clubId(),
+        this.sessionId(),
+        game.id,
+        winnerSide,
+        trimmed === '' ? null : trimmed,
+      )
       .subscribe({
         next: () => {
           this.closeFinish();
@@ -776,7 +598,8 @@ export default class PegboardBoardPage {
   // ---- Close session ----
   protected askClose(): void {
     this.pending.set({
-      message: 'Close this session? In-progress games end with no result and the board becomes read-only.',
+      message:
+        'Close this session? In-progress games end with no result and the board becomes read-only.',
       action: () => this.close(),
     });
   }
