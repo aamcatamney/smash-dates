@@ -180,6 +180,12 @@ The club page, tabbed into Teams · Venues · Players · Matches · Blocked date
 
 ![Club page — Teams tab with a squad](docs/screenshots/club-detail.png)
 
+### Club night (pegboard)
+The **Sessions** tab opens a club night; the full-screen board tracks courts, live games (with sides + type), and a fair waiting queue — streamed live to every viewer over SSE.
+
+![Pegboard sessions tab](docs/screenshots/pegboard-sessions.png)
+![Pegboard live board](docs/screenshots/pegboard-board.png)
+
 ### Bulk CSV import
 Import clubs, teams, venues or season entries from a CSV — partial import with a per-row result and a downloadable template.
 
