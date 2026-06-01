@@ -22,6 +22,7 @@ import { StatusColorPipe } from '../../shared/status-color.pipe';
 import { CsvImportComponent } from '../../shared/csv-import.component';
 import { ImportResult } from '../../shared/import-result';
 import { ClubPlayersComponent } from './club-players.component';
+import { PegboardSessionsComponent } from './pegboard-sessions.component';
 import { TeamSquadComponent } from './team-squad.component';
 import { TabsComponent, TabDef } from '../../shared/tabs.component';
 import { CalendarSubscribeComponent } from '../../shared/calendar-subscribe.component';
@@ -29,7 +30,7 @@ import { PlayersApi } from './players.api';
 
 @Component({
   selector: 'app-club-detail-page',
-  imports: [ReactiveFormsModule, RouterLink, AdminHeaderComponent, ModalComponent, ConfirmComponent, StatusColorPipe, CsvImportComponent, ClubPlayersComponent, TeamSquadComponent, TabsComponent, CalendarSubscribeComponent],
+  imports: [ReactiveFormsModule, RouterLink, AdminHeaderComponent, ModalComponent, ConfirmComponent, StatusColorPipe, CsvImportComponent, ClubPlayersComponent, PegboardSessionsComponent, TeamSquadComponent, TabsComponent, CalendarSubscribeComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <div class="min-h-screen bg-slate-50 dark:bg-slate-950">
@@ -508,6 +509,12 @@ import { PlayersApi } from './players.api';
         </section>
         }
 
+        @if (tabs.active() === 'sessions') {
+          <section role="tabpanel" id="panel-sessions" aria-labelledby="tab-sessions" class="mt-8">
+            <app-pegboard-sessions [clubId]="clubId()" />
+          </section>
+        }
+
         <app-confirm
           [message]="pending()?.message ?? null"
           (confirmed)="runPending()"
@@ -540,6 +547,7 @@ export default class ClubDetailPage {
     { id: 'teams', label: 'Teams', count: this.teams().length },
     { id: 'venues', label: 'Venues', count: this.venues().length },
     { id: 'players', label: 'Players', count: this.playerCount() },
+    { id: 'sessions', label: 'Sessions' },
     { id: 'matches', label: 'Matches', count: this.matches().length },
     { id: 'blocked', label: 'Blocked dates', count: this.blockedDates().length },
     { id: 'admins', label: 'Admins', count: this.admins().length },

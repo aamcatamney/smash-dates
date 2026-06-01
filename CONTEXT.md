@@ -8,7 +8,8 @@
 - **SystemAdmin** — bootstrap role. Creates Leagues; assigns first LeagueAdmin per League. First registered user becomes SystemAdmin.
 - **LeagueAdmin@League** — per-League role-grant. Manages Divisions, invites Clubs into the League, manages Teams' Season assignments, configures Seasons + Weeks, runs the scheduler, force-confirms Matches. Many Users can hold the LeagueAdmin grant for the same League; any holder can grant or revoke the role for another User. A League must always have at least one LeagueAdmin (last-admin removal rejected with 409 unless the caller is `SystemAdmin`, who may force the League adminless pending re-bootstrap). A LeagueAdmin may resign as long as another LeagueAdmin remains. League-scoped endpoints (Division CRUD, Season setup, etc.) authorize either `LeagueAdmin@<thisLeague>` **or** `SystemAdmin`.
 - **ClubAdmin@Club** — per-Club role-grant. Manages Venues, enters blocked dates (Club-wide and per-Team), accepts/rejects proposed Matches for the Club. Many Users can hold the ClubAdmin grant for the same Club; any holder can grant or revoke the role for another User. A Club must always have at least one ClubAdmin (the last-admin removal is rejected with 409 unless the caller is `SystemAdmin`, who may force the Club into an adminless state pending re-bootstrap). A ClubAdmin may resign as long as another ClubAdmin remains.
-- Authenticated Users may **read** any League's schedule. There is no `Player` **login** role (Players are admin-managed roster records — see [Player](#player)) and no anonymous public view.
+- **SessionHost@Club** — per-Club role-grant for running [Pegboard Sessions](#pegboard-session). Granted and revoked by any `ClubAdmin@Club`. A SessionHost may open, run and close a Club's club-night sessions, but holds **no other** Club powers (cannot manage Venues, Teams, Players, etc.). Running a session is authorized for `SessionHost@<thisClub>` **or** `ClubAdmin@<thisClub>` **or** `SystemAdmin` (ClubAdmin is implicitly a host). There is **no last-host protection** — a Club may have zero SessionHosts, since its admins can always run sessions.
+- Authenticated Users may **read** any League's schedule, and any authenticated User may **view** a running Pegboard Session (read-only). There is no `Player` **login** role (Players are admin-managed roster records — see [Player](#player)) and no anonymous public view.
 - One User may hold many role-grants simultaneously (e.g. LeagueAdmin of League A + ClubAdmin of Club B).
 
 ## Terms
@@ -127,9 +128,11 @@ Blocked dates may be added freely while Season is `Draft` or `Proposed`. From `A
 Belongs to one League. Has a **Name** (a human handle, e.g. "2025/26", unique within its League), a start date, an end date, and an **explicit ordered list of Weeks**. Week order is derived from each Week's `StartDate` (Weeks never overlap), not a separate ordinal. Each Week has `(StartDate, EndDate, WeekType)` — a calendar range (typically Mon–Sun) within which Matches scheduled in that week may land on any night. Admin enters the week list when creating the Season; gaps (Christmas, tournaments) are handled by simply omitting weeks from the list.
 
 ### Player
-A persistent person record, **global** (not owned by a single Club), so the same Player can be affiliated with several Clubs. Created and edited by any `ClubAdmin`. Attributes: a **FullName** and a **Gender** (`Male` | `Female`). A Player is **not** a login account — there is no Player role; Players are managed entirely by Club admins.
+A persistent person record, **global** (not owned by a single Club), so the same Player can be affiliated with several Clubs. Created and edited by any `ClubAdmin`. Attributes: a **FullName**, a **Gender** (`Male` | `Female`), and an optional **Grade** (`1`–`5`). A Player is **not** a login account — there is no Player role; Players are managed entirely by Club admins.
 
 Gender exists so the [Level discipline](#discipline) resolves to the right gendered play: a `Male` Player playing Level is a Mens player, a `Female` Player playing Level is a Ladies player.
+
+**Grade** is an optional ability rating, `1` (strongest) to `5` (weakest), used only to balance [Games](#game) when a [Pegboard Session](#pegboard-session) suggests or auto-fills a court. It is purely a club-night aid and has no bearing on Leagues, Seasons, scheduling or standings.
 
 Player rosters follow the same open-registry read model as Clubs (any authenticated user may read a Club's roster; only its admins write). The **cross-club player search** is the exception — it can enumerate people across every Club, so it is limited to `ClubAdmin` (of any Club) or `SystemAdmin`.
 
@@ -165,3 +168,53 @@ Moving a `Confirmed` Discipline Registration from one Club to another within the
 
 ### Team Squad
 A Team's persistent list of Players, managed by a `ClubAdmin@Club`. A Player may be added to a Team's squad only if **eligible**: they hold a `Confirmed` [Discipline Registration](#discipline-registration) at the Team's Club for the Team's discipline (`Mens`/`Ladies` Team → `Level`, `Mixed` Team → `Mixed`), and — for a `Level` Team — a matching gender (`Male` → Mens Team, `Female` → Ladies Team). Eligibility is **not** tied to which Leagues the Team is entered in, so a squad can be built before the Team is entered in a Season. Ineligible adds are rejected (409). The squad is the roster only — Matches remain atomic ties with no per-Match lineup.
+
+## Club Night (Pegboard)
+
+A separate, in-person concern from league play. A Pegboard Session is the digital replacement for the physical pegboard a Club uses on a social/practice night to track who turned up, who's waiting, the courts, and who's playing on them. It is **entirely disconnected** from Leagues, Seasons, Matches and Standings — no result here affects any league table.
+
+### Pegboard Session
+A single club night, owned by one [Club](#club). Has a **Name** (or date) and a status: `Open → Closed`.
+
+- Opened, run and closed by a [SessionHost@Club](#roles-and-access) (or ClubAdmin / SystemAdmin). A Club has **at most one `Open` Session at a time**.
+- Holds the night's [Courts](#court), [Attendances](#attendance) and [Games](#game).
+- **Closing** ends any in-progress Games with no result recorded and makes the board read-only. `Closed` is terminal (no reopen) and retained as history — viewable, not editable.
+- Not pinned to a [Venue](#venue); the Club picks how many Courts to run on the night.
+- Any authenticated User may **view** a running Session; only the host (or admin) may mutate it. The board updates live for all viewers.
+
+### Court
+A playing court within a [Pegboard Session](#pegboard-session). The host **adds** Courts at any time and **removes** a Court only while it is empty (no active Game). A Court hosts at most one active [Game](#game) at a time.
+
+### Attendance
+One person's presence at a [Pegboard Session](#pegboard-session) — the digital "peg". Each Attendance is **either** a roster [Player](#player) (a Player affiliated to the Club, `Member` or `Visitor`) **or** an ad-hoc **guest** (free-text `Name` + `Gender` + optional `Grade`), never both. A guest is not persisted as a Player. An Attendance carries an optional **Grade** (`1`–`5`): copied from the Player's [Grade](#player) on add but editable for the night without changing the Player record.
+
+Status: `Waiting | Playing | Resting | Left`.
+- **Waiting** — in the queue, available to be picked. The queue is ordered by time entered `Waiting` (longest-waiting first).
+- **Playing** — currently on a Court in an active Game.
+- **Resting** — present but paused out of the queue (a self-imposed break); not picked until they rejoin.
+- **Left** — gone for the night; excluded from the queue and not pickable.
+
+Finishing or cancelling a Game returns its players to the queue **tail** (`Waiting`). The host may move anyone between states.
+
+### Game
+A single match played on one [Court](#court) during a [Pegboard Session](#pegboard-session). Has a **Game Type**, two **Sides** (A and B), a status `Active → Finished`, and — once finished — a required **WinnerSide** and an optional free-text **Score** (e.g. `21-15`).
+
+- **Game Type** is `Singles | Doubles | Mixed | Funny`:
+  - **Singles** — 1 player per Side (2 total).
+  - **Doubles** — 2 per Side, all four the same gender (level: Mens or Ladies).
+  - **Mixed** — 2 per Side, each Side one `Male` + one `Female`.
+  - **Funny** — 2 per Side, any other gender arrangement (e.g. `3+1`, or a Mens pair vs a Ladies pair). The catch-all for non-standard social games.
+- A makeup that breaks the Type's gender rule produces a **warning** only — the host has final say and may start it anyway.
+- An active Game may be **Cancelled** (e.g. started by mistake): its players return to the queue with no win/loss recorded — distinct from **Finishing**, which requires a WinnerSide.
+- **Night stats** are derived per Attendance from finished Games: games played, games won, and wait time. Session-scoped only.
+
+### Side
+One of the two teams in a [Game](#game) (Side A / Side B), each holding 1 player (Singles) or 2 players (all other Types). The WinnerSide of a finished Game names the side that won.
+
+### Board Fill Modes
+How the host fills a free [Court](#court) from the [Waiting](#attendance) queue. Chosen **per fill**, not locked for the Session:
+- **Manual** — host picks the players directly.
+- **Suggest** — the board proposes a valid set; the host confirms or swaps before starting.
+- **Auto-rotate** — the board fills the Court itself.
+
+Suggest and Auto-rotate balance, in priority: fairness (longest-waiting / fewest games first), valid makeup for the chosen Type, partner/opponent variety against earlier Games that night, and ability balance using attendee [Grade](#player).

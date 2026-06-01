@@ -19,10 +19,12 @@ using smash_dates.Endpoints.Memberships;
 using smash_dates.Endpoints.Calendar;
 using smash_dates.Endpoints.Notifications;
 using smash_dates.Endpoints.Ops;
+using smash_dates.Endpoints.Pegboard;
 using smash_dates.Endpoints.Players;
 using smash_dates.Endpoints.Divisions;
 using smash_dates.Endpoints.SeasonEntries;
 using smash_dates.Endpoints.Seasons;
+using smash_dates.Endpoints.SessionHosts;
 using smash_dates.Endpoints.Teams;
 using smash_dates.Endpoints.Venues;
 using smash_dates.Endpoints.LeagueAdmins;
@@ -69,6 +71,9 @@ builder.Services.AddScoped<IPlayerRepository, PlayerRepository>();
 builder.Services.AddScoped<IDisciplineRegistrationRepository, DisciplineRegistrationRepository>();
 builder.Services.AddScoped<IRegistrationTransferRepository, RegistrationTransferRepository>();
 builder.Services.AddScoped<ITeamPlayerRepository, TeamPlayerRepository>();
+builder.Services.AddScoped<ISessionHostRepository, SessionHostRepository>();
+builder.Services.AddScoped<IPegboardRepository, PegboardRepository>();
+builder.Services.AddSingleton<smash_dates.Services.Pegboard.IPegboardEventPublisher, smash_dates.Services.Pegboard.PegboardEventPublisher>();
 builder.Services.AddScoped<ICalendarRepository, CalendarRepository>();
 builder.Services.AddScoped<INotificationRepository, NotificationRepository>();
 builder.Services.AddScoped<smash_dates.Services.Notifications.INotificationService, smash_dates.Services.Notifications.NotificationService>();
@@ -245,6 +250,8 @@ app.MapCalendarEndpoints();
 app.MapClubPlayersEndpoints();
 app.MapRegistrationEndpoints();
 app.MapTransferEndpoints();
+app.MapSessionHostEndpoints();
+app.MapPegboardEndpoints();
 
 if (Directory.Exists(clientAppPath))
 {

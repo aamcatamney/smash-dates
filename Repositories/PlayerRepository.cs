@@ -28,7 +28,7 @@ public sealed class PlayerRepository : IPlayerRepository
         using var conn = _factory.Create();
         return await conn.QuerySingleOrDefaultAsync<Player>(
             new CommandDefinition(
-                "SELECT id, full_name, gender, created_at, updated_at FROM players WHERE id = @id",
+                "SELECT id, full_name, gender, grade, created_at, updated_at FROM players WHERE id = @id",
                 new { id },
                 cancellationToken: ct));
     }
@@ -38,7 +38,7 @@ public sealed class PlayerRepository : IPlayerRepository
         using var conn = _factory.Create();
         var rows = await conn.QueryAsync<Player>(
             new CommandDefinition(
-                @"SELECT id, full_name, gender, created_at, updated_at FROM players
+                @"SELECT id, full_name, gender, grade, created_at, updated_at FROM players
                   WHERE full_name ILIKE '%' || @query || '%'
                   ORDER BY full_name
                   LIMIT @limit",
@@ -75,7 +75,7 @@ public sealed class PlayerRepository : IPlayerRepository
         using var conn = _factory.Create();
         var rows = await conn.QueryAsync<PlayerClubView>(
             new CommandDefinition(
-                @"SELECT p.id AS player_id, p.full_name, p.gender, pc.type
+                @"SELECT p.id AS player_id, p.full_name, p.gender, pc.type, p.grade::int
                   FROM player_clubs pc
                   JOIN players p ON p.id = pc.player_id
                   WHERE pc.club_id = @clubId
@@ -92,6 +92,17 @@ public sealed class PlayerRepository : IPlayerRepository
             new CommandDefinition(
                 "DELETE FROM player_clubs WHERE player_id = @playerId AND club_id = @clubId",
                 new { playerId, clubId },
+                cancellationToken: ct));
+        return rows > 0;
+    }
+
+    public async Task<bool> SetGradeAsync(Guid playerId, int? grade, CancellationToken ct = default)
+    {
+        using var conn = _factory.Create();
+        var rows = await conn.ExecuteAsync(
+            new CommandDefinition(
+                "UPDATE players SET grade = @grade, updated_at = now() WHERE id = @playerId",
+                new { playerId, grade },
                 cancellationToken: ct));
         return rows > 0;
     }

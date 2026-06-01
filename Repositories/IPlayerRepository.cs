@@ -3,7 +3,7 @@ using smash_dates.Models;
 namespace smash_dates.Repositories;
 
 // A player as affiliated with a club, for the club's roster view.
-public sealed record PlayerClubView(Guid PlayerId, string FullName, Gender Gender, PlayerClubType Type);
+public sealed record PlayerClubView(Guid PlayerId, string FullName, Gender Gender, PlayerClubType Type, int? Grade);
 
 public interface IPlayerRepository
 {
@@ -16,4 +16,5 @@ public interface IPlayerRepository
     Task<PlayerClub?> GetLinkAsync(Guid playerId, Guid clubId, CancellationToken ct = default);
     Task<IReadOnlyList<PlayerClubView>> ListByClubAsync(Guid clubId, CancellationToken ct = default);
     Task<bool> UnlinkAsync(Guid playerId, Guid clubId, CancellationToken ct = default);
+    Task<bool> SetGradeAsync(Guid playerId, int? grade, CancellationToken ct = default);
 }
