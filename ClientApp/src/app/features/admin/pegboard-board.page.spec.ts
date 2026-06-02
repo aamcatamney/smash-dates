@@ -59,6 +59,7 @@ function apiMock(overrides: Partial<PegboardApi> = {}): PegboardApi {
     setAttendanceStatus: vi.fn(() => of(void 0)),
     removeAttendance: vi.fn(() => of(void 0)),
     suggest: vi.fn(() => of({ sideA: [], sideB: [] })),
+    autoFill: vi.fn(() => of({ id: 'g' })),
     startGame: vi.fn(() => of({ id: 'g', makeupWarning: false })),
     finishGame: vi.fn(() => of(void 0)),
     cancelGame: vi.fn(() => of(void 0)),
@@ -110,6 +111,17 @@ describe('PegboardBoardPage', () => {
     c['onAddCourt']();
 
     expect(api.addCourt).toHaveBeenCalledWith('club-1', 'session-1', 'Court 3');
+  });
+
+  it('auto-fill calls autoFill with the open court and type', () => {
+    const api = apiMock();
+    const fixture = create(api);
+    const c = fixture.componentInstance as unknown as Record<string, any>;
+
+    c['openFill'](board.courts[1]); // Court 2 (free)
+    c['onAutoFill']('Doubles');
+
+    expect(api.autoFill).toHaveBeenCalledWith('club-1', 'session-1', 'court-2', 'Doubles');
   });
 
   it('finishing a game calls finishGame', () => {

@@ -58,13 +58,22 @@ export interface StartGamePayload {
           <span>A {{ countA() }} · B {{ countB() }}</span>
         </div>
 
-        <button
-          type="button"
-          (click)="suggest.emit(type())"
-          class="min-h-11 justify-self-start rounded-md border border-slate-300 px-3 py-1.5 font-mono text-xs text-slate-700 hover:bg-slate-50 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800"
-        >
-          Suggest a lineup
-        </button>
+        <div class="flex flex-wrap gap-2">
+          <button
+            type="button"
+            (click)="suggest.emit(type())"
+            class="min-h-11 rounded-md border border-slate-300 px-3 py-1.5 font-mono text-xs text-slate-700 hover:bg-slate-50 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800"
+          >
+            Suggest a lineup
+          </button>
+          <button
+            type="button"
+            (click)="autoFill.emit(type())"
+            class="min-h-11 rounded-md border border-slate-300 px-3 py-1.5 font-mono text-xs text-slate-700 hover:bg-slate-50 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800"
+          >
+            Auto-fill &amp; start
+          </button>
+        </div>
 
         <fieldset class="grid gap-2">
           <legend
@@ -126,6 +135,8 @@ export class FillDialogComponent {
   readonly suggestion = input<FillSuggestion | null>(null);
 
   readonly suggest = output<GameType>();
+  // Auto-rotate: the board picks the lineup and starts it — the parent calls the API and closes.
+  readonly autoFill = output<GameType>();
   readonly start = output<StartGamePayload>();
   readonly closed = output<void>();
 

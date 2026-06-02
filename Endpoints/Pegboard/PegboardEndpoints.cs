@@ -23,6 +23,7 @@ public static class PegboardEndpoints
         group.MapSetAttendanceStatusEndpoint();
         group.MapRemoveAttendanceEndpoint();
         group.MapSuggestFillEndpoint();
+        group.MapAutoFillEndpoint();
         group.MapStartGameEndpoint();
         group.MapFinishGameEndpoint();
         group.MapCancelGameEndpoint();
