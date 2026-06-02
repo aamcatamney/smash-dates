@@ -1,7 +1,7 @@
 import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
 import { FormControl, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import { ActivatedRoute, RouterLink } from '@angular/router';
-import { switchMap, tap } from 'rxjs';
+import { Observable, switchMap, tap } from 'rxjs';
 import {
   BlockedDateScope,
   BlockedDateSummary,
@@ -26,11 +26,25 @@ import { PegboardSessionsComponent } from './pegboard-sessions.component';
 import { TeamSquadComponent } from './team-squad.component';
 import { TabsComponent, TabDef } from '../../shared/tabs.component';
 import { CalendarSubscribeComponent } from '../../shared/calendar-subscribe.component';
+import { ToastService } from '../../shared/toast.service';
 import { PlayersApi } from './players.api';
 
 @Component({
   selector: 'app-club-detail-page',
-  imports: [ReactiveFormsModule, RouterLink, AdminHeaderComponent, ModalComponent, ConfirmComponent, StatusColorPipe, CsvImportComponent, ClubPlayersComponent, PegboardSessionsComponent, TeamSquadComponent, TabsComponent, CalendarSubscribeComponent],
+  imports: [
+    ReactiveFormsModule,
+    RouterLink,
+    AdminHeaderComponent,
+    ModalComponent,
+    ConfirmComponent,
+    StatusColorPipe,
+    CsvImportComponent,
+    ClubPlayersComponent,
+    PegboardSessionsComponent,
+    TeamSquadComponent,
+    TabsComponent,
+    CalendarSubscribeComponent,
+  ],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <div class="min-h-screen bg-slate-50 dark:bg-slate-950">
@@ -43,476 +57,702 @@ import { PlayersApi } from './players.api';
           >← back to clubs</a
         >
 
-        @if (club(); as c) {
-          <h1 class="mt-2 font-mono text-2xl font-semibold text-slate-900 dark:text-slate-100">
-            {{ c.shortCode }} · {{ c.name }}
-          </h1>
-          <p class="mt-1 font-mono text-sm text-slate-500 dark:text-slate-400">{{ c.contactEmail }}</p>
-          @if (c.notes) {
-            <p class="mt-1 font-mono text-sm text-slate-500 dark:text-slate-400">{{ c.notes }}</p>
+        @if (loading()) {
+          <p class="py-10 text-center font-mono text-sm text-slate-500 dark:text-slate-400">
+            Loading…
+          </p>
+        } @else if (club()) {
+          @if (club(); as c) {
+            <h1 class="mt-2 font-mono text-2xl font-semibold text-slate-900 dark:text-slate-100">
+              {{ c.shortCode }} · {{ c.name }}
+            </h1>
+            <p class="mt-1 font-mono text-sm text-slate-500 dark:text-slate-400">
+              {{ c.contactEmail }}
+            </p>
+            @if (c.notes) {
+              <p class="mt-1 font-mono text-sm text-slate-500 dark:text-slate-400">{{ c.notes }}</p>
+            }
+            <div class="mt-2">
+              <app-calendar-subscribe
+                [endpoint]="'/api/calendar/club/' + clubId() + '/url'"
+                label="Subscribe to fixtures (iCal)"
+              />
+            </div>
           }
-          <div class="mt-2">
-            <app-calendar-subscribe [endpoint]="'/api/calendar/club/' + clubId() + '/url'" label="Subscribe to fixtures (iCal)" />
-          </div>
-        }
 
-        <app-tabs #tabs [tabs]="clubTabs()" />
+          <app-tabs #tabs [tabs]="clubTabs()" />
 
-        @if (tabs.active() === 'admins') {
-        <section role="tabpanel" id="panel-admins" aria-labelledby="tab-admins">
-        <div class="mt-8 flex items-center justify-between">
-          <h2 class="font-mono text-lg font-semibold text-slate-900 dark:text-slate-100">Club admins</h2>
-          <button
-            type="button"
-            (click)="adminDialogOpen.set(true)"
-            class="rounded-md border border-slate-300 dark:border-slate-700 px-3 py-1 font-mono text-xs text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800"
-          >
-            ＋ Add admin
-          </button>
-        </div>
-        <ul class="mt-3 divide-y divide-slate-200 rounded-md border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900">
-          @for (admin of admins(); track admin.userId) {
-            <li class="flex items-center justify-between px-4 py-3 font-mono text-sm">
-              <span>
-                {{ admin.displayName ?? admin.email }}
-                <span class="ml-2 text-slate-500 dark:text-slate-400">{{ admin.email }}</span>
-              </span>
-              <button
-                type="button"
-                [attr.aria-label]="'Revoke ' + admin.email"
-                (click)="askRevoke(admin)"
-                class="rounded-md border border-red-300 dark:border-red-800 px-3 py-1 text-xs text-red-700 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950"
-              >
-                Revoke
-              </button>
-            </li>
-          } @empty {
-            <li class="px-4 py-3 font-mono text-sm text-slate-500 dark:text-slate-400">No admins.</li>
-          }
-        </ul>
-
-        <app-modal [open]="adminDialogOpen()" title="Add club admin" (closed)="adminDialogOpen.set(false)">
-        <form [formGroup]="adminForm" (ngSubmit)="onGrant()" class="grid gap-3">
-          <label class="grid gap-1">
-            <span class="font-mono text-xs uppercase tracking-wider text-slate-600 dark:text-slate-400">Add admin by email</span>
-            <input
-              type="email"
-              formControlName="email"
-              class="rounded-md border border-slate-300 dark:border-slate-700 px-3 py-2 font-mono text-sm focus:outline-none focus:ring-2 focus:ring-slate-900 dark:focus:ring-slate-100 dark:bg-slate-800 dark:text-slate-100"
-              required
-            />
-          </label>
-          <button
-            type="submit"
-            [disabled]="adminBusy() || adminForm.invalid"
-            class="justify-self-start rounded-md bg-slate-900 dark:bg-amber-400 px-4 py-2 font-mono text-sm font-medium text-amber-300 dark:text-slate-900 disabled:opacity-50"
-          >
-            {{ adminBusy() ? 'Granting…' : 'Grant admin' }}
-          </button>
-          @if (adminError()) {
-            <p class="font-mono text-sm text-red-600 dark:text-red-400" role="alert">{{ adminError() }}</p>
-          }
-        </form>
-        </app-modal>
-
-        <h2 class="mt-10 font-mono text-lg font-semibold text-slate-900 dark:text-slate-100">League memberships</h2>
-        <ul class="mt-3 divide-y divide-slate-200 rounded-md border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900">
-          @for (m of memberships(); track m.id) {
-            <li class="flex items-center justify-between px-4 py-3 font-mono text-sm">
-              <span>
-                {{ leagueName(m.leagueId) }}
-                <span [class]="'ml-3 inline-block rounded px-2 py-0.5 text-xs ' + (m.status | statusColor)">{{ m.status }}</span>
-              </span>
-              <div class="flex gap-2">
-                @if (m.status === 'Pending') {
-                  <button
-                    type="button"
-                    (click)="onAccept(m)"
-                    class="rounded-md border border-emerald-300 dark:border-emerald-800 px-3 py-1 text-xs text-emerald-700 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-950"
-                  >Accept</button>
-                  <button
-                    type="button"
-                    (click)="onDecline(m)"
-                    class="rounded-md border border-amber-300 dark:border-amber-800 px-3 py-1 text-xs text-amber-700 dark:text-amber-400 hover:bg-amber-50 dark:hover:bg-amber-950"
-                  >Decline</button>
-                }
-                @if (m.status === 'Accepted') {
-                  <button
-                    type="button"
-                    (click)="onWithdraw(m)"
-                    class="rounded-md border border-red-300 dark:border-red-800 px-3 py-1 text-xs text-red-700 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950"
-                  >Withdraw</button>
-                }
+          @if (tabs.active() === 'admins') {
+            <section role="tabpanel" id="panel-admins" aria-labelledby="tab-admins">
+              <div class="mt-8 flex items-center justify-between">
+                <h2 class="font-mono text-lg font-semibold text-slate-900 dark:text-slate-100">
+                  Club admins
+                </h2>
+                <button
+                  type="button"
+                  (click)="adminDialogOpen.set(true)"
+                  class="rounded-md border border-slate-300 dark:border-slate-700 px-3 py-1 font-mono text-xs text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800"
+                >
+                  ＋ Add admin
+                </button>
               </div>
-            </li>
-          } @empty {
-            <li class="px-4 py-3 font-mono text-sm text-slate-500 dark:text-slate-400">No memberships.</li>
-          }
-        </ul>
-        </section>
-        }
+              <ul
+                class="mt-3 divide-y divide-slate-200 rounded-md border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900"
+              >
+                @for (admin of admins(); track admin.userId) {
+                  <li class="flex items-center justify-between px-4 py-3 font-mono text-sm">
+                    <span>
+                      {{ admin.displayName ?? admin.email }}
+                      <span class="ml-2 text-slate-500 dark:text-slate-400">{{ admin.email }}</span>
+                    </span>
+                    <button
+                      type="button"
+                      [attr.aria-label]="'Revoke ' + admin.email"
+                      (click)="askRevoke(admin)"
+                      class="rounded-md border border-red-300 dark:border-red-800 px-3 py-1 text-xs text-red-700 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950"
+                    >
+                      Revoke
+                    </button>
+                  </li>
+                } @empty {
+                  <li class="px-4 py-3 font-mono text-sm text-slate-500 dark:text-slate-400">
+                    No admins.
+                  </li>
+                }
+              </ul>
 
-        @if (tabs.active() === 'teams') {
-        <section role="tabpanel" id="panel-teams" aria-labelledby="tab-teams">
-        <div class="mt-10 flex items-center justify-between">
-          <h2 class="font-mono text-lg font-semibold text-slate-900 dark:text-slate-100">Teams</h2>
-          <div class="flex gap-2">
-            <button
-              type="button"
-              (click)="openImport('teams')"
-              class="rounded-md border border-slate-300 dark:border-slate-700 px-3 py-1 font-mono text-xs text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800"
-            >
-              Import CSV
-            </button>
-            <button
-              type="button"
-              (click)="teamDialogOpen.set(true)"
-              class="rounded-md border border-slate-300 dark:border-slate-700 px-3 py-1 font-mono text-xs text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800"
-            >
-              ＋ Add team
-            </button>
-          </div>
-        </div>
-        <ul class="mt-3 divide-y divide-slate-200 rounded-md border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900">
-          @for (t of teams(); track t.id) {
-            <li class="px-4 py-3 font-mono text-sm">
-              <div class="flex items-center justify-between">
-                <span>
-                  {{ t.name }}
-                  <span class="ml-2 inline-block rounded bg-slate-200 dark:bg-slate-700 px-2 py-0.5 text-xs uppercase">{{ t.gender }}</span>
-                </span>
+              <app-modal
+                [open]="adminDialogOpen()"
+                title="Add club admin"
+                (closed)="adminDialogOpen.set(false)"
+              >
+                <form [formGroup]="adminForm" (ngSubmit)="onGrant()" class="grid gap-3">
+                  <label class="grid gap-1">
+                    <span
+                      class="font-mono text-xs uppercase tracking-wider text-slate-600 dark:text-slate-400"
+                      >Add admin by email</span
+                    >
+                    <input
+                      type="email"
+                      formControlName="email"
+                      class="rounded-md border border-slate-300 dark:border-slate-700 px-3 py-2 font-mono text-sm focus:outline-none focus:ring-2 focus:ring-slate-900 dark:focus:ring-slate-100 dark:bg-slate-800 dark:text-slate-100"
+                      required
+                    />
+                  </label>
+                  <button
+                    type="submit"
+                    [disabled]="adminBusy() || adminForm.invalid"
+                    class="justify-self-start rounded-md bg-slate-900 dark:bg-amber-400 px-4 py-2 font-mono text-sm font-medium text-amber-300 dark:text-slate-900 disabled:opacity-50"
+                  >
+                    {{ adminBusy() ? 'Granting…' : 'Grant admin' }}
+                  </button>
+                  @if (adminError()) {
+                    <p class="font-mono text-sm text-red-600 dark:text-red-400" role="alert">
+                      {{ adminError() }}
+                    </p>
+                  }
+                </form>
+              </app-modal>
+
+              <h2 class="mt-10 font-mono text-lg font-semibold text-slate-900 dark:text-slate-100">
+                League memberships
+              </h2>
+              <ul
+                class="mt-3 divide-y divide-slate-200 rounded-md border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900"
+              >
+                @for (m of memberships(); track m.id) {
+                  <li class="flex items-center justify-between px-4 py-3 font-mono text-sm">
+                    <span>
+                      {{ leagueName(m.leagueId) }}
+                      <span
+                        [class]="
+                          'ml-3 inline-block rounded px-2 py-0.5 text-xs ' +
+                          (m.status | statusColor)
+                        "
+                        >{{ m.status }}</span
+                      >
+                    </span>
+                    <div class="flex gap-2">
+                      @if (m.status === 'Pending') {
+                        <button
+                          type="button"
+                          (click)="onAccept(m)"
+                          [disabled]="isBusy(m.id)"
+                          class="rounded-md border border-emerald-300 dark:border-emerald-800 px-3 py-1 text-xs text-emerald-700 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-950 disabled:opacity-50"
+                        >
+                          Accept
+                        </button>
+                        <button
+                          type="button"
+                          (click)="onDecline(m)"
+                          [disabled]="isBusy(m.id)"
+                          class="rounded-md border border-amber-300 dark:border-amber-800 px-3 py-1 text-xs text-amber-700 dark:text-amber-400 hover:bg-amber-50 dark:hover:bg-amber-950 disabled:opacity-50"
+                        >
+                          Decline
+                        </button>
+                      }
+                      @if (m.status === 'Accepted') {
+                        <button
+                          type="button"
+                          (click)="onWithdraw(m)"
+                          [disabled]="isBusy(m.id)"
+                          class="rounded-md border border-red-300 dark:border-red-800 px-3 py-1 text-xs text-red-700 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950 disabled:opacity-50"
+                        >
+                          Withdraw
+                        </button>
+                      }
+                    </div>
+                  </li>
+                } @empty {
+                  <li class="px-4 py-3 font-mono text-sm text-slate-500 dark:text-slate-400">
+                    No memberships.
+                  </li>
+                }
+              </ul>
+            </section>
+          }
+
+          @if (tabs.active() === 'teams') {
+            <section role="tabpanel" id="panel-teams" aria-labelledby="tab-teams">
+              <div class="mt-10 flex items-center justify-between">
+                <h2 class="font-mono text-lg font-semibold text-slate-900 dark:text-slate-100">
+                  Teams
+                </h2>
                 <div class="flex gap-2">
                   <button
                     type="button"
-                    (click)="toggleSquad(t.id)"
-                    class="rounded-md border border-slate-300 dark:border-slate-700 px-3 py-1 text-xs text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800"
+                    (click)="openImport('teams')"
+                    class="rounded-md border border-slate-300 dark:border-slate-700 px-3 py-1 font-mono text-xs text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800"
                   >
-                    {{ squadTeamId() === t.id ? 'Close' : 'Squad' }}
+                    Import CSV
                   </button>
                   <button
                     type="button"
-                    [attr.aria-label]="'Delete team ' + t.name"
-                    (click)="askDeleteTeam(t)"
-                    class="rounded-md border border-red-300 dark:border-red-800 px-3 py-1 text-xs text-red-700 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950"
+                    (click)="teamDialogOpen.set(true)"
+                    class="rounded-md border border-slate-300 dark:border-slate-700 px-3 py-1 font-mono text-xs text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800"
                   >
-                    Delete
+                    ＋ Add team
                   </button>
                 </div>
               </div>
-              <div class="mt-2">
-                <app-calendar-subscribe [endpoint]="'/api/calendar/team/' + t.id + '/url'" label="iCal" />
-              </div>
-              @if (squadTeamId() === t.id) {
-                <app-team-squad [clubId]="clubId()" [teamId]="t.id" />
-              }
-            </li>
-          } @empty {
-            <li class="px-4 py-3 font-mono text-sm text-slate-500 dark:text-slate-400">No teams.</li>
-          }
-        </ul>
-
-        <app-modal [open]="teamDialogOpen()" title="Add team" (closed)="teamDialogOpen.set(false)">
-        <form [formGroup]="teamForm" (ngSubmit)="onCreateTeam()" class="grid gap-3">
-          <label class="grid gap-1">
-            <span class="font-mono text-xs uppercase tracking-wider text-slate-600 dark:text-slate-400">Team name</span>
-            <input
-              type="text"
-              formControlName="name"
-              class="rounded-md border border-slate-300 dark:border-slate-700 px-3 py-2 font-mono text-sm focus:outline-none focus:ring-2 focus:ring-slate-900 dark:focus:ring-slate-100 dark:bg-slate-800 dark:text-slate-100"
-              required
-            />
-          </label>
-          <label class="grid gap-1">
-            <span class="font-mono text-xs uppercase tracking-wider text-slate-600 dark:text-slate-400">Gender</span>
-            <select
-              formControlName="gender"
-              class="rounded-md border border-slate-300 dark:border-slate-700 px-3 py-2 font-mono text-sm focus:outline-none focus:ring-2 focus:ring-slate-900 dark:focus:ring-slate-100 dark:bg-slate-800 dark:text-slate-100"
-            >
-              <option value="Mens">Mens</option>
-              <option value="Ladies">Ladies</option>
-              <option value="Mixed">Mixed</option>
-            </select>
-          </label>
-          <button
-            type="submit"
-            [disabled]="teamBusy() || teamForm.invalid"
-            class="rounded-md bg-slate-900 dark:bg-amber-400 px-4 py-2 font-mono text-sm font-medium text-amber-300 dark:text-slate-900 disabled:opacity-50"
-          >
-            {{ teamBusy() ? 'Adding…' : 'Add team' }}
-          </button>
-          @if (teamError()) {
-            <p class="font-mono text-sm text-red-600 dark:text-red-400" role="alert">{{ teamError() }}</p>
-          }
-        </form>
-        </app-modal>
-        </section>
-        }
-
-        @if (tabs.active() === 'venues') {
-        <section role="tabpanel" id="panel-venues" aria-labelledby="tab-venues">
-        <div class="mt-10 flex items-center justify-between">
-          <h2 class="font-mono text-lg font-semibold text-slate-900 dark:text-slate-100">Venues</h2>
-          <div class="flex gap-2">
-            <button
-              type="button"
-              (click)="openImport('venues')"
-              class="rounded-md border border-slate-300 dark:border-slate-700 px-3 py-1 font-mono text-xs text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800"
-            >
-              Import CSV
-            </button>
-            <button
-              type="button"
-              (click)="venueDialogOpen.set(true)"
-              class="rounded-md border border-slate-300 dark:border-slate-700 px-3 py-1 font-mono text-xs text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800"
-            >
-              ＋ Add venue
-            </button>
-          </div>
-        </div>
-        <ul class="mt-3 divide-y divide-slate-200 rounded-md border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900">
-          @for (v of venues(); track v.id) {
-            <li class="flex items-center justify-between px-4 py-3 font-mono text-sm">
-              <span>
-                {{ v.name }}
-                <span class="ml-2 inline-block rounded bg-slate-200 dark:bg-slate-700 px-2 py-0.5 text-xs">
-                  {{ v.capacity }} {{ v.capacity === 1 ? 'court' : 'courts' }}
-                </span>
-              </span>
-              <button
-                type="button"
-                [attr.aria-label]="'Delete venue ' + v.name"
-                (click)="askDeleteVenue(v)"
-                class="rounded-md border border-red-300 dark:border-red-800 px-3 py-1 text-xs text-red-700 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950"
+              <ul
+                class="mt-3 divide-y divide-slate-200 rounded-md border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900"
               >
-                Delete
-              </button>
-            </li>
-          } @empty {
-            <li class="px-4 py-3 font-mono text-sm text-slate-500 dark:text-slate-400">No venues.</li>
-          }
-        </ul>
-
-        <app-modal [open]="venueDialogOpen()" title="Add venue" (closed)="venueDialogOpen.set(false)">
-        <form [formGroup]="venueForm" (ngSubmit)="onCreateVenue()" class="grid gap-3">
-          <label class="grid gap-1">
-            <span class="font-mono text-xs uppercase tracking-wider text-slate-600 dark:text-slate-400">Venue name</span>
-            <input
-              type="text"
-              formControlName="name"
-              class="rounded-md border border-slate-300 dark:border-slate-700 px-3 py-2 font-mono text-sm focus:outline-none focus:ring-2 focus:ring-slate-900 dark:focus:ring-slate-100 dark:bg-slate-800 dark:text-slate-100"
-              required
-            />
-          </label>
-          <label class="grid gap-1">
-            <span class="font-mono text-xs uppercase tracking-wider text-slate-600 dark:text-slate-400">Courts</span>
-            <select
-              formControlName="capacity"
-              class="rounded-md border border-slate-300 dark:border-slate-700 px-3 py-2 font-mono text-sm focus:outline-none focus:ring-2 focus:ring-slate-900 dark:focus:ring-slate-100 dark:bg-slate-800 dark:text-slate-100"
-            >
-              <option [value]="1">1</option>
-              <option [value]="2">2</option>
-            </select>
-          </label>
-          <button
-            type="submit"
-            [disabled]="venueBusy() || venueForm.invalid"
-            class="rounded-md bg-slate-900 dark:bg-amber-400 px-4 py-2 font-mono text-sm font-medium text-amber-300 dark:text-slate-900 disabled:opacity-50"
-          >
-            {{ venueBusy() ? 'Adding…' : 'Add venue' }}
-          </button>
-          @if (venueError()) {
-            <p class="font-mono text-sm text-red-600 dark:text-red-400" role="alert">{{ venueError() }}</p>
-          }
-        </form>
-        </app-modal>
-        </section>
-        }
-
-        @if (tabs.active() === 'matches') {
-        <section role="tabpanel" id="panel-matches" aria-labelledby="tab-matches">
-        <h2 class="mt-10 font-mono text-lg font-semibold text-slate-900 dark:text-slate-100">Matches</h2>
-        <ul class="mt-3 divide-y divide-slate-200 rounded-md border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900">
-          @for (m of matches(); track m.id) {
-            <li class="flex flex-wrap items-center gap-x-3 gap-y-1 px-4 py-3 font-mono text-sm">
-              <span class="font-semibold">{{ m.matchDate }}</span>
-              <span class="inline-block rounded bg-slate-200 dark:bg-slate-700 px-1.5 py-0.5 text-xs">{{ m.divisionName }}</span>
-              <span>
-                {{ m.homeTeamName }}
-                @if (m.status === 'Played') {
-                  <span class="font-semibold">{{ m.homeScore }}–{{ m.awayScore }}</span>
-                } @else {
-                  <span class="text-slate-400 dark:text-slate-500">v</span>
+                @for (t of teams(); track t.id) {
+                  <li class="px-4 py-3 font-mono text-sm">
+                    <div class="flex items-center justify-between">
+                      <span>
+                        {{ t.name }}
+                        <span
+                          class="ml-2 inline-block rounded bg-slate-200 dark:bg-slate-700 px-2 py-0.5 text-xs uppercase"
+                          >{{ t.gender }}</span
+                        >
+                      </span>
+                      <div class="flex gap-2">
+                        <button
+                          type="button"
+                          (click)="toggleSquad(t.id)"
+                          class="rounded-md border border-slate-300 dark:border-slate-700 px-3 py-1 text-xs text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800"
+                        >
+                          {{ squadTeamId() === t.id ? 'Close' : 'Squad' }}
+                        </button>
+                        <button
+                          type="button"
+                          [attr.aria-label]="'Delete team ' + t.name"
+                          (click)="askDeleteTeam(t)"
+                          class="rounded-md border border-red-300 dark:border-red-800 px-3 py-1 text-xs text-red-700 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950"
+                        >
+                          Delete
+                        </button>
+                      </div>
+                    </div>
+                    <div class="mt-2">
+                      <app-calendar-subscribe
+                        [endpoint]="'/api/calendar/team/' + t.id + '/url'"
+                        label="iCal"
+                      />
+                    </div>
+                    @if (squadTeamId() === t.id) {
+                      <app-team-squad [clubId]="clubId()" [teamId]="t.id" />
+                    }
+                  </li>
+                } @empty {
+                  <li class="px-4 py-3 font-mono text-sm text-slate-500 dark:text-slate-400">
+                    No teams.
+                  </li>
                 }
-                {{ m.awayTeamName }}
-              </span>
-              @if (m.isWalkover) { <span class="rounded bg-amber-200 dark:bg-amber-900 px-1 text-xs text-amber-800 dark:text-amber-200">w/o</span> }
-              <span class="text-slate-500 dark:text-slate-400">@ {{ m.venueName }}</span>
-              <span [class]="'ml-auto inline-block rounded px-2 py-0.5 text-xs ' + (m.status | statusColor)">{{ m.status }}</span>
-              @if (m.status === 'Proposed') {
-                <span class="text-xs text-slate-400 dark:text-slate-500">({{ m.homeAccepted ? 'home ✓' : 'home …' }}, {{ m.awayAccepted ? 'away ✓' : 'away …' }})</span>
-                <button type="button" (click)="onAcceptMatch(m)" class="rounded-md border border-emerald-300 dark:border-emerald-800 px-2 py-1 text-xs text-emerald-700 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-950">Accept</button>
-                <button type="button" (click)="onRejectMatch(m)" class="rounded-md border border-red-300 dark:border-red-800 px-2 py-1 text-xs text-red-700 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950">Reject</button>
-              }
-              @if (m.status === 'Confirmed') {
-                <button type="button" (click)="onOpenMatchResult(m)" class="rounded-md border border-slate-300 dark:border-slate-700 px-2 py-1 text-xs text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800">Result</button>
-                <button type="button" (click)="onMatchWalkover(m, 'Home')" class="rounded-md border border-slate-300 dark:border-slate-700 px-2 py-1 text-xs text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800">W/O home</button>
-                <button type="button" (click)="onMatchWalkover(m, 'Away')" class="rounded-md border border-slate-300 dark:border-slate-700 px-2 py-1 text-xs text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800">W/O away</button>
-              }
-              @if (matchResultId() === m.id) {
-                <form [formGroup]="matchResultForm" (ngSubmit)="onSaveMatchResult(m)" class="flex w-full items-center gap-2 pt-1">
-                  <input type="number" formControlName="homeScore" min="0" aria-label="Home score" class="w-16 rounded-md border border-slate-300 dark:border-slate-700 px-2 py-1 text-xs dark:bg-slate-800 dark:text-slate-100" />
-                  <span class="text-slate-400 dark:text-slate-500">–</span>
-                  <input type="number" formControlName="awayScore" min="0" aria-label="Away score" class="w-16 rounded-md border border-slate-300 dark:border-slate-700 px-2 py-1 text-xs dark:bg-slate-800 dark:text-slate-100" />
-                  <button type="submit" class="rounded-md bg-slate-900 dark:bg-amber-400 px-2 py-1 text-xs font-medium text-amber-300 dark:text-slate-900">Save</button>
-                  @if (matchError()) { <span class="text-xs text-red-600 dark:text-red-400" role="alert">{{ matchError() }}</span> }
+              </ul>
+
+              <app-modal
+                [open]="teamDialogOpen()"
+                title="Add team"
+                (closed)="teamDialogOpen.set(false)"
+              >
+                <form [formGroup]="teamForm" (ngSubmit)="onCreateTeam()" class="grid gap-3">
+                  <label class="grid gap-1">
+                    <span
+                      class="font-mono text-xs uppercase tracking-wider text-slate-600 dark:text-slate-400"
+                      >Team name</span
+                    >
+                    <input
+                      type="text"
+                      formControlName="name"
+                      class="rounded-md border border-slate-300 dark:border-slate-700 px-3 py-2 font-mono text-sm focus:outline-none focus:ring-2 focus:ring-slate-900 dark:focus:ring-slate-100 dark:bg-slate-800 dark:text-slate-100"
+                      required
+                    />
+                  </label>
+                  <label class="grid gap-1">
+                    <span
+                      class="font-mono text-xs uppercase tracking-wider text-slate-600 dark:text-slate-400"
+                      >Gender</span
+                    >
+                    <select
+                      formControlName="gender"
+                      class="rounded-md border border-slate-300 dark:border-slate-700 px-3 py-2 font-mono text-sm focus:outline-none focus:ring-2 focus:ring-slate-900 dark:focus:ring-slate-100 dark:bg-slate-800 dark:text-slate-100"
+                    >
+                      <option value="Mens">Mens</option>
+                      <option value="Ladies">Ladies</option>
+                      <option value="Mixed">Mixed</option>
+                    </select>
+                  </label>
+                  <button
+                    type="submit"
+                    [disabled]="teamBusy() || teamForm.invalid"
+                    class="rounded-md bg-slate-900 dark:bg-amber-400 px-4 py-2 font-mono text-sm font-medium text-amber-300 dark:text-slate-900 disabled:opacity-50"
+                  >
+                    {{ teamBusy() ? 'Adding…' : 'Add team' }}
+                  </button>
+                  @if (teamError()) {
+                    <p class="font-mono text-sm text-red-600 dark:text-red-400" role="alert">
+                      {{ teamError() }}
+                    </p>
+                  }
                 </form>
+              </app-modal>
+            </section>
+          }
+
+          @if (tabs.active() === 'venues') {
+            <section role="tabpanel" id="panel-venues" aria-labelledby="tab-venues">
+              <div class="mt-10 flex items-center justify-between">
+                <h2 class="font-mono text-lg font-semibold text-slate-900 dark:text-slate-100">
+                  Venues
+                </h2>
+                <div class="flex gap-2">
+                  <button
+                    type="button"
+                    (click)="openImport('venues')"
+                    class="rounded-md border border-slate-300 dark:border-slate-700 px-3 py-1 font-mono text-xs text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800"
+                  >
+                    Import CSV
+                  </button>
+                  <button
+                    type="button"
+                    (click)="venueDialogOpen.set(true)"
+                    class="rounded-md border border-slate-300 dark:border-slate-700 px-3 py-1 font-mono text-xs text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800"
+                  >
+                    ＋ Add venue
+                  </button>
+                </div>
+              </div>
+              <ul
+                class="mt-3 divide-y divide-slate-200 rounded-md border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900"
+              >
+                @for (v of venues(); track v.id) {
+                  <li class="flex items-center justify-between px-4 py-3 font-mono text-sm">
+                    <span>
+                      {{ v.name }}
+                      <span
+                        class="ml-2 inline-block rounded bg-slate-200 dark:bg-slate-700 px-2 py-0.5 text-xs"
+                      >
+                        {{ v.capacity }} {{ v.capacity === 1 ? 'court' : 'courts' }}
+                      </span>
+                    </span>
+                    <button
+                      type="button"
+                      [attr.aria-label]="'Delete venue ' + v.name"
+                      (click)="askDeleteVenue(v)"
+                      class="rounded-md border border-red-300 dark:border-red-800 px-3 py-1 text-xs text-red-700 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950"
+                    >
+                      Delete
+                    </button>
+                  </li>
+                } @empty {
+                  <li class="px-4 py-3 font-mono text-sm text-slate-500 dark:text-slate-400">
+                    No venues.
+                  </li>
+                }
+              </ul>
+
+              <app-modal
+                [open]="venueDialogOpen()"
+                title="Add venue"
+                (closed)="venueDialogOpen.set(false)"
+              >
+                <form [formGroup]="venueForm" (ngSubmit)="onCreateVenue()" class="grid gap-3">
+                  <label class="grid gap-1">
+                    <span
+                      class="font-mono text-xs uppercase tracking-wider text-slate-600 dark:text-slate-400"
+                      >Venue name</span
+                    >
+                    <input
+                      type="text"
+                      formControlName="name"
+                      class="rounded-md border border-slate-300 dark:border-slate-700 px-3 py-2 font-mono text-sm focus:outline-none focus:ring-2 focus:ring-slate-900 dark:focus:ring-slate-100 dark:bg-slate-800 dark:text-slate-100"
+                      required
+                    />
+                  </label>
+                  <label class="grid gap-1">
+                    <span
+                      class="font-mono text-xs uppercase tracking-wider text-slate-600 dark:text-slate-400"
+                      >Courts</span
+                    >
+                    <select
+                      formControlName="capacity"
+                      class="rounded-md border border-slate-300 dark:border-slate-700 px-3 py-2 font-mono text-sm focus:outline-none focus:ring-2 focus:ring-slate-900 dark:focus:ring-slate-100 dark:bg-slate-800 dark:text-slate-100"
+                    >
+                      <option [value]="1">1</option>
+                      <option [value]="2">2</option>
+                    </select>
+                  </label>
+                  <button
+                    type="submit"
+                    [disabled]="venueBusy() || venueForm.invalid"
+                    class="rounded-md bg-slate-900 dark:bg-amber-400 px-4 py-2 font-mono text-sm font-medium text-amber-300 dark:text-slate-900 disabled:opacity-50"
+                  >
+                    {{ venueBusy() ? 'Adding…' : 'Add venue' }}
+                  </button>
+                  @if (venueError()) {
+                    <p class="font-mono text-sm text-red-600 dark:text-red-400" role="alert">
+                      {{ venueError() }}
+                    </p>
+                  }
+                </form>
+              </app-modal>
+            </section>
+          }
+
+          @if (tabs.active() === 'matches') {
+            <section role="tabpanel" id="panel-matches" aria-labelledby="tab-matches">
+              <h2 class="mt-10 font-mono text-lg font-semibold text-slate-900 dark:text-slate-100">
+                Matches
+              </h2>
+              <ul
+                class="mt-3 divide-y divide-slate-200 rounded-md border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900"
+              >
+                @for (m of matches(); track m.id) {
+                  <li
+                    class="flex flex-wrap items-center gap-x-3 gap-y-1 px-4 py-3 font-mono text-sm"
+                  >
+                    <span class="font-semibold">{{ m.matchDate }}</span>
+                    <span
+                      class="inline-block rounded bg-slate-200 dark:bg-slate-700 px-1.5 py-0.5 text-xs"
+                      >{{ m.divisionName }}</span
+                    >
+                    <span>
+                      {{ m.homeTeamName }}
+                      @if (m.status === 'Played') {
+                        <span class="font-semibold">{{ m.homeScore }}–{{ m.awayScore }}</span>
+                      } @else {
+                        <span class="text-slate-400 dark:text-slate-500">v</span>
+                      }
+                      {{ m.awayTeamName }}
+                    </span>
+                    @if (m.isWalkover) {
+                      <span
+                        class="rounded bg-amber-200 dark:bg-amber-900 px-1 text-xs text-amber-800 dark:text-amber-200"
+                        >w/o</span
+                      >
+                    }
+                    <span class="text-slate-500 dark:text-slate-400">@ {{ m.venueName }}</span>
+                    <span
+                      [class]="
+                        'ml-auto inline-block rounded px-2 py-0.5 text-xs ' +
+                        (m.status | statusColor)
+                      "
+                      >{{ m.status }}</span
+                    >
+                    @if (m.status === 'Proposed') {
+                      <span class="text-xs text-slate-400 dark:text-slate-500"
+                        >({{ m.homeAccepted ? 'home ✓' : 'home …' }},
+                        {{ m.awayAccepted ? 'away ✓' : 'away …' }})</span
+                      >
+                      <button
+                        type="button"
+                        (click)="onAcceptMatch(m)"
+                        class="rounded-md border border-emerald-300 dark:border-emerald-800 px-2 py-1 text-xs text-emerald-700 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-950"
+                      >
+                        Accept
+                      </button>
+                      <button
+                        type="button"
+                        (click)="onRejectMatch(m)"
+                        class="rounded-md border border-red-300 dark:border-red-800 px-2 py-1 text-xs text-red-700 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950"
+                      >
+                        Reject
+                      </button>
+                    }
+                    @if (m.status === 'Confirmed') {
+                      <button
+                        type="button"
+                        (click)="onOpenMatchResult(m)"
+                        class="rounded-md border border-slate-300 dark:border-slate-700 px-2 py-1 text-xs text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800"
+                      >
+                        Result
+                      </button>
+                      <button
+                        type="button"
+                        (click)="onMatchWalkover(m, 'Home')"
+                        class="rounded-md border border-slate-300 dark:border-slate-700 px-2 py-1 text-xs text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800"
+                      >
+                        W/O home
+                      </button>
+                      <button
+                        type="button"
+                        (click)="onMatchWalkover(m, 'Away')"
+                        class="rounded-md border border-slate-300 dark:border-slate-700 px-2 py-1 text-xs text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800"
+                      >
+                        W/O away
+                      </button>
+                    }
+                    @if (matchResultId() === m.id) {
+                      <form
+                        [formGroup]="matchResultForm"
+                        (ngSubmit)="onSaveMatchResult(m)"
+                        class="flex w-full items-center gap-2 pt-1"
+                      >
+                        <input
+                          type="number"
+                          formControlName="homeScore"
+                          min="0"
+                          aria-label="Home score"
+                          class="w-16 rounded-md border border-slate-300 dark:border-slate-700 px-2 py-1 text-xs dark:bg-slate-800 dark:text-slate-100"
+                        />
+                        <span class="text-slate-400 dark:text-slate-500">–</span>
+                        <input
+                          type="number"
+                          formControlName="awayScore"
+                          min="0"
+                          aria-label="Away score"
+                          class="w-16 rounded-md border border-slate-300 dark:border-slate-700 px-2 py-1 text-xs dark:bg-slate-800 dark:text-slate-100"
+                        />
+                        <button
+                          type="submit"
+                          class="rounded-md bg-slate-900 dark:bg-amber-400 px-2 py-1 text-xs font-medium text-amber-300 dark:text-slate-900"
+                        >
+                          Save
+                        </button>
+                        @if (matchError()) {
+                          <span class="text-xs text-red-600 dark:text-red-400" role="alert">{{
+                            matchError()
+                          }}</span>
+                        }
+                      </form>
+                    }
+                  </li>
+                } @empty {
+                  <li class="px-4 py-3 font-mono text-sm text-slate-500 dark:text-slate-400">
+                    No matches.
+                  </li>
+                }
+              </ul>
+            </section>
+          }
+
+          @if (tabs.active() === 'blocked') {
+            <section role="tabpanel" id="panel-blocked" aria-labelledby="tab-blocked">
+              <div class="mt-10 flex items-center justify-between">
+                <h2 class="font-mono text-lg font-semibold text-slate-900 dark:text-slate-100">
+                  Blocked dates
+                </h2>
+                <button
+                  type="button"
+                  (click)="blockDialogOpen.set(true)"
+                  class="rounded-md border border-slate-300 dark:border-slate-700 px-3 py-1 font-mono text-xs text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800"
+                >
+                  ＋ Add blocked date
+                </button>
+              </div>
+              <ul
+                class="mt-3 divide-y divide-slate-200 rounded-md border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900"
+              >
+                @for (b of blockedDates(); track b.id) {
+                  <li class="flex items-center justify-between px-4 py-3 font-mono text-sm">
+                    <span>
+                      <span
+                        class="inline-block rounded bg-slate-200 dark:bg-slate-700 px-2 py-0.5 text-xs uppercase"
+                        >{{ b.scope }}</span
+                      >
+                      @if (b.scope === 'Venue') {
+                        <span class="ml-2 text-slate-600 dark:text-slate-400">{{
+                          venueName(b.venueId)
+                        }}</span>
+                      }
+                      @if (b.scope === 'Team') {
+                        <span class="ml-2 text-slate-600 dark:text-slate-400">{{
+                          teamName(b.teamId)
+                        }}</span>
+                      }
+                      <span class="ml-2"
+                        >{{ b.startDate }}
+                        @if (b.endDate !== b.startDate) {
+                          <span> → {{ b.endDate }}</span>
+                        }
+                      </span>
+                      <span class="ml-2 text-slate-500 dark:text-slate-400">{{ b.reason }}</span>
+                    </span>
+                    <button
+                      type="button"
+                      [attr.aria-label]="'Delete blocked date ' + b.reason"
+                      (click)="askDeleteBlockedDate(b)"
+                      class="rounded-md border border-red-300 dark:border-red-800 px-3 py-1 text-xs text-red-700 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950"
+                    >
+                      Delete
+                    </button>
+                  </li>
+                } @empty {
+                  <li class="px-4 py-3 font-mono text-sm text-slate-500 dark:text-slate-400">
+                    No blocked dates.
+                  </li>
+                }
+              </ul>
+
+              <app-modal
+                [open]="blockDialogOpen()"
+                title="Add blocked date"
+                (closed)="blockDialogOpen.set(false)"
+              >
+                <form [formGroup]="blockForm" (ngSubmit)="onCreateBlockedDate()" class="grid gap-3">
+                  <div class="flex flex-wrap items-end gap-3">
+                    <label class="grid gap-1">
+                      <span
+                        class="font-mono text-xs uppercase tracking-wider text-slate-600 dark:text-slate-400"
+                        >Scope</span
+                      >
+                      <select
+                        formControlName="scope"
+                        class="rounded-md border border-slate-300 dark:border-slate-700 px-3 py-2 font-mono text-sm focus:outline-none focus:ring-2 focus:ring-slate-900 dark:focus:ring-slate-100 dark:bg-slate-800 dark:text-slate-100"
+                      >
+                        <option value="Club">Club</option>
+                        <option value="Venue">Venue</option>
+                        <option value="Team">Team</option>
+                      </select>
+                    </label>
+
+                    @if (blockForm.controls.scope.value === 'Venue') {
+                      <label class="grid gap-1">
+                        <span
+                          class="font-mono text-xs uppercase tracking-wider text-slate-600 dark:text-slate-400"
+                          >Venue</span
+                        >
+                        <select
+                          formControlName="venueId"
+                          class="rounded-md border border-slate-300 dark:border-slate-700 px-3 py-2 font-mono text-sm focus:outline-none focus:ring-2 focus:ring-slate-900 dark:focus:ring-slate-100 dark:bg-slate-800 dark:text-slate-100"
+                        >
+                          <option value="">-- venue --</option>
+                          @for (v of venues(); track v.id) {
+                            <option [value]="v.id">{{ v.name }}</option>
+                          }
+                        </select>
+                      </label>
+                    }
+
+                    @if (blockForm.controls.scope.value === 'Team') {
+                      <label class="grid gap-1">
+                        <span
+                          class="font-mono text-xs uppercase tracking-wider text-slate-600 dark:text-slate-400"
+                          >Team</span
+                        >
+                        <select
+                          formControlName="teamId"
+                          class="rounded-md border border-slate-300 dark:border-slate-700 px-3 py-2 font-mono text-sm focus:outline-none focus:ring-2 focus:ring-slate-900 dark:focus:ring-slate-100 dark:bg-slate-800 dark:text-slate-100"
+                        >
+                          <option value="">-- team --</option>
+                          @for (t of teams(); track t.id) {
+                            <option [value]="t.id">{{ t.name }}</option>
+                          }
+                        </select>
+                      </label>
+                    }
+
+                    <label class="grid gap-1">
+                      <span
+                        class="font-mono text-xs uppercase tracking-wider text-slate-600 dark:text-slate-400"
+                        >From</span
+                      >
+                      <input
+                        type="date"
+                        formControlName="startDate"
+                        class="rounded-md border border-slate-300 dark:border-slate-700 px-3 py-2 font-mono text-sm focus:outline-none focus:ring-2 focus:ring-slate-900 dark:focus:ring-slate-100 dark:bg-slate-800 dark:text-slate-100"
+                      />
+                    </label>
+                    <label class="grid gap-1">
+                      <span
+                        class="font-mono text-xs uppercase tracking-wider text-slate-600 dark:text-slate-400"
+                        >To</span
+                      >
+                      <input
+                        type="date"
+                        formControlName="endDate"
+                        class="rounded-md border border-slate-300 dark:border-slate-700 px-3 py-2 font-mono text-sm focus:outline-none focus:ring-2 focus:ring-slate-900 dark:focus:ring-slate-100 dark:bg-slate-800 dark:text-slate-100"
+                      />
+                    </label>
+                  </div>
+                  <label class="grid gap-1">
+                    <span
+                      class="font-mono text-xs uppercase tracking-wider text-slate-600 dark:text-slate-400"
+                      >Reason</span
+                    >
+                    <input
+                      type="text"
+                      formControlName="reason"
+                      class="rounded-md border border-slate-300 dark:border-slate-700 px-3 py-2 font-mono text-sm focus:outline-none focus:ring-2 focus:ring-slate-900 dark:focus:ring-slate-100 dark:bg-slate-800 dark:text-slate-100"
+                      required
+                    />
+                  </label>
+                  <button
+                    type="submit"
+                    [disabled]="blockBusy() || blockForm.invalid"
+                    class="justify-self-start rounded-md bg-slate-900 dark:bg-amber-400 px-4 py-2 font-mono text-sm font-medium text-amber-300 dark:text-slate-900 disabled:opacity-50"
+                  >
+                    {{ blockBusy() ? 'Adding…' : 'Add blocked date' }}
+                  </button>
+                  @if (blockError()) {
+                    <p class="font-mono text-sm text-red-600 dark:text-red-400" role="alert">
+                      {{ blockError() }}
+                    </p>
+                  }
+                </form>
+              </app-modal>
+            </section>
+          }
+
+          @if (tabs.active() === 'players') {
+            <section role="tabpanel" id="panel-players" aria-labelledby="tab-players">
+              @if (clubId()) {
+                <app-club-players
+                  [clubId]="clubId()"
+                  [leagues]="acceptedLeagues()"
+                  (playerCount)="playerCount.set($event)"
+                />
               }
-            </li>
-          } @empty {
-            <li class="px-4 py-3 font-mono text-sm text-slate-500 dark:text-slate-400">No matches.</li>
+            </section>
           }
-        </ul>
-        </section>
-        }
 
-        @if (tabs.active() === 'blocked') {
-        <section role="tabpanel" id="panel-blocked" aria-labelledby="tab-blocked">
-        <div class="mt-10 flex items-center justify-between">
-          <h2 class="font-mono text-lg font-semibold text-slate-900 dark:text-slate-100">Blocked dates</h2>
-          <button
-            type="button"
-            (click)="blockDialogOpen.set(true)"
-            class="rounded-md border border-slate-300 dark:border-slate-700 px-3 py-1 font-mono text-xs text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800"
-          >
-            ＋ Add blocked date
-          </button>
-        </div>
-        <ul class="mt-3 divide-y divide-slate-200 rounded-md border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900">
-          @for (b of blockedDates(); track b.id) {
-            <li class="flex items-center justify-between px-4 py-3 font-mono text-sm">
-              <span>
-                <span class="inline-block rounded bg-slate-200 dark:bg-slate-700 px-2 py-0.5 text-xs uppercase">{{ b.scope }}</span>
-                @if (b.scope === 'Venue') { <span class="ml-2 text-slate-600 dark:text-slate-400">{{ venueName(b.venueId) }}</span> }
-                @if (b.scope === 'Team') { <span class="ml-2 text-slate-600 dark:text-slate-400">{{ teamName(b.teamId) }}</span> }
-                <span class="ml-2">{{ b.startDate }}@if (b.endDate !== b.startDate) { <span> → {{ b.endDate }}</span> }</span>
-                <span class="ml-2 text-slate-500 dark:text-slate-400">{{ b.reason }}</span>
-              </span>
-              <button
-                type="button"
-                [attr.aria-label]="'Delete blocked date ' + b.reason"
-                (click)="askDeleteBlockedDate(b)"
-                class="rounded-md border border-red-300 dark:border-red-800 px-3 py-1 text-xs text-red-700 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950"
-              >
-                Delete
-              </button>
-            </li>
-          } @empty {
-            <li class="px-4 py-3 font-mono text-sm text-slate-500 dark:text-slate-400">No blocked dates.</li>
+          @if (tabs.active() === 'sessions') {
+            <section
+              role="tabpanel"
+              id="panel-sessions"
+              aria-labelledby="tab-sessions"
+              class="mt-8"
+            >
+              <app-pegboard-sessions [clubId]="clubId()" />
+            </section>
           }
-        </ul>
-
-        <app-modal [open]="blockDialogOpen()" title="Add blocked date" (closed)="blockDialogOpen.set(false)">
-        <form
-          [formGroup]="blockForm"
-          (ngSubmit)="onCreateBlockedDate()"
-          class="grid gap-3"
-        >
-          <div class="flex flex-wrap items-end gap-3">
-            <label class="grid gap-1">
-              <span class="font-mono text-xs uppercase tracking-wider text-slate-600 dark:text-slate-400">Scope</span>
-              <select
-                formControlName="scope"
-                class="rounded-md border border-slate-300 dark:border-slate-700 px-3 py-2 font-mono text-sm focus:outline-none focus:ring-2 focus:ring-slate-900 dark:focus:ring-slate-100 dark:bg-slate-800 dark:text-slate-100"
-              >
-                <option value="Club">Club</option>
-                <option value="Venue">Venue</option>
-                <option value="Team">Team</option>
-              </select>
-            </label>
-
-            @if (blockForm.controls.scope.value === 'Venue') {
-              <label class="grid gap-1">
-                <span class="font-mono text-xs uppercase tracking-wider text-slate-600 dark:text-slate-400">Venue</span>
-                <select
-                  formControlName="venueId"
-                  class="rounded-md border border-slate-300 dark:border-slate-700 px-3 py-2 font-mono text-sm focus:outline-none focus:ring-2 focus:ring-slate-900 dark:focus:ring-slate-100 dark:bg-slate-800 dark:text-slate-100"
-                >
-                  <option value="">-- venue --</option>
-                  @for (v of venues(); track v.id) {
-                    <option [value]="v.id">{{ v.name }}</option>
-                  }
-                </select>
-              </label>
-            }
-
-            @if (blockForm.controls.scope.value === 'Team') {
-              <label class="grid gap-1">
-                <span class="font-mono text-xs uppercase tracking-wider text-slate-600 dark:text-slate-400">Team</span>
-                <select
-                  formControlName="teamId"
-                  class="rounded-md border border-slate-300 dark:border-slate-700 px-3 py-2 font-mono text-sm focus:outline-none focus:ring-2 focus:ring-slate-900 dark:focus:ring-slate-100 dark:bg-slate-800 dark:text-slate-100"
-                >
-                  <option value="">-- team --</option>
-                  @for (t of teams(); track t.id) {
-                    <option [value]="t.id">{{ t.name }}</option>
-                  }
-                </select>
-              </label>
-            }
-
-            <label class="grid gap-1">
-              <span class="font-mono text-xs uppercase tracking-wider text-slate-600 dark:text-slate-400">From</span>
-              <input
-                type="date"
-                formControlName="startDate"
-                class="rounded-md border border-slate-300 dark:border-slate-700 px-3 py-2 font-mono text-sm focus:outline-none focus:ring-2 focus:ring-slate-900 dark:focus:ring-slate-100 dark:bg-slate-800 dark:text-slate-100"
-              />
-            </label>
-            <label class="grid gap-1">
-              <span class="font-mono text-xs uppercase tracking-wider text-slate-600 dark:text-slate-400">To</span>
-              <input
-                type="date"
-                formControlName="endDate"
-                class="rounded-md border border-slate-300 dark:border-slate-700 px-3 py-2 font-mono text-sm focus:outline-none focus:ring-2 focus:ring-slate-900 dark:focus:ring-slate-100 dark:bg-slate-800 dark:text-slate-100"
-              />
-            </label>
-          </div>
-          <label class="grid gap-1">
-            <span class="font-mono text-xs uppercase tracking-wider text-slate-600 dark:text-slate-400">Reason</span>
-            <input
-              type="text"
-              formControlName="reason"
-              class="rounded-md border border-slate-300 dark:border-slate-700 px-3 py-2 font-mono text-sm focus:outline-none focus:ring-2 focus:ring-slate-900 dark:focus:ring-slate-100 dark:bg-slate-800 dark:text-slate-100"
-              required
-            />
-          </label>
-          <button
-            type="submit"
-            [disabled]="blockBusy() || blockForm.invalid"
-            class="justify-self-start rounded-md bg-slate-900 dark:bg-amber-400 px-4 py-2 font-mono text-sm font-medium text-amber-300 dark:text-slate-900 disabled:opacity-50"
-          >
-            {{ blockBusy() ? 'Adding…' : 'Add blocked date' }}
-          </button>
-          @if (blockError()) {
-            <p class="font-mono text-sm text-red-600 dark:text-red-400" role="alert">{{ blockError() }}</p>
-          }
-        </form>
-        </app-modal>
-        </section>
-        }
-
-        @if (tabs.active() === 'players') {
-        <section role="tabpanel" id="panel-players" aria-labelledby="tab-players">
-        @if (clubId()) {
-          <app-club-players [clubId]="clubId()" [leagues]="acceptedLeagues()" (playerCount)="playerCount.set($event)" />
-        }
-        </section>
-        }
-
-        @if (tabs.active() === 'sessions') {
-          <section role="tabpanel" id="panel-sessions" aria-labelledby="tab-sessions" class="mt-8">
-            <app-pegboard-sessions [clubId]="clubId()" />
-          </section>
+        } @else {
+          <p class="py-10 text-center font-mono text-sm text-slate-500 dark:text-slate-400">
+            Couldn't load this club.
+          </p>
         }
 
         <app-confirm
@@ -539,6 +779,7 @@ export default class ClubDetailPage {
   private readonly route = inject(ActivatedRoute);
   private readonly api = inject(ClubsApi);
   private readonly leagues = inject(LeaguesApi);
+  private readonly toast = inject(ToastService);
 
   protected readonly clubId = signal('');
   private readonly playersApi = inject(PlayersApi);
@@ -553,13 +794,17 @@ export default class ClubDetailPage {
     { id: 'admins', label: 'Admins', count: this.admins().length },
   ]);
   protected readonly club = signal<ClubDetail | null>(null);
+  protected readonly loading = signal(true);
+  // Membership / admin action ids currently in flight, so their buttons disable + busy.
+  private readonly busyIds = signal<ReadonlySet<string>>(new Set());
   protected readonly admins = signal<ClubAdminSummary[]>([]);
   protected readonly memberships = signal<MembershipSummary[]>([]);
   protected readonly leagueList = signal<LeagueSummary[]>([]);
   protected readonly acceptedLeagues = computed(() =>
     this.memberships()
       .filter((m) => m.status === 'Accepted')
-      .map((m) => ({ id: m.leagueId, name: this.leagueName(m.leagueId) })));
+      .map((m) => ({ id: m.leagueId, name: this.leagueName(m.leagueId) })),
+  );
   protected readonly teams = signal<TeamSummary[]>([]);
   protected readonly venues = signal<VenueSummary[]>([]);
   protected readonly blockedDates = signal<BlockedDateSummary[]>([]);
@@ -568,8 +813,14 @@ export default class ClubDetailPage {
   protected readonly matchError = signal<string | null>(null);
 
   protected readonly matchResultForm = new FormGroup({
-    homeScore: new FormControl(0, { nonNullable: true, validators: [Validators.required, Validators.min(0)] }),
-    awayScore: new FormControl(0, { nonNullable: true, validators: [Validators.required, Validators.min(0)] }),
+    homeScore: new FormControl(0, {
+      nonNullable: true,
+      validators: [Validators.required, Validators.min(0)],
+    }),
+    awayScore: new FormControl(0, {
+      nonNullable: true,
+      validators: [Validators.required, Validators.min(0)],
+    }),
   });
   protected readonly adminBusy = signal(false);
   protected readonly adminError = signal<string | null>(null);
@@ -599,7 +850,10 @@ export default class ClubDetailPage {
   }
 
   protected askRevoke(admin: ClubAdminSummary): void {
-    this.pending.set({ message: `Revoke ${admin.email} as a club admin?`, action: () => this.onRevoke(admin.userId) });
+    this.pending.set({
+      message: `Revoke ${admin.email} as a club admin?`,
+      action: () => this.onRevoke(admin.userId),
+    });
   }
 
   protected askDeleteTeam(t: TeamSummary): void {
@@ -611,7 +865,10 @@ export default class ClubDetailPage {
   }
 
   protected askDeleteBlockedDate(b: BlockedDateSummary): void {
-    this.pending.set({ message: `Delete this blocked date (${b.reason})?`, action: () => this.onDeleteBlockedDate(b) });
+    this.pending.set({
+      message: `Delete this blocked date (${b.reason})?`,
+      action: () => this.onDeleteBlockedDate(b),
+    });
   }
 
   protected readonly adminForm = new FormGroup({
@@ -623,7 +880,10 @@ export default class ClubDetailPage {
 
   protected readonly teamForm = new FormGroup({
     name: new FormControl('', { nonNullable: true, validators: [Validators.required] }),
-    gender: new FormControl<Gender>('Mens', { nonNullable: true, validators: [Validators.required] }),
+    gender: new FormControl<Gender>('Mens', {
+      nonNullable: true,
+      validators: [Validators.required],
+    }),
   });
 
   protected readonly venueForm = new FormGroup({
@@ -632,7 +892,10 @@ export default class ClubDetailPage {
   });
 
   protected readonly blockForm = new FormGroup({
-    scope: new FormControl<BlockedDateScope>('Club', { nonNullable: true, validators: [Validators.required] }),
+    scope: new FormControl<BlockedDateScope>('Club', {
+      nonNullable: true,
+      validators: [Validators.required],
+    }),
     venueId: new FormControl('', { nonNullable: true }),
     teamId: new FormControl('', { nonNullable: true }),
     startDate: new FormControl('', { nonNullable: true, validators: [Validators.required] }),
@@ -643,12 +906,16 @@ export default class ClubDetailPage {
   constructor() {
     this.route.paramMap
       .pipe(
-        tap((p) => this.clubId.set(p.get('id') ?? '')),
+        tap((p) => {
+          this.clubId.set(p.get('id') ?? '');
+          this.loading.set(true);
+        }),
         switchMap((p) => this.api.get(p.get('id') ?? '')),
         tap((c) => this.club.set(c)),
       )
       .subscribe({
         next: () => {
+          this.loading.set(false);
           this.refreshAdmins();
           this.refreshMemberships();
           this.refreshTeams();
@@ -657,6 +924,7 @@ export default class ClubDetailPage {
           this.refreshMatches();
           this.refreshPlayerCount();
         },
+        error: () => this.loading.set(false),
       });
     this.leagues.list().subscribe({ next: (rows) => this.leagueList.set(rows) });
   }
@@ -689,6 +957,7 @@ export default class ClubDetailPage {
             this.adminBusy.set(false);
             this.adminForm.reset({ email: '' });
             this.adminDialogOpen.set(false);
+            this.toast.success(`Granted ${email} as a club admin.`);
             this.refreshAdmins();
           },
           error: (err: { error?: { title?: string } }) => {
@@ -711,15 +980,45 @@ export default class ClubDetailPage {
   }
 
   protected onAccept(m: MembershipSummary): void {
-    this.api.acceptMembership(m.leagueId, m.id).subscribe({ next: () => this.refreshMemberships() });
+    this.membershipAction(m, this.api.acceptMembership(m.leagueId, m.id), 'Accepted');
   }
 
   protected onDecline(m: MembershipSummary): void {
-    this.api.declineMembership(m.leagueId, m.id).subscribe({ next: () => this.refreshMemberships() });
+    this.membershipAction(m, this.api.declineMembership(m.leagueId, m.id), 'Declined');
   }
 
   protected onWithdraw(m: MembershipSummary): void {
-    this.api.withdrawMembership(m.leagueId, m.id).subscribe({ next: () => this.refreshMemberships() });
+    this.membershipAction(m, this.api.withdrawMembership(m.leagueId, m.id), 'Withdrew from');
+  }
+
+  // Whether an inline action keyed by this id is mid-request (drives button disable + busy text).
+  protected isBusy(id: string): boolean {
+    return this.busyIds().has(id);
+  }
+
+  private setBusy(id: string, on: boolean): void {
+    this.busyIds.update((s) => {
+      const next = new Set(s);
+      if (on) next.add(id);
+      else next.delete(id);
+      return next;
+    });
+  }
+
+  private membershipAction(m: MembershipSummary, action: Observable<void>, verb: string): void {
+    if (this.isBusy(m.id)) return;
+    this.setBusy(m.id, true);
+    action.subscribe({
+      next: () => {
+        this.setBusy(m.id, false);
+        this.toast.success(`${verb} ${this.leagueName(m.leagueId)}.`);
+        this.refreshMemberships();
+      },
+      error: (err: { error?: { title?: string } }) => {
+        this.setBusy(m.id, false);
+        this.toast.error(err?.error?.title ?? 'That action failed.');
+      },
+    });
   }
 
   protected toggleSquad(teamId: string): void {
@@ -753,7 +1052,11 @@ export default class ClubDetailPage {
       },
       error: () => {
         this.importBusy.set(false);
-        this.importResult.set({ created: 0, updated: 0, errors: [{ row: 0, message: 'Import failed.' }] });
+        this.importResult.set({
+          created: 0,
+          updated: 0,
+          errors: [{ row: 0, message: 'Import failed.' }],
+        });
       },
     });
   }
@@ -815,7 +1118,9 @@ export default class ClubDetailPage {
   }
 
   private refreshBlockedDates(): void {
-    this.api.listBlockedDates(this.clubId()).subscribe({ next: (rows) => this.blockedDates.set(rows) });
+    this.api
+      .listBlockedDates(this.clubId())
+      .subscribe({ next: (rows) => this.blockedDates.set(rows) });
   }
 
   protected venueName(id: string | null): string {
@@ -853,7 +1158,14 @@ export default class ClubDetailPage {
       .subscribe({
         next: () => {
           this.blockBusy.set(false);
-          this.blockForm.reset({ scope: 'Club', venueId: '', teamId: '', startDate: '', endDate: '', reason: '' });
+          this.blockForm.reset({
+            scope: 'Club',
+            venueId: '',
+            teamId: '',
+            startDate: '',
+            endDate: '',
+            reason: '',
+          });
           this.blockDialogOpen.set(false);
           this.refreshBlockedDates();
         },
@@ -865,12 +1177,16 @@ export default class ClubDetailPage {
   }
 
   protected onDeleteBlockedDate(b: BlockedDateSummary): void {
-    this.api.deleteBlockedDate(this.clubId(), b.id).subscribe({ next: () => this.refreshBlockedDates() });
+    this.api
+      .deleteBlockedDate(this.clubId(), b.id)
+      .subscribe({ next: () => this.refreshBlockedDates() });
   }
 
   // Eager count for the Players tab pill (the players child only mounts when that tab is open).
   private refreshPlayerCount(): void {
-    this.playersApi.listClubPlayers(this.clubId()).subscribe({ next: (p) => this.playerCount.set(p.length) });
+    this.playersApi
+      .listClubPlayers(this.clubId())
+      .subscribe({ next: (p) => this.playerCount.set(p.length) });
   }
 
   private refreshMatches(): void {
