@@ -1,4 +1,11 @@
-import { ChangeDetectionStrategy, Component, OnDestroy, computed, inject, signal } from '@angular/core';
+import {
+  ChangeDetectionStrategy,
+  Component,
+  OnDestroy,
+  computed,
+  inject,
+  signal,
+} from '@angular/core';
 import { FormArray, FormControl, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import { ActivatedRoute, RouterLink } from '@angular/router';
 import { forkJoin, switchMap, tap } from 'rxjs';
@@ -31,619 +38,903 @@ import { ImportResult } from '../../shared/import-result';
 import { LeaguePlayerApprovalsComponent } from './league-player-approvals.component';
 import { TabsComponent, TabDef } from '../../shared/tabs.component';
 import { CalendarSubscribeComponent } from '../../shared/calendar-subscribe.component';
+import { ToastService } from '../../shared/toast.service';
 import { PlayersApi } from './players.api';
 
 @Component({
   selector: 'app-league-detail-page',
-  imports: [ReactiveFormsModule, RouterLink, AdminHeaderComponent, ModalComponent, ConfirmComponent, StatusColorPipe, CsvImportComponent, LeaguePlayerApprovalsComponent, TabsComponent, CalendarSubscribeComponent],
+  imports: [
+    ReactiveFormsModule,
+    RouterLink,
+    AdminHeaderComponent,
+    ModalComponent,
+    ConfirmComponent,
+    StatusColorPipe,
+    CsvImportComponent,
+    LeaguePlayerApprovalsComponent,
+    TabsComponent,
+    CalendarSubscribeComponent,
+  ],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <div class="min-h-screen bg-slate-50 dark:bg-slate-950">
       <app-admin-header />
 
       <main class="mx-auto w-full max-w-5xl px-4 py-10">
-        @if (league(); as l) {
-          <h1 class="font-mono text-2xl font-semibold text-slate-900 dark:text-slate-100">{{ l.name }}</h1>
-          @if (l.description) {
-            <p class="mt-1 font-mono text-sm text-slate-500 dark:text-slate-400">{{ l.description }}</p>
-          }
-          <a
-            [routerLink]="['/admin/leagues', leagueId, 'admins']"
-            class="mt-2 inline-block font-mono text-xs uppercase tracking-wider text-slate-500 dark:text-slate-400 hover:underline"
-            >manage admins →</a
-          >
-          <div class="mt-2">
-            <app-calendar-subscribe [endpoint]="'/api/calendar/league/' + leagueId + '/url'" label="Subscribe to fixtures (iCal)" />
-          </div>
-        }
-
-        <app-tabs #tabs [tabs]="leagueTabs()" />
-
-        @if (tabs.active() === 'divisions') {
-        <section role="tabpanel" id="panel-divisions" aria-labelledby="tab-divisions">
-        <div class="mt-8 flex items-center justify-between">
-          <h2 class="font-mono text-lg font-semibold text-slate-900 dark:text-slate-100">Divisions</h2>
-          <button
-            type="button"
-            (click)="divisionDialogOpen.set(true)"
-            class="rounded-md border border-slate-300 dark:border-slate-700 px-3 py-1 font-mono text-xs text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800"
-          >
-            ＋ Add division
-          </button>
-        </div>
-        <ul class="mt-3 divide-y divide-slate-200 rounded-md border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900">
-          @for (d of divisions(); track d.id) {
-            <li class="px-4 py-3 font-mono text-sm text-slate-900 dark:text-slate-100">
-              {{ d.name }} — {{ d.gender }} #{{ d.rank }} · rubbers/match {{ d.rubbersPerMatch }} ·
-              points {{ d.winPoints }}/{{ d.drawPoints }}/{{ d.lossPoints }}
-            </li>
-          } @empty {
-            <li class="px-4 py-3 font-mono text-sm text-slate-500 dark:text-slate-400">No divisions yet.</li>
-          }
-        </ul>
-
-        <app-modal [open]="divisionDialogOpen()" title="Add division" (closed)="divisionDialogOpen.set(false)">
-        <form
-          [formGroup]="form"
-          (ngSubmit)="onCreate()"
-          class="grid gap-3"
-        >
-          <label class="grid gap-1">
-            <span class="font-mono text-xs uppercase tracking-wider text-slate-600 dark:text-slate-400">Name</span>
-            <input
-              type="text"
-              formControlName="name"
-              class="rounded-md border border-slate-300 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 px-3 py-2 font-mono text-sm focus:outline-none focus:ring-2 focus:ring-slate-900 dark:focus:ring-slate-100"
-              required
-            />
-          </label>
-          <label class="grid gap-1">
-            <span class="font-mono text-xs uppercase tracking-wider text-slate-600 dark:text-slate-400">Gender</span>
-            <select
-              formControlName="gender"
-              class="rounded-md border border-slate-300 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 px-3 py-2 font-mono text-sm focus:outline-none focus:ring-2 focus:ring-slate-900 dark:focus:ring-slate-100"
+        @if (loading()) {
+          <p class="py-10 text-center font-mono text-sm text-slate-500 dark:text-slate-400">
+            Loading…
+          </p>
+        } @else if (league()) {
+          @if (league(); as l) {
+            <h1 class="font-mono text-2xl font-semibold text-slate-900 dark:text-slate-100">
+              {{ l.name }}
+            </h1>
+            @if (l.description) {
+              <p class="mt-1 font-mono text-sm text-slate-500 dark:text-slate-400">
+                {{ l.description }}
+              </p>
+            }
+            <a
+              [routerLink]="['/admin/leagues', leagueId, 'admins']"
+              class="mt-2 inline-block font-mono text-xs uppercase tracking-wider text-slate-500 dark:text-slate-400 hover:underline"
+              >manage admins →</a
             >
-              <option value="Mens">Mens</option>
-              <option value="Ladies">Ladies</option>
-              <option value="Mixed">Mixed</option>
-            </select>
-          </label>
-          <div class="grid grid-cols-2 gap-3">
-            <label class="grid gap-1">
-              <span class="font-mono text-xs uppercase tracking-wider text-slate-600 dark:text-slate-400">Rank</span>
-              <input
-                type="number"
-                formControlName="rank"
-                min="1"
-                class="rounded-md border border-slate-300 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 px-3 py-2 font-mono text-sm focus:outline-none focus:ring-2 focus:ring-slate-900 dark:focus:ring-slate-100"
+            <div class="mt-2">
+              <app-calendar-subscribe
+                [endpoint]="'/api/calendar/league/' + leagueId + '/url'"
+                label="Subscribe to fixtures (iCal)"
               />
-            </label>
-            <label class="grid gap-1">
-              <span class="font-mono text-xs uppercase tracking-wider text-slate-600 dark:text-slate-400">Rubbers/match</span>
-              <input
-                type="number"
-                formControlName="rubbersPerMatch"
-                min="1"
-                class="rounded-md border border-slate-300 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 px-3 py-2 font-mono text-sm focus:outline-none focus:ring-2 focus:ring-slate-900 dark:focus:ring-slate-100"
-              />
-            </label>
-          </div>
-          <div class="grid grid-cols-3 gap-3">
-            <label class="grid gap-1">
-              <span class="font-mono text-xs uppercase tracking-wider text-slate-600 dark:text-slate-400">Win pts</span>
-              <input
-                type="number"
-                formControlName="winPoints"
-                class="rounded-md border border-slate-300 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 px-3 py-2 font-mono text-sm focus:outline-none focus:ring-2 focus:ring-slate-900 dark:focus:ring-slate-100"
-              />
-            </label>
-            <label class="grid gap-1">
-              <span class="font-mono text-xs uppercase tracking-wider text-slate-600 dark:text-slate-400">Draw pts</span>
-              <input
-                type="number"
-                formControlName="drawPoints"
-                class="rounded-md border border-slate-300 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 px-3 py-2 font-mono text-sm focus:outline-none focus:ring-2 focus:ring-slate-900 dark:focus:ring-slate-100"
-              />
-            </label>
-            <label class="grid gap-1">
-              <span class="font-mono text-xs uppercase tracking-wider text-slate-600 dark:text-slate-400">Loss pts</span>
-              <input
-                type="number"
-                formControlName="lossPoints"
-                class="rounded-md border border-slate-300 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 px-3 py-2 font-mono text-sm focus:outline-none focus:ring-2 focus:ring-slate-900 dark:focus:ring-slate-100"
-              />
-            </label>
-          </div>
-          <button
-            type="submit"
-            [disabled]="submitting() || form.invalid"
-            class="justify-self-start rounded-md bg-slate-900 dark:bg-amber-400 px-4 py-2 font-mono text-sm font-medium text-amber-300 dark:text-slate-900 disabled:opacity-50"
-          >
-            {{ submitting() ? 'Adding…' : 'Add division' }}
-          </button>
-          @if (error()) {
-            <p class="font-mono text-sm text-red-600 dark:text-red-400" role="alert">{{ error() }}</p>
+            </div>
           }
-        </form>
-        </app-modal>
-        </section>
-        }
 
-        @if (tabs.active() === 'seasons') {
-        <section role="tabpanel" id="panel-seasons" aria-labelledby="tab-seasons">
-        <div class="mt-10 flex items-center justify-between">
-          <h2 class="font-mono text-lg font-semibold text-slate-900 dark:text-slate-100">Seasons</h2>
-          <button
-            type="button"
-            (click)="seasonDialogOpen.set(true)"
-            class="rounded-md border border-slate-300 dark:border-slate-700 px-3 py-1 font-mono text-xs text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800"
-          >
-            ＋ Add season
-          </button>
-        </div>
-        <ul class="mt-3 divide-y divide-slate-200 rounded-md border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900">
-          @for (s of seasons(); track s.id) {
-            <li class="px-4 py-3 font-mono text-sm">
-              <div class="flex items-center justify-between">
-                <span>
-                  {{ s.name }}
-                  <span class="ml-2 text-slate-500 dark:text-slate-400">{{ s.startDate }} → {{ s.endDate }}</span>
-                  <span [class]="'ml-3 inline-block rounded px-2 py-0.5 text-xs ' + (s.status | statusColor)">{{ s.status }}</span>
-                </span>
-                <div class="flex gap-2">
-                  @if (s.status === 'Draft') {
-                    <button
-                      type="button"
-                      (click)="onEditWeeks(s)"
-                      class="rounded-md border border-slate-300 dark:border-slate-700 px-3 py-1 text-xs text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800"
-                    >
-                      {{ editingSeasonId() === s.id ? 'Close' : 'Weeks' }}
-                    </button>
-                    <button
-                      type="button"
-                      (click)="onManageEntries(s)"
-                      class="rounded-md border border-slate-300 dark:border-slate-700 px-3 py-1 text-xs text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800"
-                    >
-                      {{ entriesSeasonId() === s.id ? 'Close' : 'Teams' }}
-                    </button>
-                    <button
-                      type="button"
-                      (click)="openImport(s)"
-                      class="rounded-md border border-slate-300 dark:border-slate-700 px-3 py-1 text-xs text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800"
-                    >
-                      Import
-                    </button>
-                    <button
-                      type="button"
-                      [disabled]="generatingSeasonId() === s.id"
-                      (click)="onGenerate(s)"
-                      class="rounded-md bg-slate-900 dark:bg-amber-400 px-3 py-1 text-xs font-medium text-amber-300 dark:text-slate-900 hover:bg-slate-800 dark:hover:bg-amber-300 disabled:opacity-50"
-                    >
-                      {{ generatingSeasonId() === s.id ? 'Generating…' : 'Generate' }}
-                    </button>
-                    <button
-                      type="button"
-                      [attr.aria-label]="'Delete season ' + s.name"
-                      (click)="askDeleteSeason(s)"
-                      class="rounded-md border border-red-300 dark:border-red-800 px-3 py-1 text-xs text-red-700 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950"
-                    >
-                      Delete
-                    </button>
-                  } @else if (s.status === 'Scheduling') {
-                    <span class="font-mono text-xs text-blue-700 dark:text-blue-300">Generating schedule…</span>
-                  } @else {
-                    <button
-                      type="button"
-                      (click)="onToggleFixtures(s)"
-                      class="rounded-md border border-slate-300 dark:border-slate-700 px-3 py-1 text-xs text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800"
-                    >
-                      {{ fixturesSeasonId() === s.id ? 'Close' : 'Fixtures' }}
-                    </button>
-                    @if (s.status === 'Proposed') {
-                      <button
-                        type="button"
-                        [disabled]="rerunningSeasonId() === s.id"
-                        (click)="onRerun(s)"
-                        class="rounded-md border border-slate-300 dark:border-slate-700 px-3 py-1 text-xs text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 disabled:opacity-50"
-                      >
-                        {{ rerunningSeasonId() === s.id ? 'Re-running…' : 'Re-run' }}
-                      </button>
-                      <button
-                        type="button"
-                        (click)="onActivate(s)"
-                        class="rounded-md bg-slate-900 dark:bg-amber-400 px-3 py-1 text-xs font-medium text-amber-300 dark:text-slate-900 hover:bg-slate-800 dark:hover:bg-amber-300"
-                      >Activate</button>
-                    }
-                    @if (s.status === 'Active') {
-                      <button
-                        type="button"
-                        (click)="onCloseSeason(s)"
-                        class="rounded-md border border-red-300 dark:border-red-800 px-3 py-1 text-xs text-red-700 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950"
-                      >Close season</button>
-                    }
-                    <button
-                      type="button"
-                      (click)="onToggleStandings(s)"
-                      class="rounded-md border border-slate-300 dark:border-slate-700 px-3 py-1 text-xs text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800"
-                    >
-                      {{ standingsSeasonId() === s.id ? 'Close' : 'Table' }}
-                    </button>
-                  }
-                </div>
-                @if (rerunError() && rerunErrorSeasonId() === s.id) {
-                  <p class="mt-1 text-xs text-red-600 dark:text-red-400" role="alert">{{ rerunError() }}</p>
-                }
-              </div>
+          <app-tabs #tabs [tabs]="leagueTabs()" />
 
-              @if (editingSeasonId() === s.id) {
-                <form [formGroup]="weeksForm" (ngSubmit)="onSaveWeeks(s)" class="mt-3 grid gap-2">
-                  <div formArrayName="weeks" class="grid gap-2">
-                    @for (row of weekRows.controls; track $index) {
-                      <div [formGroupName]="$index" class="flex flex-wrap items-center gap-2">
-                        <input
-                          type="date"
-                          formControlName="startDate"
-                          aria-label="Week start date"
-                          class="rounded-md border border-slate-300 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 px-2 py-1 text-xs focus:outline-none focus:ring-2 focus:ring-slate-900 dark:focus:ring-slate-100"
-                        />
-                        <span class="text-slate-400 dark:text-slate-500">→</span>
-                        <input
-                          type="date"
-                          formControlName="endDate"
-                          aria-label="Week end date"
-                          class="rounded-md border border-slate-300 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 px-2 py-1 text-xs focus:outline-none focus:ring-2 focus:ring-slate-900 dark:focus:ring-slate-100"
-                        />
-                        <select
-                          formControlName="weekType"
-                          aria-label="Week type"
-                          class="rounded-md border border-slate-300 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 px-2 py-1 text-xs focus:outline-none focus:ring-2 focus:ring-slate-900 dark:focus:ring-slate-100"
-                        >
-                          <option value="Level">Level</option>
-                          <option value="Mixed">Mixed</option>
-                        </select>
-                        <button
-                          type="button"
-                          (click)="removeWeek($index)"
-                          aria-label="Remove week"
-                          class="rounded-md border border-red-300 dark:border-red-800 px-2 py-1 text-xs text-red-700 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950"
-                        >✕</button>
-                      </div>
-                    } @empty {
-                      <p class="text-xs text-slate-500 dark:text-slate-400">No weeks. Add one below.</p>
-                    }
-                  </div>
-                  <div class="flex gap-2">
-                    <button
-                      type="button"
-                      (click)="addWeek()"
-                      class="rounded-md border border-slate-300 dark:border-slate-700 px-3 py-1 text-xs text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800"
-                    >+ Add week</button>
-                    <button
-                      type="submit"
-                      [disabled]="weeksSaving() || weeksForm.invalid"
-                      class="rounded-md bg-slate-900 dark:bg-amber-400 px-3 py-1 text-xs font-medium text-amber-300 dark:text-slate-900 disabled:opacity-50"
-                    >
-                      {{ weeksSaving() ? 'Saving…' : 'Save weeks' }}
-                    </button>
-                  </div>
-                  @if (weeksError()) {
-                    <p class="text-xs text-red-600 dark:text-red-400" role="alert">{{ weeksError() }}</p>
-                  }
-                </form>
-              }
-
-              @if (entriesSeasonId() === s.id) {
-                <div class="mt-3 grid gap-2">
-                  <ul class="divide-y divide-slate-100 rounded border border-slate-200 dark:border-slate-800">
-                    @for (e of seasonEntries(); track e.id) {
-                      <li class="flex items-center justify-between px-3 py-2 text-xs">
-                        <span>{{ e.teamName }} <span class="text-slate-400 dark:text-slate-500">→</span> {{ e.divisionName }}</span>
-                        <button
-                          type="button"
-                          [attr.aria-label]="'Remove ' + e.teamName"
-                          (click)="onRemoveEntry(s, e)"
-                          class="rounded-md border border-red-300 dark:border-red-800 px-2 py-0.5 text-red-700 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950"
-                        >✕</button>
-                      </li>
-                    } @empty {
-                      <li class="px-3 py-2 text-xs text-slate-500 dark:text-slate-400">No teams assigned.</li>
-                    }
-                  </ul>
-                  <form [formGroup]="entryForm" (ngSubmit)="onAddEntry(s)" class="flex flex-wrap items-center gap-2">
-                    <select
-                      formControlName="teamId"
-                      aria-label="Team"
-                      class="rounded-md border border-slate-300 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 px-2 py-1 text-xs focus:outline-none focus:ring-2 focus:ring-slate-900 dark:focus:ring-slate-100"
-                    >
-                      <option value="">-- team --</option>
-                      @for (t of teamOptions(); track t.id) {
-                        <option [value]="t.id">{{ t.label }}</option>
-                      }
-                    </select>
-                    <select
-                      formControlName="divisionId"
-                      aria-label="Division"
-                      class="rounded-md border border-slate-300 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 px-2 py-1 text-xs focus:outline-none focus:ring-2 focus:ring-slate-900 dark:focus:ring-slate-100"
-                    >
-                      <option value="">-- division --</option>
-                      @for (d of divisions(); track d.id) {
-                        <option [value]="d.id">{{ d.name }} ({{ d.gender }})</option>
-                      }
-                    </select>
-                    <button
-                      type="submit"
-                      [disabled]="entryForm.invalid"
-                      class="rounded-md bg-slate-900 dark:bg-amber-400 px-3 py-1 text-xs font-medium text-amber-300 dark:text-slate-900 disabled:opacity-50"
-                    >Assign</button>
-                  </form>
-                  @if (entryError()) {
-                    <p class="text-xs text-red-600 dark:text-red-400" role="alert">{{ entryError() }}</p>
-                  }
-                </div>
-              }
-
-              @if (generateError() && generateErrorSeasonId() === s.id) {
-                <p class="mt-2 text-xs text-red-600 dark:text-red-400" role="alert">{{ generateError() }}</p>
-              }
-              @if (s.schedulingError && s.status === 'Draft') {
-                <p class="mt-2 text-xs text-red-600 dark:text-red-400" role="alert">Last generation failed: {{ s.schedulingError }}</p>
-              }
-
-              @if (fixturesSeasonId() === s.id) {
-                <ul class="mt-3 divide-y divide-slate-100 rounded border border-slate-200 dark:border-slate-800">
-                  @for (f of fixtures(); track f.id) {
-                    <li class="flex flex-wrap items-center gap-x-3 gap-y-1 px-3 py-2 text-xs">
-                      <span class="font-semibold">{{ f.matchDate }}</span>
-                      <span class="inline-block rounded bg-slate-200 dark:bg-slate-700 px-1.5 py-0.5">{{ f.divisionName }}</span>
-                      <span>
-                        {{ f.homeTeamName }}
-                        @if (f.status === 'Played') {
-                          <span class="font-semibold">{{ f.homeScore }}–{{ f.awayScore }}</span>
-                        } @else {
-                          <span class="text-slate-400 dark:text-slate-500">v</span>
-                        }
-                        {{ f.awayTeamName }}
-                      </span>
-                      @if (f.isWalkover) { <span class="rounded bg-amber-200 dark:bg-amber-900 px-1 text-amber-800 dark:text-amber-200">w/o</span> }
-                      <span class="text-slate-500 dark:text-slate-400">@ {{ f.venueName }}</span>
-                      @if (f.status === 'Proposed') {
-                        <span class="text-slate-400 dark:text-slate-500">({{ f.homeAccepted ? 'home ✓' : 'home …' }}, {{ f.awayAccepted ? 'away ✓' : 'away …' }})</span>
-                      }
-                      <span [class]="'ml-auto inline-block rounded px-1.5 py-0.5 ' + (f.status | statusColor)">{{ f.status }}</span>
-                      @if (f.status === 'Proposed') {
-                        <button
-                          type="button"
-                          (click)="onForceConfirm(s, f)"
-                          class="rounded-md border border-slate-300 dark:border-slate-700 px-2 py-0.5 text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800"
-                        >Force confirm</button>
-                      }
-                      @if (f.status === 'Confirmed') {
-                        <button type="button" (click)="onOpenResult(f)" class="rounded-md border border-slate-300 dark:border-slate-700 px-2 py-0.5 text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800">Result</button>
-                        <button type="button" (click)="onWalkover(s, f, 'Home')" class="rounded-md border border-slate-300 dark:border-slate-700 px-2 py-0.5 text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800">W/O home</button>
-                        <button type="button" (click)="onWalkover(s, f, 'Away')" class="rounded-md border border-slate-300 dark:border-slate-700 px-2 py-0.5 text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800">W/O away</button>
-                        @if (s.status === 'Active') {
-                          <button type="button" (click)="onPostpone(s, f)" class="rounded-md border border-amber-300 dark:border-amber-800 px-2 py-0.5 text-amber-700 dark:text-amber-400 hover:bg-amber-50 dark:hover:bg-amber-950">Postpone</button>
-                        }
-                      }
-
-                      @if (resultMatchId() === f.id) {
-                        <form [formGroup]="resultForm" (ngSubmit)="onSaveResult(s, f)" class="flex w-full items-center gap-2 pt-1">
-                          <input type="number" formControlName="homeScore" min="0" aria-label="Home score" class="w-16 rounded-md border border-slate-300 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 px-2 py-1" />
-                          <span class="text-slate-400 dark:text-slate-500">–</span>
-                          <input type="number" formControlName="awayScore" min="0" aria-label="Away score" class="w-16 rounded-md border border-slate-300 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 px-2 py-1" />
-                          <button type="submit" class="rounded-md bg-slate-900 dark:bg-amber-400 px-2 py-1 font-medium text-amber-300 dark:text-slate-900">Save</button>
-                          @if (resultError()) { <span class="text-red-600 dark:text-red-400" role="alert">{{ resultError() }}</span> }
-                        </form>
-                      }
-                    </li>
-                  } @empty {
-                    <li class="px-3 py-2 text-xs text-slate-500 dark:text-slate-400">No fixtures.</li>
-                  }
-                </ul>
-              }
-
-              @if (standingsSeasonId() === s.id) {
-                @for (t of standings(); track t.divisionId) {
-                  <div class="mt-3">
-                    <h4 class="font-mono text-xs font-semibold text-slate-700 dark:text-slate-300">{{ t.divisionName }}</h4>
-                    <table class="mt-1 w-full border border-slate-200 dark:border-slate-800 text-xs">
-                      <thead class="bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400">
-                        <tr>
-                          <th class="px-2 py-1 text-left">Team</th>
-                          <th class="px-2 py-1">P</th><th class="px-2 py-1">W</th><th class="px-2 py-1">D</th><th class="px-2 py-1">L</th>
-                          <th class="px-2 py-1">RF</th><th class="px-2 py-1">RA</th><th class="px-2 py-1">+/-</th><th class="px-2 py-1">Pts</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        @for (r of t.rows; track r.teamId) {
-                          <tr class="border-t border-slate-100 dark:border-slate-800">
-                            <td class="px-2 py-1 text-left">{{ r.teamName }}</td>
-                            <td class="px-2 py-1 text-center">{{ r.played }}</td>
-                            <td class="px-2 py-1 text-center">{{ r.won }}</td>
-                            <td class="px-2 py-1 text-center">{{ r.drawn }}</td>
-                            <td class="px-2 py-1 text-center">{{ r.lost }}</td>
-                            <td class="px-2 py-1 text-center">{{ r.rubbersFor }}</td>
-                            <td class="px-2 py-1 text-center">{{ r.rubbersAgainst }}</td>
-                            <td class="px-2 py-1 text-center">{{ r.rubberDifference }}</td>
-                            <td class="px-2 py-1 text-center font-semibold">{{ r.points }}</td>
-                          </tr>
-                        }
-                      </tbody>
-                    </table>
-                  </div>
-                } @empty {
-                  <p class="mt-3 text-xs text-slate-500 dark:text-slate-400">No standings yet.</p>
-                }
-              }
-            </li>
-          } @empty {
-            <li class="px-4 py-3 font-mono text-sm text-slate-500 dark:text-slate-400">No seasons yet.</li>
-          }
-        </ul>
-
-        <app-modal [open]="seasonDialogOpen()" title="Add season" (closed)="seasonDialogOpen.set(false)">
-        <form
-          [formGroup]="seasonForm"
-          (ngSubmit)="onCreateSeason()"
-          class="grid gap-3"
-        >
-          <label class="grid gap-1">
-            <span class="font-mono text-xs uppercase tracking-wider text-slate-600 dark:text-slate-400">Season name</span>
-            <input
-              type="text"
-              formControlName="name"
-              class="rounded-md border border-slate-300 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 px-3 py-2 font-mono text-sm focus:outline-none focus:ring-2 focus:ring-slate-900 dark:focus:ring-slate-100"
-              required
-            />
-          </label>
-          <label class="grid gap-1">
-            <span class="font-mono text-xs uppercase tracking-wider text-slate-600 dark:text-slate-400">Start</span>
-            <input
-              type="date"
-              formControlName="startDate"
-              class="rounded-md border border-slate-300 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 px-3 py-2 font-mono text-sm focus:outline-none focus:ring-2 focus:ring-slate-900 dark:focus:ring-slate-100"
-            />
-          </label>
-          <label class="grid gap-1">
-            <span class="font-mono text-xs uppercase tracking-wider text-slate-600 dark:text-slate-400">End</span>
-            <input
-              type="date"
-              formControlName="endDate"
-              class="rounded-md border border-slate-300 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 px-3 py-2 font-mono text-sm focus:outline-none focus:ring-2 focus:ring-slate-900 dark:focus:ring-slate-100"
-            />
-          </label>
-          <button
-            type="submit"
-            [disabled]="seasonSubmitting() || seasonForm.invalid"
-            class="rounded-md bg-slate-900 dark:bg-amber-400 px-4 py-2 font-mono text-sm font-medium text-amber-300 dark:text-slate-900 disabled:opacity-50"
-          >
-            {{ seasonSubmitting() ? 'Adding…' : 'Add season' }}
-          </button>
-          @if (seasonError()) {
-            <p class="font-mono text-sm text-red-600 dark:text-red-400" role="alert">{{ seasonError() }}</p>
-          }
-        </form>
-        </app-modal>
-        </section>
-        }
-
-        @if (tabs.active() === 'clubs') {
-        <section role="tabpanel" id="panel-clubs" aria-labelledby="tab-clubs">
-        <div class="mt-10 flex items-center justify-between">
-          <h2 class="font-mono text-lg font-semibold text-slate-900 dark:text-slate-100">Member clubs</h2>
-          <button
-            type="button"
-            (click)="inviteDialogOpen.set(true)"
-            class="rounded-md border border-slate-300 dark:border-slate-700 px-3 py-1 font-mono text-xs text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800"
-          >
-            ＋ Invite club
-          </button>
-        </div>
-        <ul class="mt-3 divide-y divide-slate-200 rounded-md border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900">
-          @for (m of memberships(); track m.id) {
-            <li class="flex items-center justify-between px-4 py-3 font-mono text-sm">
-              <span>
-                {{ clubLabel(m.clubId) }}
-                <span [class]="'ml-3 inline-block rounded px-2 py-0.5 text-xs ' + (m.status | statusColor)">{{ m.status }}</span>
-              </span>
-              @if (m.status === 'Accepted') {
+          @if (tabs.active() === 'divisions') {
+            <section role="tabpanel" id="panel-divisions" aria-labelledby="tab-divisions">
+              <div class="mt-8 flex items-center justify-between">
+                <h2 class="font-mono text-lg font-semibold text-slate-900 dark:text-slate-100">
+                  Divisions
+                </h2>
                 <button
                   type="button"
-                  (click)="askExpel(m)"
-                  class="rounded-md border border-red-300 dark:border-red-800 px-3 py-1 text-xs text-red-700 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950"
-                >Expel</button>
-              }
-            </li>
-          } @empty {
-            <li class="px-4 py-3 font-mono text-sm text-slate-500 dark:text-slate-400">No member clubs.</li>
+                  (click)="divisionDialogOpen.set(true)"
+                  class="rounded-md border border-slate-300 dark:border-slate-700 px-3 py-1 font-mono text-xs text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800"
+                >
+                  ＋ Add division
+                </button>
+              </div>
+              <ul
+                class="mt-3 divide-y divide-slate-200 rounded-md border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900"
+              >
+                @for (d of divisions(); track d.id) {
+                  <li class="px-4 py-3 font-mono text-sm text-slate-900 dark:text-slate-100">
+                    {{ d.name }} — {{ d.gender }} #{{ d.rank }} · rubbers/match
+                    {{ d.rubbersPerMatch }} · points {{ d.winPoints }}/{{ d.drawPoints }}/{{
+                      d.lossPoints
+                    }}
+                  </li>
+                } @empty {
+                  <li class="px-4 py-3 font-mono text-sm text-slate-500 dark:text-slate-400">
+                    No divisions yet.
+                  </li>
+                }
+              </ul>
+
+              <app-modal
+                [open]="divisionDialogOpen()"
+                title="Add division"
+                (closed)="divisionDialogOpen.set(false)"
+              >
+                <form [formGroup]="form" (ngSubmit)="onCreate()" class="grid gap-3">
+                  <label class="grid gap-1">
+                    <span
+                      class="font-mono text-xs uppercase tracking-wider text-slate-600 dark:text-slate-400"
+                      >Name</span
+                    >
+                    <input
+                      type="text"
+                      formControlName="name"
+                      class="rounded-md border border-slate-300 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 px-3 py-2 font-mono text-sm focus:outline-none focus:ring-2 focus:ring-slate-900 dark:focus:ring-slate-100"
+                      required
+                    />
+                  </label>
+                  <label class="grid gap-1">
+                    <span
+                      class="font-mono text-xs uppercase tracking-wider text-slate-600 dark:text-slate-400"
+                      >Gender</span
+                    >
+                    <select
+                      formControlName="gender"
+                      class="rounded-md border border-slate-300 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 px-3 py-2 font-mono text-sm focus:outline-none focus:ring-2 focus:ring-slate-900 dark:focus:ring-slate-100"
+                    >
+                      <option value="Mens">Mens</option>
+                      <option value="Ladies">Ladies</option>
+                      <option value="Mixed">Mixed</option>
+                    </select>
+                  </label>
+                  <div class="grid grid-cols-2 gap-3">
+                    <label class="grid gap-1">
+                      <span
+                        class="font-mono text-xs uppercase tracking-wider text-slate-600 dark:text-slate-400"
+                        >Rank</span
+                      >
+                      <input
+                        type="number"
+                        formControlName="rank"
+                        min="1"
+                        class="rounded-md border border-slate-300 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 px-3 py-2 font-mono text-sm focus:outline-none focus:ring-2 focus:ring-slate-900 dark:focus:ring-slate-100"
+                      />
+                    </label>
+                    <label class="grid gap-1">
+                      <span
+                        class="font-mono text-xs uppercase tracking-wider text-slate-600 dark:text-slate-400"
+                        >Rubbers/match</span
+                      >
+                      <input
+                        type="number"
+                        formControlName="rubbersPerMatch"
+                        min="1"
+                        class="rounded-md border border-slate-300 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 px-3 py-2 font-mono text-sm focus:outline-none focus:ring-2 focus:ring-slate-900 dark:focus:ring-slate-100"
+                      />
+                    </label>
+                  </div>
+                  <div class="grid grid-cols-3 gap-3">
+                    <label class="grid gap-1">
+                      <span
+                        class="font-mono text-xs uppercase tracking-wider text-slate-600 dark:text-slate-400"
+                        >Win pts</span
+                      >
+                      <input
+                        type="number"
+                        formControlName="winPoints"
+                        class="rounded-md border border-slate-300 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 px-3 py-2 font-mono text-sm focus:outline-none focus:ring-2 focus:ring-slate-900 dark:focus:ring-slate-100"
+                      />
+                    </label>
+                    <label class="grid gap-1">
+                      <span
+                        class="font-mono text-xs uppercase tracking-wider text-slate-600 dark:text-slate-400"
+                        >Draw pts</span
+                      >
+                      <input
+                        type="number"
+                        formControlName="drawPoints"
+                        class="rounded-md border border-slate-300 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 px-3 py-2 font-mono text-sm focus:outline-none focus:ring-2 focus:ring-slate-900 dark:focus:ring-slate-100"
+                      />
+                    </label>
+                    <label class="grid gap-1">
+                      <span
+                        class="font-mono text-xs uppercase tracking-wider text-slate-600 dark:text-slate-400"
+                        >Loss pts</span
+                      >
+                      <input
+                        type="number"
+                        formControlName="lossPoints"
+                        class="rounded-md border border-slate-300 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 px-3 py-2 font-mono text-sm focus:outline-none focus:ring-2 focus:ring-slate-900 dark:focus:ring-slate-100"
+                      />
+                    </label>
+                  </div>
+                  <button
+                    type="submit"
+                    [disabled]="submitting() || form.invalid"
+                    class="justify-self-start rounded-md bg-slate-900 dark:bg-amber-400 px-4 py-2 font-mono text-sm font-medium text-amber-300 dark:text-slate-900 disabled:opacity-50"
+                  >
+                    {{ submitting() ? 'Adding…' : 'Add division' }}
+                  </button>
+                  @if (error()) {
+                    <p class="font-mono text-sm text-red-600 dark:text-red-400" role="alert">
+                      {{ error() }}
+                    </p>
+                  }
+                </form>
+              </app-modal>
+            </section>
           }
-        </ul>
 
-        <app-modal [open]="inviteDialogOpen()" title="Invite club" (closed)="inviteDialogOpen.set(false)">
-        <form
-          [formGroup]="inviteForm"
-          (ngSubmit)="onInvite()"
-          class="grid gap-3"
-        >
-          <label class="grid gap-1">
-            <span class="font-mono text-xs uppercase tracking-wider text-slate-600 dark:text-slate-400">Invite club</span>
-            <select
-              formControlName="clubId"
-              class="rounded-md border border-slate-300 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 px-3 py-2 font-mono text-sm focus:outline-none focus:ring-2 focus:ring-slate-900 dark:focus:ring-slate-100"
-            >
-              <option value="">-- choose a club --</option>
-              @for (c of availableClubs(); track c.id) {
-                <option [value]="c.id">{{ c.shortCode }} · {{ c.name }}</option>
+          @if (tabs.active() === 'seasons') {
+            <section role="tabpanel" id="panel-seasons" aria-labelledby="tab-seasons">
+              <div class="mt-10 flex items-center justify-between">
+                <h2 class="font-mono text-lg font-semibold text-slate-900 dark:text-slate-100">
+                  Seasons
+                </h2>
+                <button
+                  type="button"
+                  (click)="seasonDialogOpen.set(true)"
+                  class="rounded-md border border-slate-300 dark:border-slate-700 px-3 py-1 font-mono text-xs text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800"
+                >
+                  ＋ Add season
+                </button>
+              </div>
+              <ul
+                class="mt-3 divide-y divide-slate-200 rounded-md border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900"
+              >
+                @for (s of seasons(); track s.id) {
+                  <li class="px-4 py-3 font-mono text-sm">
+                    <div class="flex items-center justify-between">
+                      <span>
+                        {{ s.name }}
+                        <span class="ml-2 text-slate-500 dark:text-slate-400"
+                          >{{ s.startDate }} → {{ s.endDate }}</span
+                        >
+                        <span
+                          [class]="
+                            'ml-3 inline-block rounded px-2 py-0.5 text-xs ' +
+                            (s.status | statusColor)
+                          "
+                          >{{ s.status }}</span
+                        >
+                      </span>
+                      <div class="flex gap-2">
+                        @if (s.status === 'Draft') {
+                          <button
+                            type="button"
+                            (click)="onEditWeeks(s)"
+                            class="rounded-md border border-slate-300 dark:border-slate-700 px-3 py-1 text-xs text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800"
+                          >
+                            {{ editingSeasonId() === s.id ? 'Close' : 'Weeks' }}
+                          </button>
+                          <button
+                            type="button"
+                            (click)="onManageEntries(s)"
+                            class="rounded-md border border-slate-300 dark:border-slate-700 px-3 py-1 text-xs text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800"
+                          >
+                            {{ entriesSeasonId() === s.id ? 'Close' : 'Teams' }}
+                          </button>
+                          <button
+                            type="button"
+                            (click)="openImport(s)"
+                            class="rounded-md border border-slate-300 dark:border-slate-700 px-3 py-1 text-xs text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800"
+                          >
+                            Import
+                          </button>
+                          <button
+                            type="button"
+                            [disabled]="generatingSeasonId() === s.id"
+                            (click)="onGenerate(s)"
+                            class="rounded-md bg-slate-900 dark:bg-amber-400 px-3 py-1 text-xs font-medium text-amber-300 dark:text-slate-900 hover:bg-slate-800 dark:hover:bg-amber-300 disabled:opacity-50"
+                          >
+                            {{ generatingSeasonId() === s.id ? 'Generating…' : 'Generate' }}
+                          </button>
+                          <button
+                            type="button"
+                            [attr.aria-label]="'Delete season ' + s.name"
+                            (click)="askDeleteSeason(s)"
+                            class="rounded-md border border-red-300 dark:border-red-800 px-3 py-1 text-xs text-red-700 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950"
+                          >
+                            Delete
+                          </button>
+                        } @else if (s.status === 'Scheduling') {
+                          <span class="font-mono text-xs text-blue-700 dark:text-blue-300"
+                            >Generating schedule…</span
+                          >
+                        } @else {
+                          <button
+                            type="button"
+                            (click)="onToggleFixtures(s)"
+                            class="rounded-md border border-slate-300 dark:border-slate-700 px-3 py-1 text-xs text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800"
+                          >
+                            {{ fixturesSeasonId() === s.id ? 'Close' : 'Fixtures' }}
+                          </button>
+                          @if (s.status === 'Proposed') {
+                            <button
+                              type="button"
+                              [disabled]="rerunningSeasonId() === s.id"
+                              (click)="onRerun(s)"
+                              class="rounded-md border border-slate-300 dark:border-slate-700 px-3 py-1 text-xs text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 disabled:opacity-50"
+                            >
+                              {{ rerunningSeasonId() === s.id ? 'Re-running…' : 'Re-run' }}
+                            </button>
+                            <button
+                              type="button"
+                              (click)="onActivate(s)"
+                              class="rounded-md bg-slate-900 dark:bg-amber-400 px-3 py-1 text-xs font-medium text-amber-300 dark:text-slate-900 hover:bg-slate-800 dark:hover:bg-amber-300"
+                            >
+                              Activate
+                            </button>
+                          }
+                          @if (s.status === 'Active') {
+                            <button
+                              type="button"
+                              (click)="onCloseSeason(s)"
+                              class="rounded-md border border-red-300 dark:border-red-800 px-3 py-1 text-xs text-red-700 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950"
+                            >
+                              Close season
+                            </button>
+                          }
+                          <button
+                            type="button"
+                            (click)="onToggleStandings(s)"
+                            class="rounded-md border border-slate-300 dark:border-slate-700 px-3 py-1 text-xs text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800"
+                          >
+                            {{ standingsSeasonId() === s.id ? 'Close' : 'Table' }}
+                          </button>
+                        }
+                      </div>
+                      @if (rerunError() && rerunErrorSeasonId() === s.id) {
+                        <p class="mt-1 text-xs text-red-600 dark:text-red-400" role="alert">
+                          {{ rerunError() }}
+                        </p>
+                      }
+                    </div>
+
+                    @if (editingSeasonId() === s.id) {
+                      <form
+                        [formGroup]="weeksForm"
+                        (ngSubmit)="onSaveWeeks(s)"
+                        class="mt-3 grid gap-2"
+                      >
+                        <div formArrayName="weeks" class="grid gap-2">
+                          @for (row of weekRows.controls; track $index) {
+                            <div [formGroupName]="$index" class="flex flex-wrap items-center gap-2">
+                              <input
+                                type="date"
+                                formControlName="startDate"
+                                aria-label="Week start date"
+                                class="rounded-md border border-slate-300 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 px-2 py-1 text-xs focus:outline-none focus:ring-2 focus:ring-slate-900 dark:focus:ring-slate-100"
+                              />
+                              <span class="text-slate-400 dark:text-slate-500">→</span>
+                              <input
+                                type="date"
+                                formControlName="endDate"
+                                aria-label="Week end date"
+                                class="rounded-md border border-slate-300 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 px-2 py-1 text-xs focus:outline-none focus:ring-2 focus:ring-slate-900 dark:focus:ring-slate-100"
+                              />
+                              <select
+                                formControlName="weekType"
+                                aria-label="Week type"
+                                class="rounded-md border border-slate-300 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 px-2 py-1 text-xs focus:outline-none focus:ring-2 focus:ring-slate-900 dark:focus:ring-slate-100"
+                              >
+                                <option value="Level">Level</option>
+                                <option value="Mixed">Mixed</option>
+                              </select>
+                              <button
+                                type="button"
+                                (click)="removeWeek($index)"
+                                aria-label="Remove week"
+                                class="rounded-md border border-red-300 dark:border-red-800 px-2 py-1 text-xs text-red-700 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950"
+                              >
+                                ✕
+                              </button>
+                            </div>
+                          } @empty {
+                            <p class="text-xs text-slate-500 dark:text-slate-400">
+                              No weeks. Add one below.
+                            </p>
+                          }
+                        </div>
+                        <div class="flex gap-2">
+                          <button
+                            type="button"
+                            (click)="addWeek()"
+                            class="rounded-md border border-slate-300 dark:border-slate-700 px-3 py-1 text-xs text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800"
+                          >
+                            + Add week
+                          </button>
+                          <button
+                            type="submit"
+                            [disabled]="weeksSaving() || weeksForm.invalid"
+                            class="rounded-md bg-slate-900 dark:bg-amber-400 px-3 py-1 text-xs font-medium text-amber-300 dark:text-slate-900 disabled:opacity-50"
+                          >
+                            {{ weeksSaving() ? 'Saving…' : 'Save weeks' }}
+                          </button>
+                        </div>
+                        @if (weeksError()) {
+                          <p class="text-xs text-red-600 dark:text-red-400" role="alert">
+                            {{ weeksError() }}
+                          </p>
+                        }
+                      </form>
+                    }
+
+                    @if (entriesSeasonId() === s.id) {
+                      <div class="mt-3 grid gap-2">
+                        <ul
+                          class="divide-y divide-slate-100 rounded border border-slate-200 dark:border-slate-800"
+                        >
+                          @for (e of seasonEntries(); track e.id) {
+                            <li class="flex items-center justify-between px-3 py-2 text-xs">
+                              <span
+                                >{{ e.teamName }}
+                                <span class="text-slate-400 dark:text-slate-500">→</span>
+                                {{ e.divisionName }}</span
+                              >
+                              <button
+                                type="button"
+                                [attr.aria-label]="'Remove ' + e.teamName"
+                                (click)="onRemoveEntry(s, e)"
+                                class="rounded-md border border-red-300 dark:border-red-800 px-2 py-0.5 text-red-700 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950"
+                              >
+                                ✕
+                              </button>
+                            </li>
+                          } @empty {
+                            <li class="px-3 py-2 text-xs text-slate-500 dark:text-slate-400">
+                              No teams assigned.
+                            </li>
+                          }
+                        </ul>
+                        <form
+                          [formGroup]="entryForm"
+                          (ngSubmit)="onAddEntry(s)"
+                          class="flex flex-wrap items-center gap-2"
+                        >
+                          <select
+                            formControlName="teamId"
+                            aria-label="Team"
+                            class="rounded-md border border-slate-300 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 px-2 py-1 text-xs focus:outline-none focus:ring-2 focus:ring-slate-900 dark:focus:ring-slate-100"
+                          >
+                            <option value="">-- team --</option>
+                            @for (t of teamOptions(); track t.id) {
+                              <option [value]="t.id">{{ t.label }}</option>
+                            }
+                          </select>
+                          <select
+                            formControlName="divisionId"
+                            aria-label="Division"
+                            class="rounded-md border border-slate-300 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 px-2 py-1 text-xs focus:outline-none focus:ring-2 focus:ring-slate-900 dark:focus:ring-slate-100"
+                          >
+                            <option value="">-- division --</option>
+                            @for (d of divisions(); track d.id) {
+                              <option [value]="d.id">{{ d.name }} ({{ d.gender }})</option>
+                            }
+                          </select>
+                          <button
+                            type="submit"
+                            [disabled]="entryForm.invalid"
+                            class="rounded-md bg-slate-900 dark:bg-amber-400 px-3 py-1 text-xs font-medium text-amber-300 dark:text-slate-900 disabled:opacity-50"
+                          >
+                            Assign
+                          </button>
+                        </form>
+                        @if (entryError()) {
+                          <p class="text-xs text-red-600 dark:text-red-400" role="alert">
+                            {{ entryError() }}
+                          </p>
+                        }
+                      </div>
+                    }
+
+                    @if (generateError() && generateErrorSeasonId() === s.id) {
+                      <p class="mt-2 text-xs text-red-600 dark:text-red-400" role="alert">
+                        {{ generateError() }}
+                      </p>
+                    }
+                    @if (s.schedulingError && s.status === 'Draft') {
+                      <p class="mt-2 text-xs text-red-600 dark:text-red-400" role="alert">
+                        Last generation failed: {{ s.schedulingError }}
+                      </p>
+                    }
+
+                    @if (fixturesSeasonId() === s.id) {
+                      <ul
+                        class="mt-3 divide-y divide-slate-100 rounded border border-slate-200 dark:border-slate-800"
+                      >
+                        @for (f of fixtures(); track f.id) {
+                          <li class="flex flex-wrap items-center gap-x-3 gap-y-1 px-3 py-2 text-xs">
+                            <span class="font-semibold">{{ f.matchDate }}</span>
+                            <span
+                              class="inline-block rounded bg-slate-200 dark:bg-slate-700 px-1.5 py-0.5"
+                              >{{ f.divisionName }}</span
+                            >
+                            <span>
+                              {{ f.homeTeamName }}
+                              @if (f.status === 'Played') {
+                                <span class="font-semibold"
+                                  >{{ f.homeScore }}–{{ f.awayScore }}</span
+                                >
+                              } @else {
+                                <span class="text-slate-400 dark:text-slate-500">v</span>
+                              }
+                              {{ f.awayTeamName }}
+                            </span>
+                            @if (f.isWalkover) {
+                              <span
+                                class="rounded bg-amber-200 dark:bg-amber-900 px-1 text-amber-800 dark:text-amber-200"
+                                >w/o</span
+                              >
+                            }
+                            <span class="text-slate-500 dark:text-slate-400"
+                              >@ {{ f.venueName }}</span
+                            >
+                            @if (f.status === 'Proposed') {
+                              <span class="text-slate-400 dark:text-slate-500"
+                                >({{ f.homeAccepted ? 'home ✓' : 'home …' }},
+                                {{ f.awayAccepted ? 'away ✓' : 'away …' }})</span
+                              >
+                            }
+                            <span
+                              [class]="
+                                'ml-auto inline-block rounded px-1.5 py-0.5 ' +
+                                (f.status | statusColor)
+                              "
+                              >{{ f.status }}</span
+                            >
+                            @if (f.status === 'Proposed') {
+                              <button
+                                type="button"
+                                (click)="onForceConfirm(s, f)"
+                                class="rounded-md border border-slate-300 dark:border-slate-700 px-2 py-0.5 text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800"
+                              >
+                                Force confirm
+                              </button>
+                            }
+                            @if (f.status === 'Confirmed') {
+                              <button
+                                type="button"
+                                (click)="onOpenResult(f)"
+                                class="rounded-md border border-slate-300 dark:border-slate-700 px-2 py-0.5 text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800"
+                              >
+                                Result
+                              </button>
+                              <button
+                                type="button"
+                                (click)="onWalkover(s, f, 'Home')"
+                                class="rounded-md border border-slate-300 dark:border-slate-700 px-2 py-0.5 text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800"
+                              >
+                                W/O home
+                              </button>
+                              <button
+                                type="button"
+                                (click)="onWalkover(s, f, 'Away')"
+                                class="rounded-md border border-slate-300 dark:border-slate-700 px-2 py-0.5 text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800"
+                              >
+                                W/O away
+                              </button>
+                              @if (s.status === 'Active') {
+                                <button
+                                  type="button"
+                                  (click)="onPostpone(s, f)"
+                                  class="rounded-md border border-amber-300 dark:border-amber-800 px-2 py-0.5 text-amber-700 dark:text-amber-400 hover:bg-amber-50 dark:hover:bg-amber-950"
+                                >
+                                  Postpone
+                                </button>
+                              }
+                            }
+
+                            @if (resultMatchId() === f.id) {
+                              <form
+                                [formGroup]="resultForm"
+                                (ngSubmit)="onSaveResult(s, f)"
+                                class="flex w-full items-center gap-2 pt-1"
+                              >
+                                <input
+                                  type="number"
+                                  formControlName="homeScore"
+                                  min="0"
+                                  aria-label="Home score"
+                                  class="w-16 rounded-md border border-slate-300 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 px-2 py-1"
+                                />
+                                <span class="text-slate-400 dark:text-slate-500">–</span>
+                                <input
+                                  type="number"
+                                  formControlName="awayScore"
+                                  min="0"
+                                  aria-label="Away score"
+                                  class="w-16 rounded-md border border-slate-300 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 px-2 py-1"
+                                />
+                                <button
+                                  type="submit"
+                                  class="rounded-md bg-slate-900 dark:bg-amber-400 px-2 py-1 font-medium text-amber-300 dark:text-slate-900"
+                                >
+                                  Save
+                                </button>
+                                @if (resultError()) {
+                                  <span class="text-red-600 dark:text-red-400" role="alert">{{
+                                    resultError()
+                                  }}</span>
+                                }
+                              </form>
+                            }
+                          </li>
+                        } @empty {
+                          <li class="px-3 py-2 text-xs text-slate-500 dark:text-slate-400">
+                            No fixtures.
+                          </li>
+                        }
+                      </ul>
+                    }
+
+                    @if (standingsSeasonId() === s.id) {
+                      @for (t of standings(); track t.divisionId) {
+                        <div class="mt-3">
+                          <h4
+                            class="font-mono text-xs font-semibold text-slate-700 dark:text-slate-300"
+                          >
+                            {{ t.divisionName }}
+                          </h4>
+                          <div class="mt-1 overflow-x-auto">
+                            <table
+                              class="w-full min-w-[32rem] border border-slate-200 dark:border-slate-800 text-xs"
+                            >
+                              <thead
+                                class="bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400"
+                              >
+                                <tr>
+                                  <th class="px-2 py-1 text-left">Team</th>
+                                  <th class="px-2 py-1">P</th>
+                                  <th class="px-2 py-1">W</th>
+                                  <th class="px-2 py-1">D</th>
+                                  <th class="px-2 py-1">L</th>
+                                  <th class="px-2 py-1">RF</th>
+                                  <th class="px-2 py-1">RA</th>
+                                  <th class="px-2 py-1">+/-</th>
+                                  <th class="px-2 py-1">Pts</th>
+                                </tr>
+                              </thead>
+                              <tbody>
+                                @for (r of t.rows; track r.teamId) {
+                                  <tr class="border-t border-slate-100 dark:border-slate-800">
+                                    <td class="px-2 py-1 text-left">{{ r.teamName }}</td>
+                                    <td class="px-2 py-1 text-center">{{ r.played }}</td>
+                                    <td class="px-2 py-1 text-center">{{ r.won }}</td>
+                                    <td class="px-2 py-1 text-center">{{ r.drawn }}</td>
+                                    <td class="px-2 py-1 text-center">{{ r.lost }}</td>
+                                    <td class="px-2 py-1 text-center">{{ r.rubbersFor }}</td>
+                                    <td class="px-2 py-1 text-center">{{ r.rubbersAgainst }}</td>
+                                    <td class="px-2 py-1 text-center">{{ r.rubberDifference }}</td>
+                                    <td class="px-2 py-1 text-center font-semibold">
+                                      {{ r.points }}
+                                    </td>
+                                  </tr>
+                                }
+                              </tbody>
+                            </table>
+                          </div>
+                        </div>
+                      } @empty {
+                        <p class="mt-3 text-xs text-slate-500 dark:text-slate-400">
+                          No standings yet.
+                        </p>
+                      }
+                    }
+                  </li>
+                } @empty {
+                  <li class="px-4 py-3 font-mono text-sm text-slate-500 dark:text-slate-400">
+                    No seasons yet.
+                  </li>
+                }
+              </ul>
+
+              <app-modal
+                [open]="seasonDialogOpen()"
+                title="Add season"
+                (closed)="seasonDialogOpen.set(false)"
+              >
+                <form [formGroup]="seasonForm" (ngSubmit)="onCreateSeason()" class="grid gap-3">
+                  <label class="grid gap-1">
+                    <span
+                      class="font-mono text-xs uppercase tracking-wider text-slate-600 dark:text-slate-400"
+                      >Season name</span
+                    >
+                    <input
+                      type="text"
+                      formControlName="name"
+                      class="rounded-md border border-slate-300 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 px-3 py-2 font-mono text-sm focus:outline-none focus:ring-2 focus:ring-slate-900 dark:focus:ring-slate-100"
+                      required
+                    />
+                  </label>
+                  <label class="grid gap-1">
+                    <span
+                      class="font-mono text-xs uppercase tracking-wider text-slate-600 dark:text-slate-400"
+                      >Start</span
+                    >
+                    <input
+                      type="date"
+                      formControlName="startDate"
+                      class="rounded-md border border-slate-300 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 px-3 py-2 font-mono text-sm focus:outline-none focus:ring-2 focus:ring-slate-900 dark:focus:ring-slate-100"
+                    />
+                  </label>
+                  <label class="grid gap-1">
+                    <span
+                      class="font-mono text-xs uppercase tracking-wider text-slate-600 dark:text-slate-400"
+                      >End</span
+                    >
+                    <input
+                      type="date"
+                      formControlName="endDate"
+                      class="rounded-md border border-slate-300 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 px-3 py-2 font-mono text-sm focus:outline-none focus:ring-2 focus:ring-slate-900 dark:focus:ring-slate-100"
+                    />
+                  </label>
+                  <button
+                    type="submit"
+                    [disabled]="seasonSubmitting() || seasonForm.invalid"
+                    class="rounded-md bg-slate-900 dark:bg-amber-400 px-4 py-2 font-mono text-sm font-medium text-amber-300 dark:text-slate-900 disabled:opacity-50"
+                  >
+                    {{ seasonSubmitting() ? 'Adding…' : 'Add season' }}
+                  </button>
+                  @if (seasonError()) {
+                    <p class="font-mono text-sm text-red-600 dark:text-red-400" role="alert">
+                      {{ seasonError() }}
+                    </p>
+                  }
+                </form>
+              </app-modal>
+            </section>
+          }
+
+          @if (tabs.active() === 'clubs') {
+            <section role="tabpanel" id="panel-clubs" aria-labelledby="tab-clubs">
+              <div class="mt-10 flex items-center justify-between">
+                <h2 class="font-mono text-lg font-semibold text-slate-900 dark:text-slate-100">
+                  Member clubs
+                </h2>
+                <button
+                  type="button"
+                  (click)="inviteDialogOpen.set(true)"
+                  class="rounded-md border border-slate-300 dark:border-slate-700 px-3 py-1 font-mono text-xs text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800"
+                >
+                  ＋ Invite club
+                </button>
+              </div>
+              <ul
+                class="mt-3 divide-y divide-slate-200 rounded-md border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900"
+              >
+                @for (m of memberships(); track m.id) {
+                  <li class="flex items-center justify-between px-4 py-3 font-mono text-sm">
+                    <span>
+                      {{ clubLabel(m.clubId) }}
+                      <span
+                        [class]="
+                          'ml-3 inline-block rounded px-2 py-0.5 text-xs ' +
+                          (m.status | statusColor)
+                        "
+                        >{{ m.status }}</span
+                      >
+                    </span>
+                    @if (m.status === 'Accepted') {
+                      <button
+                        type="button"
+                        (click)="askExpel(m)"
+                        class="rounded-md border border-red-300 dark:border-red-800 px-3 py-1 text-xs text-red-700 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950"
+                      >
+                        Expel
+                      </button>
+                    }
+                  </li>
+                } @empty {
+                  <li class="px-4 py-3 font-mono text-sm text-slate-500 dark:text-slate-400">
+                    No member clubs.
+                  </li>
+                }
+              </ul>
+
+              <app-modal
+                [open]="inviteDialogOpen()"
+                title="Invite club"
+                (closed)="inviteDialogOpen.set(false)"
+              >
+                <form [formGroup]="inviteForm" (ngSubmit)="onInvite()" class="grid gap-3">
+                  <label class="grid gap-1">
+                    <span
+                      class="font-mono text-xs uppercase tracking-wider text-slate-600 dark:text-slate-400"
+                      >Invite club</span
+                    >
+                    <select
+                      formControlName="clubId"
+                      class="rounded-md border border-slate-300 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 px-3 py-2 font-mono text-sm focus:outline-none focus:ring-2 focus:ring-slate-900 dark:focus:ring-slate-100"
+                    >
+                      <option value="">-- choose a club --</option>
+                      @for (c of availableClubs(); track c.id) {
+                        <option [value]="c.id">{{ c.shortCode }} · {{ c.name }}</option>
+                      }
+                    </select>
+                  </label>
+                  <button
+                    type="submit"
+                    [disabled]="inviteForm.invalid"
+                    class="justify-self-start rounded-md bg-slate-900 dark:bg-amber-400 px-4 py-2 font-mono text-sm font-medium text-amber-300 dark:text-slate-900 disabled:opacity-50"
+                  >
+                    Send invite
+                  </button>
+                </form>
+              </app-modal>
+            </section>
+          }
+
+          @if (tabs.active() === 'scheduler') {
+            <section role="tabpanel" id="panel-scheduler" aria-labelledby="tab-scheduler">
+              @if (schedulingConfig(); as c) {
+                <div class="mt-10 flex items-center justify-between">
+                  <h2 class="font-mono text-lg font-semibold text-slate-900 dark:text-slate-100">
+                    Scheduler tuning
+                  </h2>
+                  <button
+                    type="button"
+                    (click)="onEditConfig()"
+                    class="rounded-md border border-slate-300 dark:border-slate-700 px-3 py-1 font-mono text-xs text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800"
+                  >
+                    Edit
+                  </button>
+                </div>
+                <div
+                  class="mt-3 rounded-md border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 px-4 py-3 font-mono text-sm text-slate-700 dark:text-slate-300"
+                >
+                  spread weight {{ c.spreadWeight }} · leg weight {{ c.legWeight }} · min gap
+                  {{ c.minGapDays }}d · target gap
+                  {{ c.targetGapDays === null ? 'auto (½ season)' : c.targetGapDays + 'd' }}
+                </div>
               }
-            </select>
-          </label>
-          <button
-            type="submit"
-            [disabled]="inviteForm.invalid"
-            class="justify-self-start rounded-md bg-slate-900 dark:bg-amber-400 px-4 py-2 font-mono text-sm font-medium text-amber-300 dark:text-slate-900 disabled:opacity-50"
-          >
-            Send invite
-          </button>
-        </form>
-        </app-modal>
-        </section>
-        }
 
-        @if (tabs.active() === 'scheduler') {
-        <section role="tabpanel" id="panel-scheduler" aria-labelledby="tab-scheduler">
-        @if (schedulingConfig(); as c) {
-          <div class="mt-10 flex items-center justify-between">
-            <h2 class="font-mono text-lg font-semibold text-slate-900 dark:text-slate-100">Scheduler tuning</h2>
-            <button
-              type="button"
-              (click)="onEditConfig()"
-              class="rounded-md border border-slate-300 dark:border-slate-700 px-3 py-1 font-mono text-xs text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800"
-            >
-              Edit
-            </button>
-          </div>
-          <div class="mt-3 rounded-md border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 px-4 py-3 font-mono text-sm text-slate-700 dark:text-slate-300">
-            spread weight {{ c.spreadWeight }} · leg weight {{ c.legWeight }} · min gap {{ c.minGapDays }}d ·
-            target gap {{ c.targetGapDays === null ? 'auto (½ season)' : c.targetGapDays + 'd' }}
-          </div>
-        }
+              <app-modal
+                [open]="configDialogOpen()"
+                title="Scheduler tuning"
+                (closed)="configDialogOpen.set(false)"
+              >
+                <form [formGroup]="configForm" (ngSubmit)="onSaveConfig()" class="grid gap-3">
+                  <label class="grid gap-1">
+                    <span
+                      class="font-mono text-xs uppercase tracking-wider text-slate-600 dark:text-slate-400"
+                      >Spread weight (closely-spaced matches)</span
+                    >
+                    <input
+                      type="number"
+                      formControlName="spreadWeight"
+                      min="0"
+                      class="rounded-md border border-slate-300 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 px-3 py-2 font-mono text-sm focus:outline-none focus:ring-2 focus:ring-slate-900 dark:focus:ring-slate-100"
+                    />
+                  </label>
+                  <label class="grid gap-1">
+                    <span
+                      class="font-mono text-xs uppercase tracking-wider text-slate-600 dark:text-slate-400"
+                      >Leg-gap weight (home/away spacing)</span
+                    >
+                    <input
+                      type="number"
+                      formControlName="legWeight"
+                      min="0"
+                      class="rounded-md border border-slate-300 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 px-3 py-2 font-mono text-sm focus:outline-none focus:ring-2 focus:ring-slate-900 dark:focus:ring-slate-100"
+                    />
+                  </label>
+                  <label class="grid gap-1">
+                    <span
+                      class="font-mono text-xs uppercase tracking-wider text-slate-600 dark:text-slate-400"
+                      >Minimum gap (days)</span
+                    >
+                    <input
+                      type="number"
+                      formControlName="minGapDays"
+                      min="0"
+                      class="rounded-md border border-slate-300 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 px-3 py-2 font-mono text-sm focus:outline-none focus:ring-2 focus:ring-slate-900 dark:focus:ring-slate-100"
+                    />
+                  </label>
+                  <label class="grid gap-1">
+                    <span
+                      class="font-mono text-xs uppercase tracking-wider text-slate-600 dark:text-slate-400"
+                      >Target home/away gap (days, blank = ½ season)</span
+                    >
+                    <input
+                      type="number"
+                      formControlName="targetGapDays"
+                      min="0"
+                      class="rounded-md border border-slate-300 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 px-3 py-2 font-mono text-sm focus:outline-none focus:ring-2 focus:ring-slate-900 dark:focus:ring-slate-100"
+                    />
+                  </label>
+                  <button
+                    type="submit"
+                    [disabled]="configForm.invalid"
+                    class="justify-self-start rounded-md bg-slate-900 dark:bg-amber-400 px-4 py-2 font-mono text-sm font-medium text-amber-300 dark:text-slate-900 disabled:opacity-50"
+                  >
+                    Save
+                  </button>
+                </form>
+              </app-modal>
+            </section>
+          }
 
-        <app-modal [open]="configDialogOpen()" title="Scheduler tuning" (closed)="configDialogOpen.set(false)">
-          <form [formGroup]="configForm" (ngSubmit)="onSaveConfig()" class="grid gap-3">
-            <label class="grid gap-1">
-              <span class="font-mono text-xs uppercase tracking-wider text-slate-600 dark:text-slate-400">Spread weight (closely-spaced matches)</span>
-              <input type="number" formControlName="spreadWeight" min="0" class="rounded-md border border-slate-300 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 px-3 py-2 font-mono text-sm focus:outline-none focus:ring-2 focus:ring-slate-900 dark:focus:ring-slate-100" />
-            </label>
-            <label class="grid gap-1">
-              <span class="font-mono text-xs uppercase tracking-wider text-slate-600 dark:text-slate-400">Leg-gap weight (home/away spacing)</span>
-              <input type="number" formControlName="legWeight" min="0" class="rounded-md border border-slate-300 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 px-3 py-2 font-mono text-sm focus:outline-none focus:ring-2 focus:ring-slate-900 dark:focus:ring-slate-100" />
-            </label>
-            <label class="grid gap-1">
-              <span class="font-mono text-xs uppercase tracking-wider text-slate-600 dark:text-slate-400">Minimum gap (days)</span>
-              <input type="number" formControlName="minGapDays" min="0" class="rounded-md border border-slate-300 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 px-3 py-2 font-mono text-sm focus:outline-none focus:ring-2 focus:ring-slate-900 dark:focus:ring-slate-100" />
-            </label>
-            <label class="grid gap-1">
-              <span class="font-mono text-xs uppercase tracking-wider text-slate-600 dark:text-slate-400">Target home/away gap (days, blank = ½ season)</span>
-              <input type="number" formControlName="targetGapDays" min="0" class="rounded-md border border-slate-300 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 px-3 py-2 font-mono text-sm focus:outline-none focus:ring-2 focus:ring-slate-900 dark:focus:ring-slate-100" />
-            </label>
-            <button
-              type="submit"
-              [disabled]="configForm.invalid"
-              class="justify-self-start rounded-md bg-slate-900 dark:bg-amber-400 px-4 py-2 font-mono text-sm font-medium text-amber-300 dark:text-slate-900 disabled:opacity-50"
-            >
-              Save
-            </button>
-          </form>
-        </app-modal>
-        </section>
-        }
-
-        @if (tabs.active() === 'players') {
-        <section role="tabpanel" id="panel-players" aria-labelledby="tab-players">
-        @if (leagueId) {
-          <app-league-player-approvals [leagueId]="leagueId" (pendingCount)="playersPending.set($event)" />
-        }
-        </section>
+          @if (tabs.active() === 'players') {
+            <section role="tabpanel" id="panel-players" aria-labelledby="tab-players">
+              @if (leagueId) {
+                <app-league-player-approvals
+                  [leagueId]="leagueId"
+                  (pendingCount)="playersPending.set($event)"
+                />
+              }
+            </section>
+          }
+        } @else {
+          <p class="py-10 text-center font-mono text-sm text-slate-500 dark:text-slate-400">
+            Couldn't load this league.
+          </p>
         }
 
         <app-confirm
@@ -670,8 +961,10 @@ export default class LeagueDetailPage implements OnDestroy {
   private readonly route = inject(ActivatedRoute);
   private readonly api = inject(LeaguesApi);
   private readonly clubsApi = inject(ClubsApi);
+  private readonly toast = inject(ToastService);
 
   protected readonly league = signal<LeagueDetail | null>(null);
+  protected readonly loading = signal(true);
   protected readonly divisions = signal<DivisionSummary[]>([]);
   protected readonly memberships = signal<MembershipSummary[]>([]);
   protected readonly availableClubs = signal<ClubSummary[]>([]);
@@ -721,15 +1014,30 @@ export default class LeagueDetailPage implements OnDestroy {
   ]);
 
   protected readonly configForm = new FormGroup({
-    spreadWeight: new FormControl(2, { nonNullable: true, validators: [Validators.required, Validators.min(0)] }),
-    legWeight: new FormControl(1, { nonNullable: true, validators: [Validators.required, Validators.min(0)] }),
-    minGapDays: new FormControl(7, { nonNullable: true, validators: [Validators.required, Validators.min(0)] }),
+    spreadWeight: new FormControl(2, {
+      nonNullable: true,
+      validators: [Validators.required, Validators.min(0)],
+    }),
+    legWeight: new FormControl(1, {
+      nonNullable: true,
+      validators: [Validators.required, Validators.min(0)],
+    }),
+    minGapDays: new FormControl(7, {
+      nonNullable: true,
+      validators: [Validators.required, Validators.min(0)],
+    }),
     targetGapDays: new FormControl<number | null>(null, { validators: [Validators.min(0)] }),
   });
 
   protected readonly resultForm = new FormGroup({
-    homeScore: new FormControl(0, { nonNullable: true, validators: [Validators.required, Validators.min(0)] }),
-    awayScore: new FormControl(0, { nonNullable: true, validators: [Validators.required, Validators.min(0)] }),
+    homeScore: new FormControl(0, {
+      nonNullable: true,
+      validators: [Validators.required, Validators.min(0)],
+    }),
+    awayScore: new FormControl(0, {
+      nonNullable: true,
+      validators: [Validators.required, Validators.min(0)],
+    }),
   });
 
   protected readonly entryForm = new FormGroup({
@@ -753,9 +1061,15 @@ export default class LeagueDetailPage implements OnDestroy {
 
   private static makeWeekRow(startDate = '', endDate = '', weekType: WeekType = 'Level') {
     return new FormGroup({
-      startDate: new FormControl(startDate, { nonNullable: true, validators: [Validators.required] }),
+      startDate: new FormControl(startDate, {
+        nonNullable: true,
+        validators: [Validators.required],
+      }),
       endDate: new FormControl(endDate, { nonNullable: true, validators: [Validators.required] }),
-      weekType: new FormControl<WeekType>(weekType, { nonNullable: true, validators: [Validators.required] }),
+      weekType: new FormControl<WeekType>(weekType, {
+        nonNullable: true,
+        validators: [Validators.required],
+      }),
     });
   }
 
@@ -778,6 +1092,7 @@ export default class LeagueDetailPage implements OnDestroy {
       .pipe(
         tap((p) => {
           this.leagueId = p.get('id') ?? '';
+          this.loading.set(true);
         }),
         switchMap((p) => this.api.get(p.get('id') ?? '')),
         tap((l) => this.league.set(l)),
@@ -791,8 +1106,14 @@ export default class LeagueDetailPage implements OnDestroy {
         switchMap((l) => this.api.listDivisions(l.id)),
       )
       .subscribe({
-        next: (rows) => this.divisions.set(rows),
-        error: () => this.error.set('Failed to load league.'),
+        next: (rows) => {
+          this.divisions.set(rows);
+          this.loading.set(false);
+        },
+        error: () => {
+          this.loading.set(false);
+          this.error.set('Failed to load league.');
+        },
       });
   }
 
@@ -821,6 +1142,7 @@ export default class LeagueDetailPage implements OnDestroy {
       next: () => {
         this.inviteForm.reset({ clubId: '' });
         this.inviteDialogOpen.set(false);
+        this.toast.success(`Invited ${this.clubLabel(clubId)}.`);
         this.refreshMemberships();
       },
       error: (err: { error?: { title?: string } }) =>
@@ -841,11 +1163,17 @@ export default class LeagueDetailPage implements OnDestroy {
   }
 
   protected askExpel(m: MembershipSummary): void {
-    this.pending.set({ message: `Expel ${this.clubLabel(m.clubId)} from this league?`, action: () => this.onExpel(m) });
+    this.pending.set({
+      message: `Expel ${this.clubLabel(m.clubId)} from this league?`,
+      action: () => this.onExpel(m),
+    });
   }
 
   protected askDeleteSeason(s: SeasonSummary): void {
-    this.pending.set({ message: `Delete season "${s.name}"?`, action: () => this.onDeleteSeason(s) });
+    this.pending.set({
+      message: `Delete season "${s.name}"?`,
+      action: () => this.onDeleteSeason(s),
+    });
   }
 
   protected onCreate(): void {
@@ -1035,7 +1363,11 @@ export default class LeagueDetailPage implements OnDestroy {
       },
       error: () => {
         this.importBusy.set(false);
-        this.importResult.set({ created: 0, updated: 0, errors: [{ row: 0, message: 'Import failed.' }] });
+        this.importResult.set({
+          created: 0,
+          updated: 0,
+          errors: [{ row: 0, message: 'Import failed.' }],
+        });
       },
     });
   }
@@ -1182,7 +1514,9 @@ export default class LeagueDetailPage implements OnDestroy {
 
   private loadConfig(): void {
     if (!this.leagueId) return;
-    this.api.getSchedulingConfig(this.leagueId).subscribe({ next: (c) => this.schedulingConfig.set(c) });
+    this.api
+      .getSchedulingConfig(this.leagueId)
+      .subscribe({ next: (c) => this.schedulingConfig.set(c) });
   }
 
   // Eager count for the Players tab pill (the approvals child only mounts when that tab is open).
@@ -1192,16 +1526,28 @@ export default class LeagueDetailPage implements OnDestroy {
     let regs = 0;
     let transfers = 0;
     this.playersApi.listLeagueRegistrations(id).subscribe({
-      next: (r) => { regs = r.filter((x) => x.status === 'Pending').length; this.playersPending.set(regs + transfers); },
+      next: (r) => {
+        regs = r.filter((x) => x.status === 'Pending').length;
+        this.playersPending.set(regs + transfers);
+      },
     });
     this.playersApi.listLeagueTransfers(id).subscribe({
-      next: (t) => { transfers = t.filter((x) => x.status === 'Pending').length; this.playersPending.set(regs + transfers); },
+      next: (t) => {
+        transfers = t.filter((x) => x.status === 'Pending').length;
+        this.playersPending.set(regs + transfers);
+      },
     });
   }
 
   protected onEditConfig(): void {
     const c = this.schedulingConfig();
-    if (c) this.configForm.reset({ spreadWeight: c.spreadWeight, legWeight: c.legWeight, minGapDays: c.minGapDays, targetGapDays: c.targetGapDays });
+    if (c)
+      this.configForm.reset({
+        spreadWeight: c.spreadWeight,
+        legWeight: c.legWeight,
+        minGapDays: c.minGapDays,
+        targetGapDays: c.targetGapDays,
+      });
     this.configDialogOpen.set(true);
   }
 
@@ -1211,7 +1557,8 @@ export default class LeagueDetailPage implements OnDestroy {
       spreadWeight: Number(v.spreadWeight),
       legWeight: Number(v.legWeight),
       minGapDays: Number(v.minGapDays),
-      targetGapDays: v.targetGapDays === null || v.targetGapDays === undefined ? null : Number(v.targetGapDays),
+      targetGapDays:
+        v.targetGapDays === null || v.targetGapDays === undefined ? null : Number(v.targetGapDays),
     };
     this.api.updateSchedulingConfig(this.leagueId, config).subscribe({
       next: () => {

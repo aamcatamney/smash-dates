@@ -8,10 +8,17 @@ import { AdminHeaderComponent } from './admin-header.component';
 import { ModalComponent } from '../../shared/modal.component';
 import { CsvImportComponent } from '../../shared/csv-import.component';
 import { ImportResult } from '../../shared/import-result';
+import { ToastService } from '../../shared/toast.service';
 
 @Component({
   selector: 'app-clubs-list-page',
-  imports: [ReactiveFormsModule, RouterLink, AdminHeaderComponent, ModalComponent, CsvImportComponent],
+  imports: [
+    ReactiveFormsModule,
+    RouterLink,
+    AdminHeaderComponent,
+    ModalComponent,
+    CsvImportComponent,
+  ],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <div class="min-h-screen bg-slate-50 dark:bg-slate-950">
@@ -52,13 +59,12 @@ import { ImportResult } from '../../shared/import-result';
         />
 
         <app-modal [open]="dialogOpen()" title="Create club" (closed)="dialogOpen.set(false)">
-          <form
-            [formGroup]="form"
-            (ngSubmit)="onCreate()"
-            class="grid gap-3"
-          >
+          <form [formGroup]="form" (ngSubmit)="onCreate()" class="grid gap-3">
             <label class="grid gap-1">
-              <span class="font-mono text-xs uppercase tracking-wider text-slate-600 dark:text-slate-400">Name</span>
+              <span
+                class="font-mono text-xs uppercase tracking-wider text-slate-600 dark:text-slate-400"
+                >Name</span
+              >
               <input
                 type="text"
                 formControlName="name"
@@ -67,7 +73,10 @@ import { ImportResult } from '../../shared/import-result';
               />
             </label>
             <label class="grid gap-1">
-              <span class="font-mono text-xs uppercase tracking-wider text-slate-600 dark:text-slate-400">Short code (3-5 chars)</span>
+              <span
+                class="font-mono text-xs uppercase tracking-wider text-slate-600 dark:text-slate-400"
+                >Short code (3-5 chars)</span
+              >
               <input
                 type="text"
                 formControlName="shortCode"
@@ -76,7 +85,10 @@ import { ImportResult } from '../../shared/import-result';
               />
             </label>
             <label class="grid gap-1">
-              <span class="font-mono text-xs uppercase tracking-wider text-slate-600 dark:text-slate-400">Contact email</span>
+              <span
+                class="font-mono text-xs uppercase tracking-wider text-slate-600 dark:text-slate-400"
+                >Contact email</span
+              >
               <input
                 type="email"
                 formControlName="contactEmail"
@@ -85,7 +97,10 @@ import { ImportResult } from '../../shared/import-result';
               />
             </label>
             <label class="grid gap-1">
-              <span class="font-mono text-xs uppercase tracking-wider text-slate-600 dark:text-slate-400">Notes</span>
+              <span
+                class="font-mono text-xs uppercase tracking-wider text-slate-600 dark:text-slate-400"
+                >Notes</span
+              >
               <input
                 type="text"
                 formControlName="notes"
@@ -93,7 +108,10 @@ import { ImportResult } from '../../shared/import-result';
               />
             </label>
             <label class="grid gap-1">
-              <span class="font-mono text-xs uppercase tracking-wider text-slate-600 dark:text-slate-400">First admin email</span>
+              <span
+                class="font-mono text-xs uppercase tracking-wider text-slate-600 dark:text-slate-400"
+                >First admin email</span
+              >
               <input
                 type="email"
                 formControlName="firstAdminEmail"
@@ -109,12 +127,16 @@ import { ImportResult } from '../../shared/import-result';
               {{ submitting() ? 'Creating…' : 'Create club' }}
             </button>
             @if (error()) {
-              <p class="font-mono text-sm text-red-600 dark:text-red-400" role="alert">{{ error() }}</p>
+              <p class="font-mono text-sm text-red-600 dark:text-red-400" role="alert">
+                {{ error() }}
+              </p>
             }
           </form>
         </app-modal>
 
-        <ul class="mt-8 divide-y divide-slate-200 rounded-md border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900">
+        <ul
+          class="mt-8 divide-y divide-slate-200 rounded-md border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900"
+        >
           @if (loading()) {
             <li class="px-4 py-3 font-mono text-sm text-slate-400 dark:text-slate-500">Loading…</li>
           } @else {
@@ -125,10 +147,14 @@ import { ImportResult } from '../../shared/import-result';
                   class="font-mono text-sm font-medium text-slate-900 hover:underline dark:text-slate-100"
                   >{{ club.shortCode }} · {{ club.name }}</a
                 >
-                <span class="ml-2 font-mono text-xs text-slate-500 dark:text-slate-400">{{ club.contactEmail }}</span>
+                <span class="ml-2 font-mono text-xs text-slate-500 dark:text-slate-400">{{
+                  club.contactEmail
+                }}</span>
               </li>
             } @empty {
-              <li class="px-4 py-3 font-mono text-sm text-slate-500 dark:text-slate-400">No clubs yet.</li>
+              <li class="px-4 py-3 font-mono text-sm text-slate-500 dark:text-slate-400">
+                No clubs yet.
+              </li>
             }
           }
         </ul>
@@ -140,6 +166,7 @@ export default class ClubsListPage {
   private readonly api = inject(ClubsApi);
   private readonly leagues = inject(LeaguesApi);
   private readonly auth = inject(AuthStore);
+  private readonly toast = inject(ToastService);
 
   protected readonly clubs = signal<ClubSummary[]>([]);
   protected readonly submitting = signal(false);
@@ -151,7 +178,13 @@ export default class ClubsListPage {
   protected readonly importOpen = signal(false);
   protected readonly importBusy = signal(false);
   protected readonly importResult = signal<ImportResult | null>(null);
-  protected readonly importColumns = ['name', 'shortCode', 'contactEmail', 'firstAdminEmail', 'notes'];
+  protected readonly importColumns = [
+    'name',
+    'shortCode',
+    'contactEmail',
+    'firstAdminEmail',
+    'notes',
+  ];
 
   protected readonly form = new FormGroup({
     name: new FormControl('', { nonNullable: true, validators: [Validators.required] }),
@@ -184,7 +217,11 @@ export default class ClubsListPage {
       },
       error: () => {
         this.importBusy.set(false);
-        this.importResult.set({ created: 0, updated: 0, errors: [{ row: 0, message: 'Import failed.' }] });
+        this.importResult.set({
+          created: 0,
+          updated: 0,
+          errors: [{ row: 0, message: 'Import failed.' }],
+        });
       },
     });
   }
@@ -226,8 +263,15 @@ export default class ClubsListPage {
           .subscribe({
             next: () => {
               this.submitting.set(false);
-              this.form.reset({ name: '', shortCode: '', contactEmail: '', notes: '', firstAdminEmail: '' });
+              this.form.reset({
+                name: '',
+                shortCode: '',
+                contactEmail: '',
+                notes: '',
+                firstAdminEmail: '',
+              });
               this.dialogOpen.set(false);
+              this.toast.success(`Club “${name.trim()}” created.`);
               this.refresh();
             },
             error: (err: { error?: { title?: string } }) => {

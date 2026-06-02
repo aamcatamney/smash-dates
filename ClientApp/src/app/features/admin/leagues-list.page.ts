@@ -5,6 +5,7 @@ import { LeaguesApi, LeagueSummary } from './leagues.api';
 import { AuthStore } from '../../core/auth/auth.store';
 import { AdminHeaderComponent } from './admin-header.component';
 import { ModalComponent } from '../../shared/modal.component';
+import { ToastService } from '../../shared/toast.service';
 
 @Component({
   selector: 'app-leagues-list-page',
@@ -16,7 +17,9 @@ import { ModalComponent } from '../../shared/modal.component';
 
       <main class="mx-auto w-full max-w-5xl px-4 py-10">
         <div class="flex items-center justify-between">
-          <h1 class="font-mono text-2xl font-semibold text-slate-900 dark:text-slate-100">Leagues</h1>
+          <h1 class="font-mono text-2xl font-semibold text-slate-900 dark:text-slate-100">
+            Leagues
+          </h1>
           @if (canCreate()) {
             <button
               type="button"
@@ -29,51 +32,60 @@ import { ModalComponent } from '../../shared/modal.component';
         </div>
 
         <app-modal [open]="dialogOpen()" title="Create league" (closed)="dialogOpen.set(false)">
-        <form
-          [formGroup]="form"
-          (ngSubmit)="onCreate()"
-          class="grid gap-3"
-        >
-          <label class="grid gap-1">
-            <span class="font-mono text-xs uppercase tracking-wider text-slate-600 dark:text-slate-400">Name</span>
-            <input
-              type="text"
-              formControlName="name"
-              class="rounded-md border border-slate-300 px-3 py-2 font-mono text-sm focus:outline-none focus:ring-2 focus:ring-slate-900 dark:border-slate-700 dark:focus:ring-slate-100 dark:bg-slate-800 dark:text-slate-100"
-              required
-            />
-          </label>
-          <label class="grid gap-1">
-            <span class="font-mono text-xs uppercase tracking-wider text-slate-600 dark:text-slate-400">Description</span>
-            <input
-              type="text"
-              formControlName="description"
-              class="rounded-md border border-slate-300 px-3 py-2 font-mono text-sm focus:outline-none focus:ring-2 focus:ring-slate-900 dark:border-slate-700 dark:focus:ring-slate-100 dark:bg-slate-800 dark:text-slate-100"
-            />
-          </label>
-          <label class="grid gap-1">
-            <span class="font-mono text-xs uppercase tracking-wider text-slate-600 dark:text-slate-400">First admin email</span>
-            <input
-              type="email"
-              formControlName="firstAdminEmail"
-              class="rounded-md border border-slate-300 px-3 py-2 font-mono text-sm focus:outline-none focus:ring-2 focus:ring-slate-900 dark:border-slate-700 dark:focus:ring-slate-100 dark:bg-slate-800 dark:text-slate-100"
-              required
-            />
-          </label>
-          <button
-            type="submit"
-            [disabled]="submitting() || form.invalid"
-            class="justify-self-start rounded-md bg-slate-900 px-4 py-2 font-mono text-sm font-medium text-amber-300 disabled:opacity-50 dark:bg-amber-400 dark:text-slate-900"
-          >
-            {{ submitting() ? 'Creating…' : 'Create league' }}
-          </button>
-          @if (error()) {
-            <p class="font-mono text-sm text-red-600 dark:text-red-400" role="alert">{{ error() }}</p>
-          }
-        </form>
+          <form [formGroup]="form" (ngSubmit)="onCreate()" class="grid gap-3">
+            <label class="grid gap-1">
+              <span
+                class="font-mono text-xs uppercase tracking-wider text-slate-600 dark:text-slate-400"
+                >Name</span
+              >
+              <input
+                type="text"
+                formControlName="name"
+                class="rounded-md border border-slate-300 px-3 py-2 font-mono text-sm focus:outline-none focus:ring-2 focus:ring-slate-900 dark:border-slate-700 dark:focus:ring-slate-100 dark:bg-slate-800 dark:text-slate-100"
+                required
+              />
+            </label>
+            <label class="grid gap-1">
+              <span
+                class="font-mono text-xs uppercase tracking-wider text-slate-600 dark:text-slate-400"
+                >Description</span
+              >
+              <input
+                type="text"
+                formControlName="description"
+                class="rounded-md border border-slate-300 px-3 py-2 font-mono text-sm focus:outline-none focus:ring-2 focus:ring-slate-900 dark:border-slate-700 dark:focus:ring-slate-100 dark:bg-slate-800 dark:text-slate-100"
+              />
+            </label>
+            <label class="grid gap-1">
+              <span
+                class="font-mono text-xs uppercase tracking-wider text-slate-600 dark:text-slate-400"
+                >First admin email</span
+              >
+              <input
+                type="email"
+                formControlName="firstAdminEmail"
+                class="rounded-md border border-slate-300 px-3 py-2 font-mono text-sm focus:outline-none focus:ring-2 focus:ring-slate-900 dark:border-slate-700 dark:focus:ring-slate-100 dark:bg-slate-800 dark:text-slate-100"
+                required
+              />
+            </label>
+            <button
+              type="submit"
+              [disabled]="submitting() || form.invalid"
+              class="justify-self-start rounded-md bg-slate-900 px-4 py-2 font-mono text-sm font-medium text-amber-300 disabled:opacity-50 dark:bg-amber-400 dark:text-slate-900"
+            >
+              {{ submitting() ? 'Creating…' : 'Create league' }}
+            </button>
+            @if (error()) {
+              <p class="font-mono text-sm text-red-600 dark:text-red-400" role="alert">
+                {{ error() }}
+              </p>
+            }
+          </form>
         </app-modal>
 
-        <ul class="mt-8 divide-y divide-slate-200 rounded-md border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900">
+        <ul
+          class="mt-8 divide-y divide-slate-200 rounded-md border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900"
+        >
           @if (loading()) {
             <li class="px-4 py-3 font-mono text-sm text-slate-400 dark:text-slate-500">Loading…</li>
           } @else {
@@ -85,20 +97,37 @@ import { ModalComponent } from '../../shared/modal.component';
                   >{{ league.name }}</a
                 >
                 @if (league.description) {
-                  <span class="ml-2 font-mono text-sm text-slate-500 dark:text-slate-400">— {{ league.description }}</span>
+                  <span class="ml-2 font-mono text-sm text-slate-500 dark:text-slate-400"
+                    >— {{ league.description }}</span
+                  >
                 }
-                <div class="mt-1 flex flex-wrap items-center gap-2 font-mono text-xs text-slate-500 dark:text-slate-400">
-                  <span class="rounded bg-slate-100 px-1.5 py-0.5 dark:bg-slate-800">{{ league.divisionCount }} {{ league.divisionCount === 1 ? 'division' : 'divisions' }}</span>
-                  <span class="rounded bg-slate-100 px-1.5 py-0.5 dark:bg-slate-800">{{ league.playerCount }} {{ league.playerCount === 1 ? 'player' : 'players' }}</span>
+                <div
+                  class="mt-1 flex flex-wrap items-center gap-2 font-mono text-xs text-slate-500 dark:text-slate-400"
+                >
+                  <span class="rounded bg-slate-100 px-1.5 py-0.5 dark:bg-slate-800"
+                    >{{ league.divisionCount }}
+                    {{ league.divisionCount === 1 ? 'division' : 'divisions' }}</span
+                  >
+                  <span class="rounded bg-slate-100 px-1.5 py-0.5 dark:bg-slate-800"
+                    >{{ league.playerCount }}
+                    {{ league.playerCount === 1 ? 'player' : 'players' }}</span
+                  >
                   @if (league.activeSeasonName) {
-                    <span class="rounded bg-emerald-100 px-1.5 py-0.5 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300">Active: {{ league.activeSeasonName }}</span>
+                    <span
+                      class="rounded bg-emerald-100 px-1.5 py-0.5 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300"
+                      >Active: {{ league.activeSeasonName }}</span
+                    >
                   } @else {
-                    <span class="rounded bg-slate-100 px-1.5 py-0.5 dark:bg-slate-800">No active season</span>
+                    <span class="rounded bg-slate-100 px-1.5 py-0.5 dark:bg-slate-800"
+                      >No active season</span
+                    >
                   }
                 </div>
               </li>
             } @empty {
-              <li class="px-4 py-3 font-mono text-sm text-slate-500 dark:text-slate-400">No leagues yet.</li>
+              <li class="px-4 py-3 font-mono text-sm text-slate-500 dark:text-slate-400">
+                No leagues yet.
+              </li>
             }
           }
         </ul>
@@ -109,6 +138,7 @@ import { ModalComponent } from '../../shared/modal.component';
 export default class LeaguesListPage {
   private readonly api = inject(LeaguesApi);
   private readonly auth = inject(AuthStore);
+  private readonly toast = inject(ToastService);
 
   protected readonly leagues = signal<LeagueSummary[]>([]);
   protected readonly submitting = signal(false);
@@ -165,6 +195,7 @@ export default class LeaguesListPage {
               this.submitting.set(false);
               this.form.reset({ name: '', description: '', firstAdminEmail: '' });
               this.dialogOpen.set(false);
+              this.toast.success(`League “${trimmedName}” created.`);
               this.refresh();
             },
             error: (err: { error?: { title?: string } }) => {
