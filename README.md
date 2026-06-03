@@ -2,9 +2,16 @@
 
 **Automatic fixture scheduling for badminton leagues.**
 
+[![CI](https://github.com/aamcatamney/smash-dates/actions/workflows/ci.yml/badge.svg)](https://github.com/aamcatamney/smash-dates/actions/workflows/ci.yml)
+[![Release](https://github.com/aamcatamney/smash-dates/actions/workflows/release.yml/badge.svg)](https://github.com/aamcatamney/smash-dates/actions/workflows/release.yml)
+[![Latest release](https://img.shields.io/github/v/release/aamcatamney/smash-dates?sort=semver)](https://github.com/aamcatamney/smash-dates/releases)
+[![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+
 Smash Dates is a web application for running multi-club badminton leagues end to end: set up clubs, teams, venues and divisions; configure seasons and playing weeks; then let the built-in scheduler generate a complete home-and-away fixture list that respects every real-world constraint — venue availability, blocked dates, derby-first rules and gender/week-type matching. Clubs confirm or reject their fixtures, results roll up into live standings, and a calendar-driven background service moves seasons through their lifecycle automatically.
 
 The whole thing ships as a single container: a .NET 10 API that also serves the Angular client, backed by PostgreSQL.
+
+**Contents:** [Features](#features) · [Screenshots](#screenshots) · [Quick start](#quick-start) · [Tech stack](#tech-stack) · [License](#license)
 
 ---
 
@@ -93,7 +100,7 @@ The **Sessions** tab opens a club night; the full-screen board tracks courts, li
 ![Pegboard live board](docs/screenshots/pegboard-board.png)
 
 ### Bulk CSV import
-Import clubs, teams, venues or season entries from a CSV — partial import with a per-row result and a downloadable template.
+Import clubs, teams, venues, season entries or club players from a CSV — partial import with a per-row result and a downloadable template.
 
 ![CSV import with per-row result](docs/screenshots/csv-import.png)
 
