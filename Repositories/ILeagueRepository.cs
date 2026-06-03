@@ -23,5 +23,5 @@ public interface ILeagueRepository
         CancellationToken ct = default);
 
     Task<bool> UpdateSchedulingConfigAsync(
-        Guid id, int spreadWeight, int legWeight, int minGapDays, int? targetGapDays, CancellationToken ct = default);
+        Guid id, int spreadWeight, int legWeight, int minGapDays, int? targetGapDays, int courtsPerMatch, CancellationToken ct = default);
 }

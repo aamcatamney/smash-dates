@@ -851,7 +851,8 @@ import { PlayersApi } from './players.api';
                 >
                   spread weight {{ c.spreadWeight }} · leg weight {{ c.legWeight }} · min gap
                   {{ c.minGapDays }}d · target gap
-                  {{ c.targetGapDays === null ? 'auto (½ season)' : c.targetGapDays + 'd' }}
+                  {{ c.targetGapDays === null ? 'auto (½ season)' : c.targetGapDays + 'd' }} ·
+                  {{ c.courtsPerMatch }} courts/match
                 </div>
               }
 
@@ -906,6 +907,18 @@ import { PlayersApi } from './players.api';
                       type="number"
                       formControlName="targetGapDays"
                       min="0"
+                      class="rounded-md border border-slate-300 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 px-3 py-2 font-mono text-sm focus:outline-none focus:ring-2 focus:ring-slate-900 dark:focus:ring-slate-100"
+                    />
+                  </label>
+                  <label class="grid gap-1">
+                    <span
+                      class="font-mono text-xs uppercase tracking-wider text-slate-600 dark:text-slate-400"
+                      >Courts per match (rubbers run in parallel)</span
+                    >
+                    <input
+                      type="number"
+                      formControlName="courtsPerMatch"
+                      min="1"
                       class="rounded-md border border-slate-300 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 px-3 py-2 font-mono text-sm focus:outline-none focus:ring-2 focus:ring-slate-900 dark:focus:ring-slate-100"
                     />
                   </label>
@@ -1027,6 +1040,10 @@ export default class LeagueDetailPage implements OnDestroy {
       validators: [Validators.required, Validators.min(0)],
     }),
     targetGapDays: new FormControl<number | null>(null, { validators: [Validators.min(0)] }),
+    courtsPerMatch: new FormControl(2, {
+      nonNullable: true,
+      validators: [Validators.required, Validators.min(1)],
+    }),
   });
 
   protected readonly resultForm = new FormGroup({
@@ -1547,6 +1564,7 @@ export default class LeagueDetailPage implements OnDestroy {
         legWeight: c.legWeight,
         minGapDays: c.minGapDays,
         targetGapDays: c.targetGapDays,
+        courtsPerMatch: c.courtsPerMatch,
       });
     this.configDialogOpen.set(true);
   }
@@ -1559,6 +1577,7 @@ export default class LeagueDetailPage implements OnDestroy {
       minGapDays: Number(v.minGapDays),
       targetGapDays:
         v.targetGapDays === null || v.targetGapDays === undefined ? null : Number(v.targetGapDays),
+      courtsPerMatch: Number(v.courtsPerMatch),
     };
     this.api.updateSchedulingConfig(this.leagueId, config).subscribe({
       next: () => {

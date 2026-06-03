@@ -10,9 +10,9 @@ public static class CreateVenueEndpoint
     private const int MaxNameLength = 200;
     private const string DuplicateSqlState = "23505";
 
-    public sealed record CreateVenueRequest(string Name, int? Capacity);
+    public sealed record CreateVenueRequest(string Name, int? Courts, int? MaxConcurrentMatches);
 
-    public sealed record VenueResponse(Guid Id, Guid ClubId, string Name, int Capacity);
+    public sealed record VenueResponse(Guid Id, Guid ClubId, string Name, int Courts, int MaxConcurrentMatches);
 
     public static IEndpointRouteBuilder MapCreateVenueEndpoint(this IEndpointRouteBuilder app)
     {
@@ -38,14 +38,18 @@ public static class CreateVenueEndpoint
         if (name.Length == 0 || name.Length > MaxNameLength)
             return Results.Problem(statusCode: StatusCodes.Status400BadRequest, title: "Invalid name");
 
-        var capacity = request.Capacity ?? 1;
-        if (capacity is not (1 or 2))
-            return Results.Problem(statusCode: StatusCodes.Status400BadRequest, title: "Capacity must be 1 or 2");
+        var courts = request.Courts ?? 2;
+        if (courts < 1)
+            return Results.Problem(statusCode: StatusCodes.Status400BadRequest, title: "Courts must be at least 1");
+
+        var maxConcurrent = request.MaxConcurrentMatches ?? 1;
+        if (maxConcurrent is not (1 or 2))
+            return Results.Problem(statusCode: StatusCodes.Status400BadRequest, title: "Max concurrent matches must be 1 or 2");
 
         try
         {
-            var id = await venues.CreateAsync(clubId, name, capacity, ct);
-            return Results.Created($"/api/clubs/{clubId}/venues", new VenueResponse(id, clubId, name, capacity));
+            var id = await venues.CreateAsync(clubId, name, courts, maxConcurrent, ct);
+            return Results.Created($"/api/clubs/{clubId}/venues", new VenueResponse(id, clubId, name, courts, maxConcurrent));
         }
         catch (PostgresException ex) when (ex.SqlState == DuplicateSqlState)
         {

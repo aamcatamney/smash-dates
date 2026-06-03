@@ -8,7 +8,7 @@ public sealed class ListVenuesEndpointTests : IntegrationTestBase
 {
     public ListVenuesEndpointTests(PostgresFixture fixture) : base(fixture) { }
 
-    private sealed record VenueDto(Guid Id, Guid ClubId, string Name, int Capacity);
+    private sealed record VenueDto(Guid Id, Guid ClubId, string Name, int Courts, int MaxConcurrentMatches);
 
     [Fact]
     public async Task Get_ReturnsVenuesForClub_AnyAuthenticatedUser()
@@ -22,6 +22,9 @@ public sealed class ListVenuesEndpointTests : IntegrationTestBase
 
         venues.Should().NotBeNull();
         venues!.Length.Should().Be(2);
+        // The seeder maps legacy capacity → courts = capacity * 2.
+        venues.Single(v => v.Name == "Main Hall").Courts.Should().Be(4);
+        venues.Single(v => v.Name == "Main Hall").MaxConcurrentMatches.Should().Be(2);
     }
 
     [Fact]

@@ -9,7 +9,7 @@ public sealed class LeagueRepository : ILeagueRepository
 {
     private const string SelectColumns =
         "id, name, description, created_by, created_at, updated_at, " +
-        "spread_weight, leg_weight, min_gap_days, target_gap_days";
+        "spread_weight, leg_weight, min_gap_days, target_gap_days, courts_per_match";
 
     private readonly IDbConnectionFactory _factory;
 
@@ -109,16 +109,17 @@ public sealed class LeagueRepository : ILeagueRepository
     }
 
     public async Task<bool> UpdateSchedulingConfigAsync(
-        Guid id, int spreadWeight, int legWeight, int minGapDays, int? targetGapDays, CancellationToken ct = default)
+        Guid id, int spreadWeight, int legWeight, int minGapDays, int? targetGapDays, int courtsPerMatch, CancellationToken ct = default)
     {
         using var conn = _factory.Create();
         var rows = await conn.ExecuteAsync(
             new CommandDefinition(
                 @"UPDATE leagues
                   SET spread_weight = @spreadWeight, leg_weight = @legWeight,
-                      min_gap_days = @minGapDays, target_gap_days = @targetGapDays, updated_at = now()
+                      min_gap_days = @minGapDays, target_gap_days = @targetGapDays,
+                      courts_per_match = @courtsPerMatch, updated_at = now()
                   WHERE id = @id",
-                new { id, spreadWeight, legWeight, minGapDays, targetGapDays },
+                new { id, spreadWeight, legWeight, minGapDays, targetGapDays, courtsPerMatch },
                 cancellationToken: ct));
         return rows > 0;
     }

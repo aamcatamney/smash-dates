@@ -82,12 +82,24 @@ public sealed class ScheduleGenerator : IScheduleGenerator
 
         var clubIds = entries.Select(e => e.ClubId).Distinct().ToList();
 
+        // The League's courts-per-match rule turns each Venue's physical courts + its own
+        // max-concurrent cap into the number of Matches a slot can hold.
+        var weights = SchedulerWeights.Default;
+        var courtsPerMatch = 2;
+        var season = await _seasons.GetByIdAsync(seasonId, ct);
+        if (season is not null && await _leagues.GetByIdAsync(season.LeagueId, ct) is { } league)
+        {
+            weights = new SchedulerWeights(league.SpreadWeight, league.LegWeight, league.MinGapDays, league.TargetGapDays);
+            courtsPerMatch = league.CourtsPerMatch;
+        }
+
         var venues = new List<SchedulerVenue>();
         var blocks = new List<SchedulerBlock>();
         foreach (var clubId in clubIds)
         {
             foreach (var v in await _venues.ListByClubAsync(clubId, ct))
-                venues.Add(new SchedulerVenue(v.Id, v.ClubId, v.Capacity));
+                venues.Add(new SchedulerVenue(
+                    v.Id, v.ClubId, VenueSlotCapacity.Compute(v.Courts, v.MaxConcurrentMatches, courtsPerMatch)));
 
             foreach (var b in await _blockedDates.ListByClubAsync(clubId, ct))
                 blocks.Add(new SchedulerBlock(b.Scope, b.ClubId, b.VenueId, b.TeamId, b.StartDate, b.EndDate));
@@ -96,11 +108,6 @@ public sealed class ScheduleGenerator : IScheduleGenerator
         var weeks = (await _seasons.ListWeeksAsync(seasonId, ct))
             .Select(w => new SchedulerWeek(w.StartDate, w.EndDate, w.WeekType))
             .ToList();
-
-        var weights = SchedulerWeights.Default;
-        var season = await _seasons.GetByIdAsync(seasonId, ct);
-        if (season is not null && await _leagues.GetByIdAsync(season.LeagueId, ct) is { } league)
-            weights = new SchedulerWeights(league.SpreadWeight, league.LegWeight, league.MinGapDays, league.TargetGapDays);
 
         return new SchedulerInput(divisions, weeks, venues, blocks) { Locked = locked, Weights = weights };
     }

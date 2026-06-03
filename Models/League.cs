@@ -15,4 +15,8 @@ public sealed class League
     public int LegWeight { get; init; }
     public int MinGapDays { get; init; }
     public int? TargetGapDays { get; init; }
+
+    // How many courts one Match occupies (rubbers run in parallel); a Venue's slot capacity
+    // is floor(courts / CourtsPerMatch), capped by its MaxConcurrentMatches. Default 2.
+    public int CourtsPerMatch { get; init; }
 }

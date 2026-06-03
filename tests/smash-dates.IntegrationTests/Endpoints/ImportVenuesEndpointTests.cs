@@ -10,7 +10,7 @@ public sealed class ImportVenuesEndpointTests : IntegrationTestBase
 
     private sealed record RowErrorDto(int Row, string Message);
     private sealed record ImportResultDto(int Created, int Updated, RowErrorDto[] Errors);
-    private sealed record VenueDto(Guid Id, string Name, int Capacity);
+    private sealed record VenueDto(Guid Id, string Name, int Courts, int MaxConcurrentMatches);
 
     private async Task<Guid> ArrangeClubWithAdminAsync()
     {
@@ -28,7 +28,7 @@ public sealed class ImportVenuesEndpointTests : IntegrationTestBase
 
         var response = await Client.PostAsJsonAsync($"/api/clubs/{clubId}/venues/import", new
         {
-            csv = "name,capacity\nMain Hall,2\nAnnexe,1",
+            csv = "name,courts,maxConcurrentMatches\nMain Hall,4,2\nAnnexe,2,1",
         });
 
         var result = await response.Content.ReadFromJsonAsync<ImportResultDto>();
@@ -37,7 +37,7 @@ public sealed class ImportVenuesEndpointTests : IntegrationTestBase
     }
 
     [Fact]
-    public async Task Import_ExistingVenue_UpdatesCapacity()
+    public async Task Import_ExistingVenue_UpdatesCourtsAndMaxConcurrent()
     {
         var admin = await Seeder.CreateUserAsync("admin@example.com", "correct-horse-battery");
         var clubId = await Seeder.CreateClubAsync("Acme", "ACME");
@@ -47,7 +47,7 @@ public sealed class ImportVenuesEndpointTests : IntegrationTestBase
 
         var response = await Client.PostAsJsonAsync($"/api/clubs/{clubId}/venues/import", new
         {
-            csv = "name,capacity\nMain Hall,2\nAnnexe,1",
+            csv = "name,courts,maxConcurrentMatches\nMain Hall,6,2\nAnnexe,2,1",
         });
 
         var result = await response.Content.ReadFromJsonAsync<ImportResultDto>();
@@ -55,17 +55,19 @@ public sealed class ImportVenuesEndpointTests : IntegrationTestBase
         result.Updated.Should().Be(1);
 
         var venues = await Client.GetFromJsonAsync<VenueDto[]>($"/api/clubs/{clubId}/venues");
-        venues!.Single(v => v.Name == "Main Hall").Capacity.Should().Be(2);
+        var main = venues!.Single(v => v.Name == "Main Hall");
+        main.Courts.Should().Be(6);
+        main.MaxConcurrentMatches.Should().Be(2);
     }
 
     [Fact]
-    public async Task Import_InvalidCapacity_ReportsRowError()
+    public async Task Import_InvalidMaxConcurrent_ReportsRowError()
     {
         var clubId = await ArrangeClubWithAdminAsync();
 
         var response = await Client.PostAsJsonAsync($"/api/clubs/{clubId}/venues/import", new
         {
-            csv = "name,capacity\nMain Hall,3\nAnnexe,1",
+            csv = "name,courts,maxConcurrentMatches\nMain Hall,4,3\nAnnexe,2,1",
         });
 
         var result = await response.Content.ReadFromJsonAsync<ImportResultDto>();

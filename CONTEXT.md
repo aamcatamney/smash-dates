@@ -23,7 +23,12 @@ Three scopes, all owned by the relevant Club admin:
 - **TeamBlocked** — this Team cannot play (player exams, holiday).
 
 ### Venue
-A physical hall belonging to a Club. A Club has 1..N Venues, all interchangeable from the scheduler's perspective. Each Venue has a court **capacity** of 1 or 2 simultaneous Matches per slot, and a list of **unavailable dates** (the [VenueBlocked](#blocked-date) scope — not a separate concept).
+A physical hall belonging to a Club. A Club has 1..N Venues, all interchangeable from the scheduler's perspective. Each Venue has:
+- **Courts** — the number of physical badminton courts in the hall (1..N).
+- **MaxConcurrentMatches** — the Venue's own ceiling (`1` or `2`) on how many Matches may run at once, regardless of how many courts it has.
+- a list of **unavailable dates** (the [VenueBlocked](#blocked-date) scope — not a separate concept).
+
+The number of Matches a Venue can actually host simultaneously in one `(Venue, Date)` slot is **derived**, not stored: `min(MaxConcurrentMatches, ⌊Courts ÷ CourtsPerMatch⌋)`, where [CourtsPerMatch](#scheduling-constraints) is a per-League rule. A Match occupies more than one court (its rubbers run in parallel), so a hall needs enough courts *and* a high enough concurrency ceiling to run two Matches at once.
 
 ### Match Status
 Lifecycle: `Proposed → Confirmed → Played | Postponed → Rejected`.
@@ -42,7 +47,7 @@ Selected by the scheduler at scheduling time from the home Club's pool of Venues
 ### Match
 A **tie** between two Teams played on a single night. Composed internally of multiple rubbers (singles + doubles), but the scheduler treats a Match as one atomic unit placed on a `(Venue, Date)` slot. Rubber-level scoring is out of scope.
 
-A `(Venue, Date)` slot may host 1 or 2 Matches simultaneously (court capacity).
+A `(Venue, Date)` slot may host more than one Match simultaneously, up to the Venue's derived slot capacity (see [Venue](#venue)).
 
 ### Division
 A persistent bucket within a League (e.g. "Mens 1", "Mens 2", "Mixed 1"). Has:
@@ -98,7 +103,7 @@ No other week types (no cup weeks, no bye weeks) at this stage.
 
 **Hard (scheduler must satisfy):**
 - A Team plays at most one Match per calendar date.
-- A `(Venue, Date)` slot hosts no more than its court capacity (1 or 2 Matches).
+- A `(Venue, Date)` slot hosts no more than its derived slot capacity — `min(MaxConcurrentMatches, ⌊Courts ÷ CourtsPerMatch⌋)` (see [Venue](#venue)).
 - A Venue cannot host on its unavailable dates.
 - A Team cannot play on its Club's blocked dates or the Team's own blocked dates.
 - Derby-first rule (see [Derby](#derby)).
@@ -109,7 +114,7 @@ No other week types (no cup weeks, no bye weeks) at this stage.
 - Minimise back-to-back / closely-spaced Matches for any one Team.
 - Maximise gap between the home leg and the away leg of the same pairing (target ≈ half season length).
 
-Penalty weights and target gap values are **per-League configuration** with sensible defaults.
+Penalty weights and target gap values are **per-League configuration** with sensible defaults. **CourtsPerMatch** — how many courts one Match occupies (its rubbers run in parallel) — is also per-League, defaulting to `2`; it feeds the Venue slot-capacity derivation above.
 
 ### Derby
 A Match between two Teams from the same Club in the same Division. When a Club has N≥2 Teams in one Division, all `N*(N-1)` intra-club Matches (each pair home+away) must be scheduled **before** any of those Teams plays any other Team in the Division. Hard scheduler constraint.

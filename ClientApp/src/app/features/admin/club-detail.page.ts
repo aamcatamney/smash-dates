@@ -365,7 +365,9 @@ import { PlayersApi } from './players.api';
                       <span
                         class="ml-2 inline-block rounded bg-slate-200 dark:bg-slate-700 px-2 py-0.5 text-xs"
                       >
-                        {{ v.capacity }} {{ v.capacity === 1 ? 'court' : 'courts' }}
+                        {{ v.courts }} {{ v.courts === 1 ? 'court' : 'courts' }} · up to
+                        {{ v.maxConcurrentMatches }}
+                        {{ v.maxConcurrentMatches === 1 ? 'match' : 'matches' }} at once
                       </span>
                     </span>
                     <button
@@ -407,8 +409,20 @@ import { PlayersApi } from './players.api';
                       class="font-mono text-xs uppercase tracking-wider text-slate-600 dark:text-slate-400"
                       >Courts</span
                     >
+                    <input
+                      type="number"
+                      formControlName="courts"
+                      min="1"
+                      class="rounded-md border border-slate-300 dark:border-slate-700 px-3 py-2 font-mono text-sm focus:outline-none focus:ring-2 focus:ring-slate-900 dark:focus:ring-slate-100 dark:bg-slate-800 dark:text-slate-100"
+                    />
+                  </label>
+                  <label class="grid gap-1">
+                    <span
+                      class="font-mono text-xs uppercase tracking-wider text-slate-600 dark:text-slate-400"
+                      >Max concurrent matches</span
+                    >
                     <select
-                      formControlName="capacity"
+                      formControlName="maxConcurrentMatches"
                       class="rounded-md border border-slate-300 dark:border-slate-700 px-3 py-2 font-mono text-sm focus:outline-none focus:ring-2 focus:ring-slate-900 dark:focus:ring-slate-100 dark:bg-slate-800 dark:text-slate-100"
                     >
                       <option [value]="1">1</option>
@@ -765,7 +779,7 @@ import { PlayersApi } from './players.api';
           [open]="importKind() !== null"
           [title]="importKind() === 'venues' ? 'Import venues' : 'Import teams'"
           [columns]="importKind() === 'venues' ? venueImportColumns : teamImportColumns"
-          [sample]="importKind() === 'venues' ? 'Main Hall,2' : 'Acme 1st,Mens'"
+          [sample]="importKind() === 'venues' ? 'Main Hall,4,2' : 'Acme 1st,Mens'"
           [result]="importResult()"
           [busy]="importBusy()"
           (submit)="onImport($event)"
@@ -838,7 +852,7 @@ export default class ClubDetailPage {
   protected readonly importBusy = signal(false);
   protected readonly importResult = signal<ImportResult | null>(null);
   protected readonly teamImportColumns = ['name', 'gender'];
-  protected readonly venueImportColumns = ['name', 'capacity'];
+  protected readonly venueImportColumns = ['name', 'courts', 'maxConcurrentMatches'];
   protected readonly venueDialogOpen = signal(false);
   protected readonly blockDialogOpen = signal(false);
   protected readonly pending = signal<{ message: string; action: () => void } | null>(null);
@@ -888,7 +902,14 @@ export default class ClubDetailPage {
 
   protected readonly venueForm = new FormGroup({
     name: new FormControl('', { nonNullable: true, validators: [Validators.required] }),
-    capacity: new FormControl(1, { nonNullable: true, validators: [Validators.required] }),
+    courts: new FormControl(2, {
+      nonNullable: true,
+      validators: [Validators.required, Validators.min(1)],
+    }),
+    maxConcurrentMatches: new FormControl(1, {
+      nonNullable: true,
+      validators: [Validators.required],
+    }),
   });
 
   protected readonly blockForm = new FormGroup({
@@ -1094,23 +1115,26 @@ export default class ClubDetailPage {
   }
 
   protected onCreateVenue(): void {
-    const { name, capacity } = this.venueForm.getRawValue();
+    const { name, courts, maxConcurrentMatches } = this.venueForm.getRawValue();
     const trimmed = name.trim();
     if (!trimmed) return;
     this.venueBusy.set(true);
     this.venueError.set(null);
-    this.api.createVenue(this.clubId(), trimmed, Number(capacity)).subscribe({
-      next: () => {
-        this.venueBusy.set(false);
-        this.venueForm.reset({ name: '', capacity: 1 });
-        this.venueDialogOpen.set(false);
-        this.refreshVenues();
-      },
-      error: (err: { error?: { title?: string } }) => {
-        this.venueBusy.set(false);
-        this.venueError.set(err?.error?.title ?? 'Could not add venue.');
-      },
-    });
+    this.api
+      .createVenue(this.clubId(), trimmed, Number(courts), Number(maxConcurrentMatches))
+      .subscribe({
+        next: () => {
+          this.venueBusy.set(false);
+          this.venueForm.reset({ name: '', courts: 2, maxConcurrentMatches: 1 });
+          this.venueDialogOpen.set(false);
+          this.toast.success(`Venue “${trimmed}” added.`);
+          this.refreshVenues();
+        },
+        error: (err: { error?: { title?: string } }) => {
+          this.venueBusy.set(false);
+          this.venueError.set(err?.error?.title ?? 'Could not add venue.');
+        },
+      });
   }
 
   protected onDeleteVenue(v: VenueSummary): void {
