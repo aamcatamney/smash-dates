@@ -91,6 +91,7 @@ export interface SchedulingConfig {
   legWeight: number;
   minGapDays: number;
   targetGapDays: number | null;
+  courtsPerMatch: number;
 }
 
 export type MatchStatus = 'Proposed' | 'Confirmed' | 'Played' | 'Postponed' | 'Rejected';
@@ -226,23 +227,41 @@ export class LeaguesApi {
   }
 
   listSeasonEntries(leagueId: string, seasonId: string): Observable<SeasonEntrySummary[]> {
-    return this.http.get<SeasonEntrySummary[]>(`/api/leagues/${leagueId}/seasons/${seasonId}/entries`);
+    return this.http.get<SeasonEntrySummary[]>(
+      `/api/leagues/${leagueId}/seasons/${seasonId}/entries`,
+    );
   }
 
-  createSeasonEntry(leagueId: string, seasonId: string, teamId: string, divisionId: string): Observable<unknown> {
-    return this.http.post(`/api/leagues/${leagueId}/seasons/${seasonId}/entries`, { teamId, divisionId });
+  createSeasonEntry(
+    leagueId: string,
+    seasonId: string,
+    teamId: string,
+    divisionId: string,
+  ): Observable<unknown> {
+    return this.http.post(`/api/leagues/${leagueId}/seasons/${seasonId}/entries`, {
+      teamId,
+      divisionId,
+    });
   }
 
   importSeasonEntries(leagueId: string, seasonId: string, csv: string): Observable<ImportResult> {
-    return this.http.post<ImportResult>(`/api/leagues/${leagueId}/seasons/${seasonId}/entries/import`, { csv });
+    return this.http.post<ImportResult>(
+      `/api/leagues/${leagueId}/seasons/${seasonId}/entries/import`,
+      { csv },
+    );
   }
 
   deleteSeasonEntry(leagueId: string, seasonId: string, entryId: string): Observable<void> {
-    return this.http.delete<void>(`/api/leagues/${leagueId}/seasons/${seasonId}/entries/${entryId}`);
+    return this.http.delete<void>(
+      `/api/leagues/${leagueId}/seasons/${seasonId}/entries/${entryId}`,
+    );
   }
 
   generateSchedule(leagueId: string, seasonId: string): Observable<{ matchCount: number }> {
-    return this.http.post<{ matchCount: number }>(`/api/leagues/${leagueId}/seasons/${seasonId}/generate`, null);
+    return this.http.post<{ matchCount: number }>(
+      `/api/leagues/${leagueId}/seasons/${seasonId}/generate`,
+      null,
+    );
   }
 
   listMatches(leagueId: string, seasonId: string): Observable<MatchSummary[]> {
@@ -254,11 +273,23 @@ export class LeaguesApi {
   }
 
   rerunSchedule(leagueId: string, seasonId: string): Observable<{ matchCount: number }> {
-    return this.http.post<{ matchCount: number }>(`/api/leagues/${leagueId}/seasons/${seasonId}/rerun`, null);
+    return this.http.post<{ matchCount: number }>(
+      `/api/leagues/${leagueId}/seasons/${seasonId}/rerun`,
+      null,
+    );
   }
 
-  recordResult(matchId: string, homeScore: number, awayScore: number, playedOn: string): Observable<{ status: string }> {
-    return this.http.post<{ status: string }>(`/api/matches/${matchId}/result`, { homeScore, awayScore, playedOn });
+  recordResult(
+    matchId: string,
+    homeScore: number,
+    awayScore: number,
+    playedOn: string,
+  ): Observable<{ status: string }> {
+    return this.http.post<{ status: string }>(`/api/matches/${matchId}/result`, {
+      homeScore,
+      awayScore,
+      playedOn,
+    });
   }
 
   recordWalkover(matchId: string, winner: 'Home' | 'Away'): Observable<{ status: string }> {
@@ -270,11 +301,17 @@ export class LeaguesApi {
   }
 
   activateSeason(leagueId: string, seasonId: string): Observable<{ status: string }> {
-    return this.http.post<{ status: string }>(`/api/leagues/${leagueId}/seasons/${seasonId}/activate`, null);
+    return this.http.post<{ status: string }>(
+      `/api/leagues/${leagueId}/seasons/${seasonId}/activate`,
+      null,
+    );
   }
 
   closeSeason(leagueId: string, seasonId: string): Observable<{ status: string }> {
-    return this.http.post<{ status: string }>(`/api/leagues/${leagueId}/seasons/${seasonId}/close`, null);
+    return this.http.post<{ status: string }>(
+      `/api/leagues/${leagueId}/seasons/${seasonId}/close`,
+      null,
+    );
   }
 
   postponeMatch(matchId: string): Observable<{ status: string }> {

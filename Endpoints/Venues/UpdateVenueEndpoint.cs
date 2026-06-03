@@ -10,7 +10,7 @@ public static class UpdateVenueEndpoint
     private const int MaxNameLength = 200;
     private const string DuplicateSqlState = "23505";
 
-    public sealed record UpdateVenueRequest(string Name, int Capacity);
+    public sealed record UpdateVenueRequest(string Name, int Courts, int MaxConcurrentMatches);
 
     public static IEndpointRouteBuilder MapUpdateVenueEndpoint(this IEndpointRouteBuilder app)
     {
@@ -37,12 +37,15 @@ public static class UpdateVenueEndpoint
         if (name.Length == 0 || name.Length > MaxNameLength)
             return Results.Problem(statusCode: StatusCodes.Status400BadRequest, title: "Invalid name");
 
-        if (request.Capacity is not (1 or 2))
-            return Results.Problem(statusCode: StatusCodes.Status400BadRequest, title: "Capacity must be 1 or 2");
+        if (request.Courts < 1)
+            return Results.Problem(statusCode: StatusCodes.Status400BadRequest, title: "Courts must be at least 1");
+
+        if (request.MaxConcurrentMatches is not (1 or 2))
+            return Results.Problem(statusCode: StatusCodes.Status400BadRequest, title: "Max concurrent matches must be 1 or 2");
 
         try
         {
-            await venues.UpdateAsync(id, name, request.Capacity, ct);
+            await venues.UpdateAsync(id, name, request.Courts, request.MaxConcurrentMatches, ct);
             return Results.NoContent();
         }
         catch (PostgresException ex) when (ex.SqlState == DuplicateSqlState)

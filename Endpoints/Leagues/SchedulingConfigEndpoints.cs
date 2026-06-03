@@ -6,7 +6,7 @@ namespace smash_dates.Endpoints.Leagues;
 
 public static class SchedulingConfigEndpoints
 {
-    public sealed record SchedulingConfig(int SpreadWeight, int LegWeight, int MinGapDays, int? TargetGapDays);
+    public sealed record SchedulingConfig(int SpreadWeight, int LegWeight, int MinGapDays, int? TargetGapDays, int CourtsPerMatch);
 
     public static IEndpointRouteBuilder MapSchedulingConfigEndpoints(this IEndpointRouteBuilder app)
     {
@@ -20,7 +20,7 @@ public static class SchedulingConfigEndpoints
         var league = await leagues.GetByIdAsync(id, ct);
         return league is null
             ? Results.NotFound()
-            : Results.Ok(new SchedulingConfig(league.SpreadWeight, league.LegWeight, league.MinGapDays, league.TargetGapDays));
+            : Results.Ok(new SchedulingConfig(league.SpreadWeight, league.LegWeight, league.MinGapDays, league.TargetGapDays, league.CourtsPerMatch));
     }
 
     private static async Task<IResult> Update(
@@ -39,8 +39,11 @@ public static class SchedulingConfigEndpoints
         if (request.SpreadWeight < 0 || request.LegWeight < 0 || request.MinGapDays < 0 || request.TargetGapDays is < 0)
             return Results.Problem(statusCode: StatusCodes.Status400BadRequest, title: "Weights and gaps must be non-negative");
 
+        if (request.CourtsPerMatch < 1)
+            return Results.Problem(statusCode: StatusCodes.Status400BadRequest, title: "Courts per match must be at least 1");
+
         await leagues.UpdateSchedulingConfigAsync(
-            id, request.SpreadWeight, request.LegWeight, request.MinGapDays, request.TargetGapDays, ct);
+            id, request.SpreadWeight, request.LegWeight, request.MinGapDays, request.TargetGapDays, request.CourtsPerMatch, ct);
         return Results.NoContent();
     }
 }

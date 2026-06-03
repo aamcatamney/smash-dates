@@ -154,15 +154,18 @@ public sealed class TestDataSeeder
             new { clubId, name, gender = gender.ToString() });
     }
 
+    // `capacity` is the legacy "simultaneous matches" notion; map it onto the new columns
+    // (courts = capacity * 2) so existing callers keep the same effective slot capacity under
+    // the default courts-per-match of 2.
     public async Task<Guid> CreateVenueAsync(Guid clubId, string name, int capacity = 1)
     {
         await using var conn = new NpgsqlConnection(_connectionString);
         await conn.OpenAsync();
         return await conn.ExecuteScalarAsync<Guid>(
-            @"INSERT INTO venues (club_id, name, capacity)
-              VALUES (@clubId, @name, @capacity)
+            @"INSERT INTO venues (club_id, name, courts, max_concurrent_matches)
+              VALUES (@clubId, @name, @courts, @capacity)
               RETURNING id",
-            new { clubId, name, capacity });
+            new { clubId, name, courts = capacity * 2, capacity });
     }
 
     public async Task<Guid> CreateSeasonAsync(

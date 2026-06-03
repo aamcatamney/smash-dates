@@ -59,7 +59,8 @@ export interface VenueSummary {
   id: string;
   clubId: string;
   name: string;
-  capacity: number;
+  courts: number;
+  maxConcurrentMatches: number;
 }
 
 export type MatchStatus = 'Proposed' | 'Confirmed' | 'Played' | 'Postponed' | 'Rejected';
@@ -160,7 +161,10 @@ export class ClubsApi {
   }
 
   withdrawMembership(leagueId: string, membershipId: string): Observable<void> {
-    return this.http.post<void>(`/api/leagues/${leagueId}/memberships/${membershipId}/withdraw`, {});
+    return this.http.post<void>(
+      `/api/leagues/${leagueId}/memberships/${membershipId}/withdraw`,
+      {},
+    );
   }
 
   listTeams(clubId: string): Observable<TeamSummary[]> {
@@ -183,12 +187,31 @@ export class ClubsApi {
     return this.http.get<VenueSummary[]>(`/api/clubs/${clubId}/venues`);
   }
 
-  createVenue(clubId: string, name: string, capacity: number): Observable<VenueSummary> {
-    return this.http.post<VenueSummary>(`/api/clubs/${clubId}/venues`, { name, capacity });
+  createVenue(
+    clubId: string,
+    name: string,
+    courts: number,
+    maxConcurrentMatches: number,
+  ): Observable<VenueSummary> {
+    return this.http.post<VenueSummary>(`/api/clubs/${clubId}/venues`, {
+      name,
+      courts,
+      maxConcurrentMatches,
+    });
   }
 
-  updateVenue(clubId: string, venueId: string, name: string, capacity: number): Observable<void> {
-    return this.http.patch<void>(`/api/clubs/${clubId}/venues/${venueId}`, { name, capacity });
+  updateVenue(
+    clubId: string,
+    venueId: string,
+    name: string,
+    courts: number,
+    maxConcurrentMatches: number,
+  ): Observable<void> {
+    return this.http.patch<void>(`/api/clubs/${clubId}/venues/${venueId}`, {
+      name,
+      courts,
+      maxConcurrentMatches,
+    });
   }
 
   deleteVenue(clubId: string, venueId: string): Observable<void> {
@@ -219,7 +242,12 @@ export class ClubsApi {
     return this.http.post(`/api/matches/${matchId}/reject`, null);
   }
 
-  recordResult(matchId: string, homeScore: number, awayScore: number, playedOn: string): Observable<unknown> {
+  recordResult(
+    matchId: string,
+    homeScore: number,
+    awayScore: number,
+    playedOn: string,
+  ): Observable<unknown> {
     return this.http.post(`/api/matches/${matchId}/result`, { homeScore, awayScore, playedOn });
   }
 
