@@ -23,6 +23,7 @@ public static class ClubPlayersEndpoints
         var group = app.MapGroup("/api/clubs/{clubId:guid}/players").RequireAuthorization();
         group.MapGet("/", ListClubPlayers);
         group.MapPost("/", AddClubPlayer);
+        group.MapImportClubPlayersEndpoint();
         group.MapPatch("/{playerId:guid}", UpdateLink);
         group.MapDelete("/{playerId:guid}", Unlink);
         group.MapSetPlayerGradeEndpoint();

@@ -1,8 +1,26 @@
-import { ChangeDetectionStrategy, Component, effect, inject, input, output, signal } from '@angular/core';
+import {
+  ChangeDetectionStrategy,
+  Component,
+  effect,
+  inject,
+  input,
+  output,
+  signal,
+} from '@angular/core';
 import { FormControl, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
-import { Discipline, Player, PlayerClubType, PlayersApi, PlayerLink, Registration, Transfer } from './players.api';
+import {
+  Discipline,
+  Player,
+  PlayerClubType,
+  PlayersApi,
+  PlayerLink,
+  Registration,
+  Transfer,
+} from './players.api';
 import { ModalComponent } from '../../shared/modal.component';
 import { StatusColorPipe } from '../../shared/status-color.pipe';
+import { CsvImportComponent } from '../../shared/csv-import.component';
+import { ImportResult } from '../../shared/import-result';
 
 interface LeagueOption {
   id: string;
@@ -14,139 +32,347 @@ interface LeagueOption {
 // club is an accepted member of (for the register / transfer-in selects).
 @Component({
   selector: 'app-club-players',
-  imports: [ReactiveFormsModule, ModalComponent, StatusColorPipe],
+  imports: [ReactiveFormsModule, ModalComponent, StatusColorPipe, CsvImportComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <div class="mt-10 flex items-center justify-between">
       <h2 class="font-mono text-lg font-semibold text-slate-900 dark:text-slate-100">Players</h2>
       <div class="flex gap-2">
-        <button type="button" (click)="openTransferIn()" class="rounded-md border border-slate-300 px-3 py-1 font-mono text-xs text-slate-700 hover:bg-slate-50 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800">Transfer in</button>
-        <button type="button" (click)="openAdd()" class="rounded-md border border-slate-300 px-3 py-1 font-mono text-xs text-slate-700 hover:bg-slate-50 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800">＋ Add player</button>
+        <button
+          type="button"
+          (click)="openImport()"
+          class="rounded-md border border-slate-300 px-3 py-1 font-mono text-xs text-slate-700 hover:bg-slate-50 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800"
+        >
+          Import CSV
+        </button>
+        <button
+          type="button"
+          (click)="openTransferIn()"
+          class="rounded-md border border-slate-300 px-3 py-1 font-mono text-xs text-slate-700 hover:bg-slate-50 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800"
+        >
+          Transfer in
+        </button>
+        <button
+          type="button"
+          (click)="openAdd()"
+          class="rounded-md border border-slate-300 px-3 py-1 font-mono text-xs text-slate-700 hover:bg-slate-50 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800"
+        >
+          ＋ Add player
+        </button>
       </div>
     </div>
-    <ul class="mt-3 divide-y divide-slate-200 rounded-md border border-slate-200 bg-white dark:divide-slate-800 dark:border-slate-800 dark:bg-slate-900">
+
+    <app-csv-import
+      [open]="importOpen()"
+      title="Import players"
+      [columns]="importColumns"
+      sample="Alice Tan,Female,2,false"
+      [result]="importResult()"
+      [busy]="importBusy()"
+      (submit)="onImport($event)"
+      (closed)="importOpen.set(false)"
+    />
+    <ul
+      class="mt-3 divide-y divide-slate-200 rounded-md border border-slate-200 bg-white dark:divide-slate-800 dark:border-slate-800 dark:bg-slate-900"
+    >
       @for (p of players(); track p.playerId) {
         <li class="flex flex-wrap items-center gap-x-3 gap-y-1 px-4 py-3 font-mono text-sm">
           <span class="font-medium text-slate-900 dark:text-slate-100">{{ p.fullName }}</span>
           <span class="text-slate-500 dark:text-slate-400">{{ p.gender }}</span>
-          <span class="inline-block rounded px-2 py-0.5 text-xs " [class]="p.type === 'Member' ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300' : 'bg-slate-200 text-slate-700 dark:bg-slate-700 dark:text-slate-200'">{{ p.type }}</span>
+          <span
+            class="inline-block rounded px-2 py-0.5 text-xs "
+            [class]="
+              p.type === 'Member'
+                ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300'
+                : 'bg-slate-200 text-slate-700 dark:bg-slate-700 dark:text-slate-200'
+            "
+            >{{ p.type }}</span
+          >
           @for (r of regsFor(p.playerId); track r.id) {
-            <span [class]="'inline-block rounded px-1.5 py-0.5 text-xs ' + (r.status | statusColor)">{{ r.discipline }} · {{ r.leagueName }} · {{ r.status }}</span>
+            <span [class]="'inline-block rounded px-1.5 py-0.5 text-xs ' + (r.status | statusColor)"
+              >{{ r.discipline }} · {{ r.leagueName }} · {{ r.status }}</span
+            >
           }
           <span class="ml-auto flex gap-2">
             @if (p.type === 'Member') {
-              <button type="button" (click)="openRegister(p)" class="rounded-md border border-slate-300 px-2 py-0.5 text-xs text-slate-700 hover:bg-slate-50 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800">Register</button>
+              <button
+                type="button"
+                (click)="openRegister(p)"
+                class="rounded-md border border-slate-300 px-2 py-0.5 text-xs text-slate-700 hover:bg-slate-50 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800"
+              >
+                Register
+              </button>
             }
-            <button type="button" (click)="toggleType(p)" class="rounded-md border border-slate-300 px-2 py-0.5 text-xs text-slate-700 hover:bg-slate-50 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800">Make {{ p.type === 'Member' ? 'visitor' : 'member' }}</button>
-            <button type="button" (click)="remove(p)" class="rounded-md border border-red-300 px-2 py-0.5 text-xs text-red-700 hover:bg-red-50 dark:border-red-800 dark:text-red-400 dark:hover:bg-red-950">Remove</button>
+            <button
+              type="button"
+              (click)="toggleType(p)"
+              class="rounded-md border border-slate-300 px-2 py-0.5 text-xs text-slate-700 hover:bg-slate-50 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800"
+            >
+              Make {{ p.type === 'Member' ? 'visitor' : 'member' }}
+            </button>
+            <button
+              type="button"
+              (click)="remove(p)"
+              class="rounded-md border border-red-300 px-2 py-0.5 text-xs text-red-700 hover:bg-red-50 dark:border-red-800 dark:text-red-400 dark:hover:bg-red-950"
+            >
+              Remove
+            </button>
           </span>
         </li>
       } @empty {
         <li class="px-4 py-3 font-mono text-sm text-slate-500 dark:text-slate-400">No players.</li>
       }
     </ul>
-    @if (error()) { <p class="mt-2 font-mono text-xs text-red-600 dark:text-red-400" role="alert">{{ error() }}</p> }
+    @if (error()) {
+      <p class="mt-2 font-mono text-xs text-red-600 dark:text-red-400" role="alert">
+        {{ error() }}
+      </p>
+    }
 
     <!-- Add / link player -->
     <app-modal [open]="addOpen()" title="Add player" (closed)="addOpen.set(false)">
       <div class="grid gap-4 font-mono text-sm">
         <div class="grid gap-2">
-          <span class="text-xs uppercase tracking-wider text-slate-600 dark:text-slate-400">Link an existing player</span>
-          <input type="text" [formControl]="searchControl" (input)="onSearch()" placeholder="Search by name…"
+          <span class="text-xs uppercase tracking-wider text-slate-600 dark:text-slate-400"
+            >Link an existing player</span
+          >
+          <input
+            type="text"
+            [formControl]="searchControl"
+            (input)="onSearch()"
+            placeholder="Search by name…"
             aria-label="Search existing players by name"
-            class="rounded-md border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-slate-900 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 dark:focus:ring-slate-100" />
+            class="rounded-md border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-slate-900 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 dark:focus:ring-slate-100"
+          />
           @for (r of searchResults(); track r.id) {
-            <div class="flex items-center justify-between rounded border border-slate-200 px-3 py-1.5 dark:border-slate-800">
-              <span>{{ r.fullName }} <span class="text-slate-400">{{ r.gender }}</span></span>
+            <div
+              class="flex items-center justify-between rounded border border-slate-200 px-3 py-1.5 dark:border-slate-800"
+            >
+              <span
+                >{{ r.fullName }} <span class="text-slate-400">{{ r.gender }}</span></span
+              >
               <span class="flex gap-1">
-                <button type="button" (click)="linkExisting(r, 'Member')" class="rounded border border-slate-300 px-2 py-0.5 text-xs dark:border-slate-700">+ Member</button>
-                <button type="button" (click)="linkExisting(r, 'Visitor')" class="rounded border border-slate-300 px-2 py-0.5 text-xs dark:border-slate-700">+ Visitor</button>
+                <button
+                  type="button"
+                  (click)="linkExisting(r, 'Member')"
+                  class="rounded border border-slate-300 px-2 py-0.5 text-xs dark:border-slate-700"
+                >
+                  + Member
+                </button>
+                <button
+                  type="button"
+                  (click)="linkExisting(r, 'Visitor')"
+                  class="rounded border border-slate-300 px-2 py-0.5 text-xs dark:border-slate-700"
+                >
+                  + Visitor
+                </button>
               </span>
             </div>
           }
         </div>
-        <form [formGroup]="createForm" (ngSubmit)="createNew()" class="grid gap-2 border-t border-slate-200 pt-3 dark:border-slate-800">
-          <span class="text-xs uppercase tracking-wider text-slate-600 dark:text-slate-400">Or create a new player</span>
-          <input type="text" formControlName="fullName" (input)="onCreateNameInput()" placeholder="Full name"
+        <form
+          [formGroup]="createForm"
+          (ngSubmit)="createNew()"
+          class="grid gap-2 border-t border-slate-200 pt-3 dark:border-slate-800"
+        >
+          <span class="text-xs uppercase tracking-wider text-slate-600 dark:text-slate-400"
+            >Or create a new player</span
+          >
+          <input
+            type="text"
+            formControlName="fullName"
+            (input)="onCreateNameInput()"
+            placeholder="Full name"
             aria-label="New player full name"
-            class="rounded-md border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-slate-900 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 dark:focus:ring-slate-100" />
+            class="rounded-md border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-slate-900 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 dark:focus:ring-slate-100"
+          />
           @if (createDup() > 0) {
-            <p class="text-xs text-amber-700 dark:text-amber-400" role="status">A player named that already exists — consider linking them above instead of creating a duplicate.</p>
+            <p class="text-xs text-amber-700 dark:text-amber-400" role="status">
+              A player named that already exists — consider linking them above instead of creating a
+              duplicate.
+            </p>
           }
           <div class="flex gap-2">
-            <select formControlName="gender" aria-label="New player gender" class="rounded-md border border-slate-300 px-2 py-1 text-sm dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100">
+            <select
+              formControlName="gender"
+              aria-label="New player gender"
+              class="rounded-md border border-slate-300 px-2 py-1 text-sm dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
+            >
               <option value="Male">Male</option>
               <option value="Female">Female</option>
             </select>
-            <select formControlName="type" aria-label="New player affiliation type" class="rounded-md border border-slate-300 px-2 py-1 text-sm dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100">
+            <select
+              formControlName="type"
+              aria-label="New player affiliation type"
+              class="rounded-md border border-slate-300 px-2 py-1 text-sm dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
+            >
               <option value="Member">Member</option>
               <option value="Visitor">Visitor</option>
             </select>
-            <button type="submit" [disabled]="createForm.invalid" class="rounded-md bg-slate-900 px-3 py-1 text-sm font-medium text-amber-300 disabled:opacity-50 dark:bg-amber-400 dark:text-slate-900">Create</button>
+            <button
+              type="submit"
+              [disabled]="createForm.invalid"
+              class="rounded-md bg-slate-900 px-3 py-1 text-sm font-medium text-amber-300 disabled:opacity-50 dark:bg-amber-400 dark:text-slate-900"
+            >
+              Create
+            </button>
           </div>
         </form>
       </div>
     </app-modal>
 
     <!-- Register discipline -->
-    <app-modal [open]="registerFor() !== null" title="Register player" (closed)="registerFor.set(null)">
-      <form [formGroup]="registerForm" (ngSubmit)="submitRegister()" class="grid gap-3 font-mono text-sm">
+    <app-modal
+      [open]="registerFor() !== null"
+      title="Register player"
+      (closed)="registerFor.set(null)"
+    >
+      <form
+        [formGroup]="registerForm"
+        (ngSubmit)="submitRegister()"
+        class="grid gap-3 font-mono text-sm"
+      >
         <p class="text-slate-600 dark:text-slate-400">{{ registerFor()?.fullName }}</p>
-        <select formControlName="leagueId" aria-label="League" class="rounded-md border border-slate-300 px-3 py-2 text-sm dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100">
+        <select
+          formControlName="leagueId"
+          aria-label="League"
+          class="rounded-md border border-slate-300 px-3 py-2 text-sm dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
+        >
           <option value="">-- league --</option>
-          @for (l of leagues(); track l.id) { <option [value]="l.id">{{ l.name }}</option> }
+          @for (l of leagues(); track l.id) {
+            <option [value]="l.id">{{ l.name }}</option>
+          }
         </select>
-        <select formControlName="discipline" aria-label="Discipline" class="rounded-md border border-slate-300 px-3 py-2 text-sm dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100">
+        <select
+          formControlName="discipline"
+          aria-label="Discipline"
+          class="rounded-md border border-slate-300 px-3 py-2 text-sm dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
+        >
           <option value="Level">Level</option>
           <option value="Mixed">Mixed</option>
         </select>
-        <button type="submit" [disabled]="registerForm.invalid" class="justify-self-start rounded-md bg-slate-900 px-4 py-2 text-sm font-medium text-amber-300 disabled:opacity-50 dark:bg-amber-400 dark:text-slate-900">Request registration</button>
-        @if (modalError()) { <p class="text-red-600 dark:text-red-400" role="alert">{{ modalError() }}</p> }
+        <button
+          type="submit"
+          [disabled]="registerForm.invalid"
+          class="justify-self-start rounded-md bg-slate-900 px-4 py-2 text-sm font-medium text-amber-300 disabled:opacity-50 dark:bg-amber-400 dark:text-slate-900"
+        >
+          Request registration
+        </button>
+        @if (modalError()) {
+          <p class="text-red-600 dark:text-red-400" role="alert">{{ modalError() }}</p>
+        }
       </form>
     </app-modal>
 
     <!-- Transfer in -->
-    <app-modal [open]="transferOpen()" title="Transfer a player in" (closed)="transferOpen.set(false)">
+    <app-modal
+      [open]="transferOpen()"
+      title="Transfer a player in"
+      (closed)="transferOpen.set(false)"
+    >
       <div class="grid gap-3 font-mono text-sm">
-        <input type="text" [formControl]="transferSearchControl" (input)="onTransferSearch()" placeholder="Search player by name…"
+        <input
+          type="text"
+          [formControl]="transferSearchControl"
+          (input)="onTransferSearch()"
+          placeholder="Search player by name…"
           aria-label="Search players by name"
-          class="rounded-md border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-slate-900 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 dark:focus:ring-slate-100" />
+          class="rounded-md border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-slate-900 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 dark:focus:ring-slate-100"
+        />
         @for (r of transferResults(); track r.id) {
-          <button type="button" (click)="pickTransferPlayer(r)" [class]="'rounded border px-3 py-1.5 text-left ' + (transferPlayer()?.id === r.id ? 'border-slate-900 dark:border-slate-100' : 'border-slate-200 dark:border-slate-800')">
+          <button
+            type="button"
+            (click)="pickTransferPlayer(r)"
+            [class]="
+              'rounded border px-3 py-1.5 text-left ' +
+              (transferPlayer()?.id === r.id
+                ? 'border-slate-900 dark:border-slate-100'
+                : 'border-slate-200 dark:border-slate-800')
+            "
+          >
             {{ r.fullName }} <span class="text-slate-400">{{ r.gender }}</span>
           </button>
         }
-        <form [formGroup]="transferForm" (ngSubmit)="submitTransfer()" class="grid gap-2 border-t border-slate-200 pt-3 dark:border-slate-800">
-          <select formControlName="leagueId" aria-label="League" class="rounded-md border border-slate-300 px-3 py-2 text-sm dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100">
+        <form
+          [formGroup]="transferForm"
+          (ngSubmit)="submitTransfer()"
+          class="grid gap-2 border-t border-slate-200 pt-3 dark:border-slate-800"
+        >
+          <select
+            formControlName="leagueId"
+            aria-label="League"
+            class="rounded-md border border-slate-300 px-3 py-2 text-sm dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
+          >
             <option value="">-- league --</option>
-            @for (l of leagues(); track l.id) { <option [value]="l.id">{{ l.name }}</option> }
+            @for (l of leagues(); track l.id) {
+              <option [value]="l.id">{{ l.name }}</option>
+            }
           </select>
-          <select formControlName="discipline" aria-label="Discipline" class="rounded-md border border-slate-300 px-3 py-2 text-sm dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100">
+          <select
+            formControlName="discipline"
+            aria-label="Discipline"
+            class="rounded-md border border-slate-300 px-3 py-2 text-sm dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
+          >
             <option value="Level">Level</option>
             <option value="Mixed">Mixed</option>
           </select>
-          <button type="submit" [disabled]="transferForm.invalid || transferPlayer() === null" class="justify-self-start rounded-md bg-slate-900 px-4 py-2 text-sm font-medium text-amber-300 disabled:opacity-50 dark:bg-amber-400 dark:text-slate-900">Request transfer</button>
-          @if (modalError()) { <p class="text-red-600 dark:text-red-400" role="alert">{{ modalError() }}</p> }
+          <button
+            type="submit"
+            [disabled]="transferForm.invalid || transferPlayer() === null"
+            class="justify-self-start rounded-md bg-slate-900 px-4 py-2 text-sm font-medium text-amber-300 disabled:opacity-50 dark:bg-amber-400 dark:text-slate-900"
+          >
+            Request transfer
+          </button>
+          @if (modalError()) {
+            <p class="text-red-600 dark:text-red-400" role="alert">{{ modalError() }}</p>
+          }
         </form>
       </div>
     </app-modal>
 
     <!-- Transfers list -->
-    <h3 class="mt-8 font-mono text-sm font-semibold uppercase tracking-wider text-slate-700 dark:text-slate-300">Transfers</h3>
-    <ul class="mt-2 divide-y divide-slate-200 rounded-md border border-slate-200 bg-white dark:divide-slate-800 dark:border-slate-800 dark:bg-slate-900">
+    <h3
+      class="mt-8 font-mono text-sm font-semibold uppercase tracking-wider text-slate-700 dark:text-slate-300"
+    >
+      Transfers
+    </h3>
+    <ul
+      class="mt-2 divide-y divide-slate-200 rounded-md border border-slate-200 bg-white dark:divide-slate-800 dark:border-slate-800 dark:bg-slate-900"
+    >
       @for (t of transfers(); track t.id) {
         <li class="flex flex-wrap items-center gap-x-3 gap-y-1 px-4 py-3 font-mono text-sm">
           <span class="font-medium text-slate-900 dark:text-slate-100">{{ t.playerName }}</span>
-          <span class="inline-block rounded bg-slate-200 px-1.5 py-0.5 text-xs dark:bg-slate-700">{{ t.discipline }}</span>
-          <span class="text-slate-600 dark:text-slate-400">{{ t.fromShortCode }} → {{ t.toShortCode }}</span>
-          <span [class]="'ml-auto inline-block rounded px-2 py-0.5 text-xs ' + (t.status | statusColor)">{{ t.status }}</span>
+          <span class="inline-block rounded bg-slate-200 px-1.5 py-0.5 text-xs dark:bg-slate-700">{{
+            t.discipline
+          }}</span>
+          <span class="text-slate-600 dark:text-slate-400"
+            >{{ t.fromShortCode }} → {{ t.toShortCode }}</span
+          >
+          <span
+            [class]="'ml-auto inline-block rounded px-2 py-0.5 text-xs ' + (t.status | statusColor)"
+            >{{ t.status }}</span
+          >
           @if (t.status === 'Pending' && t.fromClubId === clubId()) {
-            <button type="button" (click)="approveRelease(t)" class="rounded-md border border-emerald-300 px-2 py-1 text-xs text-emerald-700 hover:bg-emerald-50 dark:border-emerald-800 dark:text-emerald-400 dark:hover:bg-emerald-950">Release</button>
-            <button type="button" (click)="rejectRelease(t)" class="rounded-md border border-red-300 px-2 py-1 text-xs text-red-700 hover:bg-red-50 dark:border-red-800 dark:text-red-400 dark:hover:bg-red-950">Reject</button>
+            <button
+              type="button"
+              (click)="approveRelease(t)"
+              class="rounded-md border border-emerald-300 px-2 py-1 text-xs text-emerald-700 hover:bg-emerald-50 dark:border-emerald-800 dark:text-emerald-400 dark:hover:bg-emerald-950"
+            >
+              Release
+            </button>
+            <button
+              type="button"
+              (click)="rejectRelease(t)"
+              class="rounded-md border border-red-300 px-2 py-1 text-xs text-red-700 hover:bg-red-50 dark:border-red-800 dark:text-red-400 dark:hover:bg-red-950"
+            >
+              Reject
+            </button>
           }
         </li>
       } @empty {
-        <li class="px-4 py-3 font-mono text-sm text-slate-500 dark:text-slate-400">No transfers.</li>
+        <li class="px-4 py-3 font-mono text-sm text-slate-500 dark:text-slate-400">
+          No transfers.
+        </li>
       }
     </ul>
   `,
@@ -165,6 +391,10 @@ export class ClubPlayersComponent {
   protected readonly modalError = signal<string | null>(null);
 
   protected readonly addOpen = signal(false);
+  protected readonly importOpen = signal(false);
+  protected readonly importBusy = signal(false);
+  protected readonly importResult = signal<ImportResult | null>(null);
+  protected readonly importColumns = ['name', 'gender', 'grade', 'useExisting'];
   protected readonly registerFor = signal<PlayerLink | null>(null);
   protected readonly transferOpen = signal(false);
   protected readonly searchResults = signal<Player[]>([]);
@@ -201,9 +431,31 @@ export class ClubPlayersComponent {
 
   private refresh(): void {
     const id = this.clubId();
-    this.api.listClubPlayers(id).subscribe({ next: (p) => { this.players.set(p); this.playerCount.emit(p.length); } });
+    this.api.listClubPlayers(id).subscribe({
+      next: (p) => {
+        this.players.set(p);
+        this.playerCount.emit(p.length);
+      },
+    });
     this.api.listClubRegistrations(id).subscribe({ next: (r) => this.registrations.set(r) });
     this.api.listClubTransfers(id).subscribe({ next: (t) => this.transfers.set(t) });
+  }
+
+  protected openImport(): void {
+    this.importResult.set(null);
+    this.importOpen.set(true);
+  }
+
+  protected onImport(csv: string): void {
+    this.importBusy.set(true);
+    this.api.importClubPlayers(this.clubId(), csv).subscribe({
+      next: (result) => {
+        this.importBusy.set(false);
+        this.importResult.set(result);
+        this.refresh();
+      },
+      error: () => this.importBusy.set(false),
+    });
   }
 
   protected openAdd(): void {
@@ -222,7 +474,10 @@ export class ClubPlayersComponent {
       return;
     }
     this.api.searchPlayers(name).subscribe({
-      next: (rows) => this.createDup.set(rows.filter((p) => p.fullName.toLowerCase() === name.toLowerCase()).length),
+      next: (rows) =>
+        this.createDup.set(
+          rows.filter((p) => p.fullName.toLowerCase() === name.toLowerCase()).length,
+        ),
     });
   }
 
@@ -257,14 +512,17 @@ export class ClubPlayersComponent {
   protected toggleType(p: PlayerLink): void {
     const next: PlayerClubType = p.type === 'Member' ? 'Visitor' : 'Member';
     this.error.set(null);
-    this.api.updateLinkType(this.clubId(), p.playerId, next).subscribe({ next: () => this.refresh() });
+    this.api
+      .updateLinkType(this.clubId(), p.playerId, next)
+      .subscribe({ next: () => this.refresh() });
   }
 
   protected remove(p: PlayerLink): void {
     this.error.set(null);
     this.api.unlinkPlayer(this.clubId(), p.playerId).subscribe({
       next: () => this.refresh(),
-      error: (e: { error?: { title?: string } }) => this.error.set(e?.error?.title ?? 'Could not remove player.'),
+      error: (e: { error?: { title?: string } }) =>
+        this.error.set(e?.error?.title ?? 'Could not remove player.'),
     });
   }
 
@@ -284,7 +542,8 @@ export class ClubPlayersComponent {
         this.registerFor.set(null);
         this.refresh();
       },
-      error: (e: { error?: { title?: string } }) => this.modalError.set(e?.error?.title ?? 'Could not register.'),
+      error: (e: { error?: { title?: string } }) =>
+        this.modalError.set(e?.error?.title ?? 'Could not register.'),
     });
   }
 
@@ -320,7 +579,8 @@ export class ClubPlayersComponent {
         this.transferOpen.set(false);
         this.refresh();
       },
-      error: (e: { error?: { title?: string } }) => this.modalError.set(e?.error?.title ?? 'Could not open transfer.'),
+      error: (e: { error?: { title?: string } }) =>
+        this.modalError.set(e?.error?.title ?? 'Could not open transfer.'),
     });
   }
 

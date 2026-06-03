@@ -1,6 +1,7 @@
 import { HttpClient } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
 import { Observable } from 'rxjs';
+import { ImportResult } from '../../shared/import-result';
 
 export type Gender = 'Male' | 'Female';
 export type PlayerClubType = 'Member' | 'Visitor';
@@ -69,7 +70,16 @@ export class PlayersApi {
     return this.http.get<PlayerLink[]>(`/api/clubs/${clubId}/players`);
   }
 
-  addNewPlayer(clubId: string, fullName: string, gender: Gender, type: PlayerClubType): Observable<Player> {
+  importClubPlayers(clubId: string, csv: string): Observable<ImportResult> {
+    return this.http.post<ImportResult>(`/api/clubs/${clubId}/players/import`, { csv });
+  }
+
+  addNewPlayer(
+    clubId: string,
+    fullName: string,
+    gender: Gender,
+    type: PlayerClubType,
+  ): Observable<Player> {
     return this.http.post<Player>(`/api/clubs/${clubId}/players`, { fullName, gender, type });
   }
 
@@ -94,8 +104,16 @@ export class PlayersApi {
     return this.http.get<Registration[]>(`/api/leagues/${leagueId}/registrations`);
   }
 
-  requestRegistration(clubId: string, playerId: string, leagueId: string, discipline: Discipline): Observable<unknown> {
-    return this.http.post(`/api/clubs/${clubId}/players/${playerId}/registrations`, { leagueId, discipline });
+  requestRegistration(
+    clubId: string,
+    playerId: string,
+    leagueId: string,
+    discipline: Discipline,
+  ): Observable<unknown> {
+    return this.http.post(`/api/clubs/${clubId}/players/${playerId}/registrations`, {
+      leagueId,
+      discipline,
+    });
   }
 
   confirmRegistration(leagueId: string, id: string): Observable<void> {
@@ -115,7 +133,12 @@ export class PlayersApi {
     return this.http.get<Transfer[]>(`/api/leagues/${leagueId}/transfers`);
   }
 
-  openTransfer(clubId: string, playerId: string, leagueId: string, discipline: Discipline): Observable<unknown> {
+  openTransfer(
+    clubId: string,
+    playerId: string,
+    leagueId: string,
+    discipline: Discipline,
+  ): Observable<unknown> {
     return this.http.post(`/api/clubs/${clubId}/transfers`, { playerId, leagueId, discipline });
   }
 
