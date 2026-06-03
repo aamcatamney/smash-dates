@@ -59,21 +59,53 @@ The whole thing ships as a single container: a .NET 10 API that also serves the 
 
 ---
 
-## Tech stack
+## Screenshots
 
-| Layer | Choice |
-|-------|--------|
-| Backend | **.NET 10**, ASP.NET Core **Minimal APIs** (one endpoint per file) |
-| Data | **PostgreSQL** via **Dapper + Npgsql** (repository pattern, no EF Core) |
-| Migrations | **DbUp** — embedded SQL scripts applied idempotently on startup |
-| Auth | Cookie authentication + antiforgery; **BCrypt** password hashing; Data Protection keys persisted in Postgres |
-| Background work | `BackgroundService` hosted services (season transitions, schedule generation, notification delivery, auth-token cleanup) |
-| Real-time | **Server-Sent Events** for the live club-night pegboard (in-process pub/sub) |
-| Frontend | **Angular 21** (standalone components, signals, reactive forms) + **Tailwind CSS**, served same-origin as static files |
-| Tests | **xUnit v3** + **Testcontainers** (integration, real Postgres) for the backend; **Vitest** for the frontend |
-| Packaging | Single multi-stage **Docker** image (Angular production bundle + .NET publish) |
+> Images live in [`docs/screenshots/`](docs/screenshots/). The league and club pages organise their sections into tabs (the active tab is kept in the URL).
 
-Architecture decisions are recorded in [docs/adr/](docs/adr/) and the domain language in [CONTEXT.md](CONTEXT.md).
+### Leagues & divisions
+The admin entry point: the league page, tabbed into Divisions · Seasons · Clubs · Players · Scheduler.
+
+![Leagues list](docs/screenshots/leagues.png)
+![League page — Divisions tab](docs/screenshots/league-detail.png)
+
+### Season setup & scheduling
+Configure a season's weeks, assign teams to divisions, then generate the fixture list.
+
+![Season weeks & team entries](docs/screenshots/season-setup.png)
+![Generated fixtures](docs/screenshots/fixtures.png)
+
+### Match lifecycle & standings
+Confirm, reject or record results on fixtures; standings update live with colour-coded statuses.
+
+![Match results & confirmation](docs/screenshots/match-actions.png)
+![Division standings](docs/screenshots/standings.png)
+
+### Clubs
+The club page, tabbed into Teams · Venues · Players · Matches · Blocked dates · Admins (Teams shows squads).
+
+![Club page — Teams tab with a squad](docs/screenshots/club-detail.png)
+
+### Club night (pegboard)
+The **Sessions** tab opens a club night; the full-screen board tracks courts, live games (with sides + type), and a fair waiting queue — streamed live to every viewer over SSE.
+
+![Pegboard sessions tab](docs/screenshots/pegboard-sessions.png)
+![Pegboard live board](docs/screenshots/pegboard-board.png)
+
+### Bulk CSV import
+Import clubs, teams, venues or season entries from a CSV — partial import with a per-row result and a downloadable template.
+
+![CSV import with per-row result](docs/screenshots/csv-import.png)
+
+### Players & registrations
+The league confirms discipline registrations and adjudicates transfers between clubs.
+
+![Player registrations & transfers awaiting league approval](docs/screenshots/players.png)
+
+### Light & dark themes
+Every screen supports light and dark, following the OS preference with a persisted toggle.
+
+![Dark theme](docs/screenshots/dark-mode.png)
 
 ---
 
@@ -154,53 +186,21 @@ A running container exposes `GET /health` (liveness) and `GET /api/version` (the
 
 ---
 
-## Screenshots
+## Tech stack
 
-> Images live in [`docs/screenshots/`](docs/screenshots/). The league and club pages organise their sections into tabs (the active tab is kept in the URL).
+| Layer | Choice |
+|-------|--------|
+| Backend | **.NET 10**, ASP.NET Core **Minimal APIs** (one endpoint per file) |
+| Data | **PostgreSQL** via **Dapper + Npgsql** (repository pattern, no EF Core) |
+| Migrations | **DbUp** — embedded SQL scripts applied idempotently on startup |
+| Auth | Cookie authentication + antiforgery; **BCrypt** password hashing; Data Protection keys persisted in Postgres |
+| Background work | `BackgroundService` hosted services (season transitions, schedule generation, notification delivery, auth-token cleanup) |
+| Real-time | **Server-Sent Events** for the live club-night pegboard (in-process pub/sub) |
+| Frontend | **Angular 21** (standalone components, signals, reactive forms) + **Tailwind CSS**, served same-origin as static files |
+| Tests | **xUnit v3** + **Testcontainers** (integration, real Postgres) for the backend; **Vitest** for the frontend |
+| Packaging | Single multi-stage **Docker** image (Angular production bundle + .NET publish) |
 
-### Leagues & divisions
-The admin entry point: the league page, tabbed into Divisions · Seasons · Clubs · Players · Scheduler.
-
-![Leagues list](docs/screenshots/leagues.png)
-![League page — Divisions tab](docs/screenshots/league-detail.png)
-
-### Season setup & scheduling
-Configure a season's weeks, assign teams to divisions, then generate the fixture list.
-
-![Season weeks & team entries](docs/screenshots/season-setup.png)
-![Generated fixtures](docs/screenshots/fixtures.png)
-
-### Match lifecycle & standings
-Confirm, reject or record results on fixtures; standings update live with colour-coded statuses.
-
-![Match results & confirmation](docs/screenshots/match-actions.png)
-![Division standings](docs/screenshots/standings.png)
-
-### Clubs
-The club page, tabbed into Teams · Venues · Players · Matches · Blocked dates · Admins (Teams shows squads).
-
-![Club page — Teams tab with a squad](docs/screenshots/club-detail.png)
-
-### Club night (pegboard)
-The **Sessions** tab opens a club night; the full-screen board tracks courts, live games (with sides + type), and a fair waiting queue — streamed live to every viewer over SSE.
-
-![Pegboard sessions tab](docs/screenshots/pegboard-sessions.png)
-![Pegboard live board](docs/screenshots/pegboard-board.png)
-
-### Bulk CSV import
-Import clubs, teams, venues or season entries from a CSV — partial import with a per-row result and a downloadable template.
-
-![CSV import with per-row result](docs/screenshots/csv-import.png)
-
-### Players & registrations
-The league confirms discipline registrations and adjudicates transfers between clubs.
-
-![Player registrations & transfers awaiting league approval](docs/screenshots/players.png)
-
-### Light & dark themes
-Every screen supports light and dark, following the OS preference with a persisted toggle.
-
-![Dark theme](docs/screenshots/dark-mode.png)
+Architecture decisions are recorded in [docs/adr/](docs/adr/) and the domain language in [CONTEXT.md](CONTEXT.md).
 
 ---
 
