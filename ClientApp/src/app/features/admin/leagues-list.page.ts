@@ -41,9 +41,19 @@ import { ToastService } from '../../shared/toast.service';
               <input
                 type="text"
                 formControlName="name"
+                [attr.aria-invalid]="showError('name') ? 'true' : null"
+                [attr.aria-describedby]="showError('name') ? 'league-name-error' : null"
                 class="rounded-md border border-slate-300 px-3 py-2 font-mono text-sm focus:outline-none focus:ring-2 focus:ring-slate-900 dark:border-slate-700 dark:focus:ring-slate-100 dark:bg-slate-800 dark:text-slate-100"
                 required
               />
+              @if (showError('name')) {
+                <span
+                  id="league-name-error"
+                  role="alert"
+                  class="font-mono text-xs text-red-600 dark:text-red-400"
+                  >Name is required.</span
+                >
+              }
             </label>
             <label class="grid gap-1">
               <span
@@ -64,9 +74,19 @@ import { ToastService } from '../../shared/toast.service';
               <input
                 type="email"
                 formControlName="firstAdminEmail"
+                [attr.aria-invalid]="showError('firstAdminEmail') ? 'true' : null"
+                [attr.aria-describedby]="showError('firstAdminEmail') ? 'league-admin-error' : null"
                 class="rounded-md border border-slate-300 px-3 py-2 font-mono text-sm focus:outline-none focus:ring-2 focus:ring-slate-900 dark:border-slate-700 dark:focus:ring-slate-100 dark:bg-slate-800 dark:text-slate-100"
                 required
               />
+              @if (showError('firstAdminEmail')) {
+                <span
+                  id="league-admin-error"
+                  role="alert"
+                  class="font-mono text-xs text-red-600 dark:text-red-400"
+                  >Enter a valid email.</span
+                >
+              }
             </label>
             <button
               type="submit"
@@ -158,6 +178,12 @@ export default class LeaguesListPage {
 
   constructor() {
     this.refresh();
+  }
+
+  // True once a field is both invalid and touched — drives aria-invalid + the inline message.
+  protected showError(name: string): boolean {
+    const c = this.form.get(name);
+    return c !== null && c.invalid && c.touched;
   }
 
   private refresh(): void {
