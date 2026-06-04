@@ -40,7 +40,7 @@ export const AuthStore = signalStore(
       try {
         const user = await firstValueFrom(api.me());
         patchState(store, { user, status: 'authed', error: null });
-      } catch (error) {
+      } catch {
         patchState(store, { user: null, status: 'anonymous', error: null });
       }
     },
