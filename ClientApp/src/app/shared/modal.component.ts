@@ -15,14 +15,23 @@ import {
   selector: 'app-modal',
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
+    <!-- Native <dialog> is focusable and Esc-closes via (close); the backdrop click is a
+         non-essential dismiss enhancement, so the keyboard/focus a11y rules don't apply here. -->
+    <!-- eslint-disable-next-line @angular-eslint/template/click-events-have-key-events, @angular-eslint/template/interactive-supports-focus -->
     <dialog
       #dlg
       (close)="closed.emit()"
       (click)="onBackdropClick($event)"
       class="m-auto w-full max-w-lg rounded-md border border-slate-300 bg-white p-0 shadow-2xl dark:border-slate-700 dark:bg-slate-900"
     >
-      <div class="flex items-center justify-between border-b border-slate-200 px-4 py-3 dark:border-slate-800">
-        <h2 class="font-mono text-sm font-semibold uppercase tracking-wider text-slate-900 dark:text-slate-100">{{ title() }}</h2>
+      <div
+        class="flex items-center justify-between border-b border-slate-200 px-4 py-3 dark:border-slate-800"
+      >
+        <h2
+          class="font-mono text-sm font-semibold uppercase tracking-wider text-slate-900 dark:text-slate-100"
+        >
+          {{ title() }}
+        </h2>
         <button
           type="button"
           aria-label="Close"

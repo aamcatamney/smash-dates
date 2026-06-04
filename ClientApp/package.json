@@ -6,7 +6,8 @@
     "start": "ng serve",
     "build": "ng build",
     "watch": "ng build --watch --configuration development",
-    "test": "ng test"
+    "test": "ng test",
+    "lint": "eslint ."
   },
   "prettier": {
     "printWidth": 100,
@@ -37,11 +38,15 @@
     "@angular/build": "^21.2.12",
     "@angular/cli": "^21.2.12",
     "@angular/compiler-cli": "^21.2.14",
+    "@eslint/js": "^9.39.4",
     "@tailwindcss/postcss": "^4.3.0",
+    "angular-eslint": "^21.4.0",
+    "eslint": "^9.39.4",
     "jsdom": "^29.1.1",
     "postcss": "^8.5.15",
     "tailwindcss": "^4.3.0",
     "typescript": "~5.9.2",
+    "typescript-eslint": "^8.60.1",
     "vitest": "^4.1.7"
   }
 }
