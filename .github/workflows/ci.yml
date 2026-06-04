@@ -34,7 +34,7 @@ jobs:
         run: dotnet test --solution smash-dates.sln --configuration Release --no-build
 
   frontend:
-    name: Frontend (build)
+    name: Frontend (lint + build + test)
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -56,3 +56,6 @@ jobs:
 
       - name: Build
         run: npm run build -- --configuration production
+
+      - name: Test
+        run: npm test -- --watch=false
