@@ -68,9 +68,19 @@ import { ToastService } from '../../shared/toast.service';
               <input
                 type="text"
                 formControlName="name"
+                [attr.aria-invalid]="showError('name') ? 'true' : null"
+                [attr.aria-describedby]="showError('name') ? 'club-name-error' : null"
                 class="rounded-md border border-slate-300 px-3 py-2 font-mono text-sm focus:outline-none focus:ring-2 focus:ring-slate-900 dark:border-slate-700 dark:focus:ring-slate-100 dark:bg-slate-800 dark:text-slate-100"
                 required
               />
+              @if (showError('name')) {
+                <span
+                  id="club-name-error"
+                  role="alert"
+                  class="font-mono text-xs text-red-600 dark:text-red-400"
+                  >Name is required.</span
+                >
+              }
             </label>
             <label class="grid gap-1">
               <span
@@ -80,9 +90,19 @@ import { ToastService } from '../../shared/toast.service';
               <input
                 type="text"
                 formControlName="shortCode"
+                [attr.aria-invalid]="showError('shortCode') ? 'true' : null"
+                [attr.aria-describedby]="showError('shortCode') ? 'club-shortcode-error' : null"
                 class="rounded-md border border-slate-300 px-3 py-2 font-mono text-sm uppercase focus:outline-none focus:ring-2 focus:ring-slate-900 dark:border-slate-700 dark:focus:ring-slate-100 dark:bg-slate-800 dark:text-slate-100"
                 required
               />
+              @if (showError('shortCode')) {
+                <span
+                  id="club-shortcode-error"
+                  role="alert"
+                  class="font-mono text-xs text-red-600 dark:text-red-400"
+                  >3–5 characters required.</span
+                >
+              }
             </label>
             <label class="grid gap-1">
               <span
@@ -92,9 +112,19 @@ import { ToastService } from '../../shared/toast.service';
               <input
                 type="email"
                 formControlName="contactEmail"
+                [attr.aria-invalid]="showError('contactEmail') ? 'true' : null"
+                [attr.aria-describedby]="showError('contactEmail') ? 'club-contact-error' : null"
                 class="rounded-md border border-slate-300 px-3 py-2 font-mono text-sm focus:outline-none focus:ring-2 focus:ring-slate-900 dark:border-slate-700 dark:focus:ring-slate-100 dark:bg-slate-800 dark:text-slate-100"
                 required
               />
+              @if (showError('contactEmail')) {
+                <span
+                  id="club-contact-error"
+                  role="alert"
+                  class="font-mono text-xs text-red-600 dark:text-red-400"
+                  >Enter a valid email.</span
+                >
+              }
             </label>
             <label class="grid gap-1">
               <span
@@ -115,9 +145,19 @@ import { ToastService } from '../../shared/toast.service';
               <input
                 type="email"
                 formControlName="firstAdminEmail"
+                [attr.aria-invalid]="showError('firstAdminEmail') ? 'true' : null"
+                [attr.aria-describedby]="showError('firstAdminEmail') ? 'club-admin-error' : null"
                 class="rounded-md border border-slate-300 px-3 py-2 font-mono text-sm focus:outline-none focus:ring-2 focus:ring-slate-900 dark:border-slate-700 dark:focus:ring-slate-100 dark:bg-slate-800 dark:text-slate-100"
                 required
               />
+              @if (showError('firstAdminEmail')) {
+                <span
+                  id="club-admin-error"
+                  role="alert"
+                  class="font-mono text-xs text-red-600 dark:text-red-400"
+                  >Enter a valid email.</span
+                >
+              }
             </label>
             <button
               type="submit"
@@ -205,6 +245,12 @@ export default class ClubsListPage {
 
   constructor() {
     this.refresh();
+  }
+
+  // True once a field is both invalid and touched — drives aria-invalid + the inline message.
+  protected showError(name: string): boolean {
+    const c = this.form.get(name);
+    return c !== null && c.invalid && c.touched;
   }
 
   protected onImport(csv: string): void {
