@@ -94,6 +94,29 @@ export interface SchedulingConfig {
   courtsPerMatch: number;
 }
 
+export interface DivisionDiagnostic {
+  divisionId: string;
+  divisionName: string;
+  teams: number;
+  matchesRequired: number;
+  matchesPlaced: number;
+  eligibleWeeks: number;
+}
+
+export interface UnplacedPairing {
+  divisionName: string;
+  homeTeamName: string;
+  awayTeamName: string;
+}
+
+export interface SchedulingDiagnostics {
+  fullyPlaced: boolean;
+  totalRequired: number;
+  totalPlaced: number;
+  divisions: DivisionDiagnostic[];
+  unplaced: UnplacedPairing[];
+}
+
 export type MatchStatus = 'Proposed' | 'Confirmed' | 'Played' | 'Postponed' | 'Rejected';
 
 export interface MatchSummary {
@@ -276,6 +299,12 @@ export class LeaguesApi {
     return this.http.post<{ matchCount: number }>(
       `/api/leagues/${leagueId}/seasons/${seasonId}/rerun`,
       null,
+    );
+  }
+
+  getSchedulingDiagnostics(leagueId: string, seasonId: string): Observable<SchedulingDiagnostics> {
+    return this.http.get<SchedulingDiagnostics>(
+      `/api/leagues/${leagueId}/seasons/${seasonId}/scheduling-diagnostics`,
     );
   }
 

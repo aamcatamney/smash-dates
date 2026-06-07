@@ -39,6 +39,7 @@ The whole thing ships as a single container: a .NET 10 API that also serves the 
 - Custom heuristic engine (no external solver): **Berger double round-robin → derby-first ordering → greedy placement** honouring all hard constraints (one match per team per date, venue capacity, blocked dates, week-type ↔ division gender, home venue from the home club's pool).
 - **2-opt soft-constraint optimisation** to spread out each team's matches and balance the gap between home and away legs — with **per-league tunable** weights.
 - **Incremental re-run** that locks Confirmed fixtures and reshuffles only the rest.
+- **Scheduling diagnostics** — an on-demand "diagnose" dry-run (no persistence) that reports, per division, matches required vs placed and the eligible-week count, and lists any pairings the scheduler couldn't place — so admins can see *why* a season won't fully schedule.
 
 **Match lifecycle**
 - `Proposed → Confirmed` once both clubs accept (LeagueAdmin can force-confirm), or `→ Rejected`.

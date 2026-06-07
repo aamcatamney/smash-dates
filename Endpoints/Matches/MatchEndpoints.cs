@@ -11,6 +11,7 @@ public static class MatchEndpoints
         group.MapRerunScheduleEndpoint();
         group.MapListMatchesEndpoint();
         group.MapStandingsEndpoint();
+        group.MapSchedulingDiagnosticsEndpoint();
         return app;
     }
 }
