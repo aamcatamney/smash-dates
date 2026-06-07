@@ -488,3 +488,6 @@ $RECYCLE.BIN/
 .agents/skills/
 
 skills-lock.json
+
+# Screenshots are copied into the Pages site by the deploy workflow, not committed.
+site/screenshots/

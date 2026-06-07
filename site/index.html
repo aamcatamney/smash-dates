@@ -1,0 +1,144 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Smash Dates — badminton league management</title>
+    <meta
+      name="description"
+      content="Run a multi-club badminton league end to end: clubs, teams and divisions, a constraint-aware fixture scheduler, live standings, calendar feeds and a live club-night pegboard."
+    />
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <header>
+      <a class="brand" href="#top">smash-dates</a>
+      <nav>
+        <a href="#features">Features</a>
+        <a href="#screens">Screenshots</a>
+        <a href="#run">Run it</a>
+        <a href="https://github.com/aamcatamney/smash-dates">GitHub</a>
+      </nav>
+    </header>
+
+    <main id="top">
+      <div class="wrap">
+        <section class="hero">
+          <p class="eyebrow">Open-source · MIT</p>
+          <h1>Smash Dates</h1>
+          <p class="tag">
+            Run a multi-club badminton league end to end — set up clubs, teams, venues and
+            divisions, auto-generate a constraint-aware home-and-away fixture schedule, confirm
+            fixtures, track live standings, subscribe to calendar feeds, and run live club-night
+            pegboard sessions.
+          </p>
+          <div class="cta">
+            <a class="btn btn-primary" href="https://github.com/aamcatamney/smash-dates">View on GitHub</a>
+            <a class="btn" href="https://github.com/aamcatamney/smash-dates/releases">Releases</a>
+            <a class="btn" href="https://github.com/aamcatamney/smash-dates/pkgs/container/smash-dates">Container image</a>
+          </div>
+        </section>
+
+        <section id="features">
+          <h2>What it does</h2>
+          <div class="grid">
+            <div class="card">
+              <h3>Automatic scheduler</h3>
+              <p>
+                A custom heuristic engine builds a full double round-robin honouring venue
+                capacity, blocked dates, derby-first rules and week-type matching — with per-league
+                tunable spread, and on-demand diagnostics when a season won't fit.
+              </p>
+            </div>
+            <div class="card">
+              <h3>Seasons &amp; lifecycle</h3>
+              <p>
+                Ordered playing weeks, team entries per season, and an automatic, date-driven
+                lifecycle from Draft through Scheduling, Proposed, Active and Closed.
+              </p>
+            </div>
+            <div class="card">
+              <h3>Match lifecycle &amp; standings</h3>
+              <p>
+                Clubs confirm or reject fixtures; record results and walkovers; live division
+                standings with rubber difference and a head-to-head tiebreak.
+              </p>
+            </div>
+            <div class="card">
+              <h3>Club night pegboard</h3>
+              <p>
+                A live, streamed board for social nights — a fair waiting queue, courts, games and
+                per-night stats, with manual / suggest / auto-fill court filling.
+              </p>
+            </div>
+            <div class="card">
+              <h3>Public &amp; calendar</h3>
+              <p>
+                A logged-out, read-only public view of standings and fixtures, plus tokenised iCal
+                feeds to subscribe a calendar to a club's, league's or team's fixtures.
+              </p>
+            </div>
+            <div class="card">
+              <h3>Players &amp; registrations</h3>
+              <p>
+                Global club-managed players, discipline registrations confirmed by the league,
+                inter-club transfers, team squads, and bulk CSV import throughout.
+              </p>
+            </div>
+          </div>
+        </section>
+
+        <section id="screens">
+          <h2>Screenshots</h2>
+          <div class="shots">
+            <figure class="shot" style="margin: 0">
+              <img src="screenshots/league-detail.png" alt="League page with divisions" loading="lazy" />
+              <span>League setup — divisions, seasons, clubs, scheduler</span>
+            </figure>
+            <figure class="shot" style="margin: 0">
+              <img src="screenshots/standings.png" alt="Division standings table" loading="lazy" />
+              <span>Live division standings</span>
+            </figure>
+            <figure class="shot" style="margin: 0">
+              <img src="screenshots/pegboard-board.png" alt="Live pegboard board" loading="lazy" />
+              <span>Club-night pegboard — courts &amp; waiting queue</span>
+            </figure>
+            <figure class="shot" style="margin: 0">
+              <img src="screenshots/public-standings.png" alt="Public read-only standings and fixtures" loading="lazy" />
+              <span>Public view — standings &amp; fixtures, no login</span>
+            </figure>
+          </div>
+        </section>
+
+        <section id="run">
+          <h2>Run it</h2>
+          <div class="card" style="margin-bottom: 1.5rem">
+            <p style="color: var(--ink)">
+              Ships as a single container — a .NET 10 API that also serves the Angular client,
+              backed by PostgreSQL. The first account registered becomes the admin.
+            </p>
+          </div>
+          <div class="tech">
+            <span class="chip">.NET 10 · Minimal APIs</span>
+            <span class="chip">PostgreSQL · Dapper</span>
+            <span class="chip">Angular 21 · Tailwind</span>
+            <span class="chip">Server-Sent Events</span>
+            <span class="chip">Docker · GHCR</span>
+          </div>
+        </section>
+      </div>
+    </main>
+
+    <footer>
+      <div class="wrap">
+        <div class="links">
+          <a href="https://github.com/aamcatamney/smash-dates">GitHub repository</a>
+          <a href="https://github.com/aamcatamney/smash-dates/blob/main/README.md">README</a>
+          <a href="https://github.com/aamcatamney/smash-dates/tree/main/docs/adr">Architecture decisions</a>
+          <a href="https://github.com/aamcatamney/smash-dates/blob/main/LICENSE">MIT License</a>
+        </div>
+        <div>Smash Dates — open-source badminton league management.</div>
+      </div>
+    </footer>
+  </body>
+</html>
