@@ -15,6 +15,11 @@ export const routes: Routes = [
     loadChildren: () => import('./features/admin/admin.routes').then((m) => m.ADMIN_ROUTES),
   },
   {
+    // Anonymous public view — no authGuard.
+    path: 'public',
+    loadChildren: () => import('./features/public/public.routes').then((m) => m.PUBLIC_ROUTES),
+  },
+  {
     path: '',
     loadChildren: () => import('./features/auth/auth.routes').then((m) => m.AUTH_ROUTES),
   },
