@@ -114,24 +114,23 @@
           <h2>Run it</h2>
           <div class="card" style="margin-bottom: 1.5rem">
             <p style="color: var(--ink)">
-              Ships as a single container — a .NET 10 API that also serves the Angular client,
-              backed by PostgreSQL. The first account registered becomes the admin.
+              Self-host the published image with one command — it sets up PostgreSQL, the app
+              and Caddy (automatic HTTPS) and runs <code>docker compose up</code>. The first
+              account registered becomes the admin.
             </p>
           </div>
-<pre><code><span class="c"># 1. PostgreSQL</span>
-docker run -d --name smash-db -p 5432:5432 \
-  -e POSTGRES_DB=smash_dates -e POSTGRES_USER=postgres -e POSTGRES_PASSWORD=postgres \
-  postgres:17-alpine
+<pre><code><span class="c"># Linux / macOS</span>
+curl -fsSL https://raw.githubusercontent.com/aamcatamney/smash-dates/main/scripts/install.sh | bash
 
-<span class="c"># 2. The app (pulls the published image from GHCR)</span>
-docker run -p 8080:8080 \
-  -e "ConnectionStrings__Postgres=Host=host.docker.internal;Port=5432;Database=smash_dates;Username=postgres;Password=postgres" \
-  ghcr.io/aamcatamney/smash-dates:latest
+<span class="c"># Windows / PowerShell</span>
+irm https://raw.githubusercontent.com/aamcatamney/smash-dates/main/scripts/install.ps1 | iex
 
-<span class="c"># open http://localhost:8080 — the first account you register becomes the admin</span></code></pre>
+<span class="c"># trusted HTTPS cert: point a domain at the host (ports 80/443) and pass it in</span>
+curl -fsSL .../install.sh | DOMAIN=league.example.com bash</code></pre>
           <p class="tag" style="font-size: .85rem; text-align: left; margin: 0 0 1.5rem">
-            Full dev setup, configuration and HTTPS notes are in the
-            <a href="https://github.com/aamcatamney/smash-dates#quick-start">README</a>.
+            Prefer to run from source, or want the full configuration + HTTPS notes? See the
+            <a href="https://github.com/aamcatamney/smash-dates#quick-start">README quick start</a>
+            (development &amp; production).
           </p>
           <div class="tech">
             <span class="chip">.NET 10 · Minimal APIs</span>
