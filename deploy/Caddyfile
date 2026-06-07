@@ -1,0 +1,7 @@
+# With a real DOMAIN (and ports 80/443 reachable) Caddy provisions a Let's Encrypt
+# certificate automatically. With the default `localhost`, Caddy issues a local self-signed
+# cert via its internal CA — HTTPS still works (the browser warns about the unknown CA),
+# which is enough for the app's Secure cookies.
+{$DOMAIN:localhost} {
+	reverse_proxy app:8080
+}
