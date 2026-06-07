@@ -21,6 +21,7 @@ using smash_dates.Endpoints.Notifications;
 using smash_dates.Endpoints.Ops;
 using smash_dates.Endpoints.Pegboard;
 using smash_dates.Endpoints.Players;
+using smash_dates.Endpoints.Public;
 using smash_dates.Endpoints.Divisions;
 using smash_dates.Endpoints.SeasonEntries;
 using smash_dates.Endpoints.Seasons;
@@ -252,6 +253,7 @@ app.MapRegistrationEndpoints();
 app.MapTransferEndpoints();
 app.MapSessionHostEndpoints();
 app.MapPegboardEndpoints();
+app.MapPublicEndpoints();
 
 if (Directory.Exists(clientAppPath))
 {

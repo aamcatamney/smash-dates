@@ -21,6 +21,7 @@ The whole thing ships as a single container: a .NET 10 API that also serves the 
 - Email/password accounts with cookie authentication; the first registered user becomes the **SystemAdmin**.
 - **Email verification** gates login — new sign-ups confirm their address via a one-time link before they can sign in (the bootstrap SystemAdmin is auto-verified). Self-service **password reset** and **resend verification** round out the flow; tokens are single-use, hashed at rest and expire — re-issuing a link invalidates the previous one, and spent tokens are pruned by a background job. Links ride the notification outbox (logging sender by default).
 - Three role scopes: **SystemAdmin** (bootstrap), **LeagueAdmin@League** and **ClubAdmin@Club** — granted per league/club, with last-admin protection.
+- **Public view** — a logged-out **read-only** view of a league's standings and fixtures (`/public`), PII-free (team/division/venue names, dates and scores only).
 
 **League setup**
 - **Leagues** and **Divisions** (gender, rank, rubbers-per-match, configurable points scheme).
