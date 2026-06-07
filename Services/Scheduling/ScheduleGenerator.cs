@@ -11,6 +11,10 @@ public interface IScheduleGenerator
     // Incremental re-run: locks the season's Confirmed matches and re-places the rest.
     // On full success replaces the Proposed + Rejected matches (Confirmed untouched).
     Task<ScheduleResult> RerunAsync(Guid seasonId, CancellationToken ct = default);
+
+    // Dry-run diagnostics: builds the same input and runs the scheduler, but persists nothing —
+    // reports per-division feasibility and the pairings the scheduler couldn't place.
+    Task<SchedulingDiagnostics> DiagnoseAsync(Guid seasonId, CancellationToken ct = default);
 }
 
 public sealed class ScheduleGenerator : IScheduleGenerator
@@ -22,6 +26,7 @@ public sealed class ScheduleGenerator : IScheduleGenerator
     private readonly IBlockedDateRepository _blockedDates;
     private readonly IMatchRepository _matches;
     private readonly ILeagueRepository _leagues;
+    private readonly IDivisionRepository _divisions;
 
     public ScheduleGenerator(
         IScheduler scheduler,
@@ -30,7 +35,8 @@ public sealed class ScheduleGenerator : IScheduleGenerator
         IVenueRepository venues,
         IBlockedDateRepository blockedDates,
         IMatchRepository matches,
-        ILeagueRepository leagues)
+        ILeagueRepository leagues,
+        IDivisionRepository divisions)
     {
         _scheduler = scheduler;
         _seasons = seasons;
@@ -39,6 +45,7 @@ public sealed class ScheduleGenerator : IScheduleGenerator
         _blockedDates = blockedDates;
         _matches = matches;
         _leagues = leagues;
+        _divisions = divisions;
     }
 
     public async Task<ScheduleResult> GenerateAsync(Guid seasonId, CancellationToken ct = default)
@@ -67,6 +74,55 @@ public sealed class ScheduleGenerator : IScheduleGenerator
 
         return result;
     }
+
+    public async Task<SchedulingDiagnostics> DiagnoseAsync(Guid seasonId, CancellationToken ct = default)
+    {
+        var input = await BuildInputAsync(seasonId, locked: [], ct);
+        var result = _scheduler.Build(input); // dry run — nothing is persisted
+
+        var season = await _seasons.GetByIdAsync(seasonId, ct);
+        var divisionNames = season is null
+            ? new Dictionary<Guid, string>()
+            : (await _divisions.ListByLeagueAsync(season.LeagueId, ct)).ToDictionary(d => d.Id, d => d.Name);
+        var teamNames = (await _entries.ListBySeasonAsync(seasonId, ct))
+            .GroupBy(e => e.TeamId)
+            .ToDictionary(g => g.Key, g => g.First().TeamName);
+
+        string DivName(Guid id) => divisionNames.GetValueOrDefault(id, id.ToString());
+        string TeamName(Guid id) => teamNames.GetValueOrDefault(id, id.ToString());
+
+        var placedByDivision = result.Matches
+            .GroupBy(m => m.DivisionId)
+            .ToDictionary(g => g.Key, g => g.Count());
+
+        var divisions = input.Divisions
+            .Select(d =>
+            {
+                var teams = d.Teams.Count;
+                var eligibleWeeks = input.Weeks.Count(w => WeekTypeMatches(d.Gender, w.Type));
+                return new DivisionDiagnostic(
+                    d.Id, DivName(d.Id), teams,
+                    MatchesRequired: teams * (teams - 1), // double round-robin
+                    MatchesPlaced: placedByDivision.GetValueOrDefault(d.Id, 0),
+                    EligibleWeeks: eligibleWeeks);
+            })
+            .ToList();
+
+        var unplaced = result.Unplaced
+            .Select(u => new UnplacedPairingInfo(u.DivisionId, DivName(u.DivisionId), TeamName(u.HomeTeamId), TeamName(u.AwayTeamId)))
+            .ToList();
+
+        return new SchedulingDiagnostics(
+            FullyPlaced: result.Success && unplaced.Count == 0,
+            TotalRequired: divisions.Sum(d => d.MatchesRequired),
+            TotalPlaced: result.Matches.Count,
+            Divisions: divisions,
+            Unplaced: unplaced);
+    }
+
+    // Mens/Ladies divisions play in Level weeks; Mixed divisions play in Mixed weeks.
+    private static bool WeekTypeMatches(Models.DivisionGender gender, Models.WeekType weekType) =>
+        gender == Models.DivisionGender.Mixed ? weekType == Models.WeekType.Mixed : weekType == Models.WeekType.Level;
 
     private async Task<SchedulerInput> BuildInputAsync(Guid seasonId, IReadOnlyList<LockedMatch> locked, CancellationToken ct)
     {

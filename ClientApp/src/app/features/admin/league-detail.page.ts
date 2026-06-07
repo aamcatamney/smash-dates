@@ -19,6 +19,7 @@ import {
   MatchSummary,
   MembershipSummary,
   SchedulingConfig,
+  SchedulingDiagnostics,
   SeasonEntrySummary,
   SeasonSummary,
   WeekType,
@@ -297,6 +298,14 @@ import { PlayersApi } from './players.api';
                           </button>
                           <button
                             type="button"
+                            [disabled]="diagnosingSeasonId() === s.id"
+                            (click)="onDiagnose(s)"
+                            class="rounded-md border border-slate-300 dark:border-slate-700 px-3 py-1 text-xs text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 disabled:opacity-50"
+                          >
+                            {{ diagnosingSeasonId() === s.id ? 'Diagnosing…' : 'Diagnose' }}
+                          </button>
+                          <button
+                            type="button"
                             [attr.aria-label]="'Delete season ' + s.name"
                             (click)="askDeleteSeason(s)"
                             class="rounded-md border border-red-300 dark:border-red-800 px-3 py-1 text-xs text-red-700 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950"
@@ -503,6 +512,89 @@ import { PlayersApi } from './players.api';
                       <p class="mt-2 text-xs text-red-600 dark:text-red-400" role="alert">
                         Last generation failed: {{ s.schedulingError }}
                       </p>
+                    }
+
+                    @if (diagnostics(); as d) {
+                      @if (diagnosticsSeasonId() === s.id) {
+                        <div
+                          class="mt-3 rounded-md border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-3"
+                        >
+                          <p
+                            class="font-mono text-xs"
+                            [class.text-emerald-700]="d.fullyPlaced"
+                            [class.dark:text-emerald-400]="d.fullyPlaced"
+                            [class.text-amber-700]="!d.fullyPlaced"
+                            [class.dark:text-amber-400]="!d.fullyPlaced"
+                          >
+                            {{
+                              d.fullyPlaced
+                                ? 'All ' + d.totalRequired + ' matches can be placed.'
+                                : d.totalPlaced +
+                                  ' of ' +
+                                  d.totalRequired +
+                                  ' matches placed — ' +
+                                  d.unplaced.length +
+                                  ' unplaced.'
+                            }}
+                          </p>
+                          <div class="mt-2 overflow-x-auto">
+                            <table
+                              class="w-full min-w-[28rem] border border-slate-200 dark:border-slate-800 text-xs"
+                            >
+                              <thead
+                                class="bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400"
+                              >
+                                <tr>
+                                  <th class="px-2 py-1 text-left">Division</th>
+                                  <th class="px-2 py-1">Teams</th>
+                                  <th class="px-2 py-1">Required</th>
+                                  <th class="px-2 py-1">Placed</th>
+                                  <th class="px-2 py-1">Eligible weeks</th>
+                                </tr>
+                              </thead>
+                              <tbody>
+                                @for (dd of d.divisions; track dd.divisionId) {
+                                  <tr class="border-t border-slate-100 dark:border-slate-800">
+                                    <td class="px-2 py-1 text-left">{{ dd.divisionName }}</td>
+                                    <td class="px-2 py-1 text-center">{{ dd.teams }}</td>
+                                    <td class="px-2 py-1 text-center">{{ dd.matchesRequired }}</td>
+                                    <td
+                                      class="px-2 py-1 text-center"
+                                      [class.text-amber-700]="dd.matchesPlaced < dd.matchesRequired"
+                                      [class.dark:text-amber-400]="
+                                        dd.matchesPlaced < dd.matchesRequired
+                                      "
+                                    >
+                                      {{ dd.matchesPlaced }}
+                                    </td>
+                                    <td
+                                      class="px-2 py-1 text-center"
+                                      [class.text-red-600]="dd.eligibleWeeks === 0"
+                                      [class.dark:text-red-400]="dd.eligibleWeeks === 0"
+                                    >
+                                      {{ dd.eligibleWeeks }}
+                                    </td>
+                                  </tr>
+                                }
+                              </tbody>
+                            </table>
+                          </div>
+                          @if (d.unplaced.length > 0) {
+                            <p
+                              class="mt-3 font-mono text-xs font-semibold text-slate-700 dark:text-slate-300"
+                            >
+                              Unplaced pairings
+                            </p>
+                            <ul class="mt-1 space-y-0.5">
+                              @for (u of d.unplaced; track $index) {
+                                <li class="font-mono text-xs text-slate-600 dark:text-slate-400">
+                                  {{ u.divisionName }}: {{ u.homeTeamName }} v {{ u.awayTeamName }}
+                                </li>
+                              }
+                            </ul>
+                          }
+                        </div>
+                      }
                     }
 
                     @if (fixturesSeasonId() === s.id) {
@@ -1011,6 +1103,9 @@ export default class LeagueDetailPage implements OnDestroy {
   protected readonly rerunErrorSeasonId = signal<string | null>(null);
   protected readonly standingsSeasonId = signal<string | null>(null);
   protected readonly standings = signal<DivisionTable[]>([]);
+  protected readonly diagnosingSeasonId = signal<string | null>(null);
+  protected readonly diagnosticsSeasonId = signal<string | null>(null);
+  protected readonly diagnostics = signal<SchedulingDiagnostics | null>(null);
   protected readonly resultMatchId = signal<string | null>(null);
   protected readonly resultError = signal<string | null>(null);
   protected readonly schedulingConfig = signal<SchedulingConfig | null>(null);
@@ -1451,6 +1546,25 @@ export default class LeagueDetailPage implements OnDestroy {
         this.generateErrorSeasonId.set(s.id);
         this.generateError.set(err?.error?.title ?? 'Could not generate a schedule.');
       },
+    });
+  }
+
+  // Dry-run "explain": shows feasibility + unplaced pairings without persisting. Toggles off
+  // if the same season's panel is already open.
+  protected onDiagnose(s: SeasonSummary): void {
+    if (this.diagnosticsSeasonId() === s.id) {
+      this.diagnosticsSeasonId.set(null);
+      this.diagnostics.set(null);
+      return;
+    }
+    this.diagnosingSeasonId.set(s.id);
+    this.api.getSchedulingDiagnostics(this.leagueId, s.id).subscribe({
+      next: (d) => {
+        this.diagnosingSeasonId.set(null);
+        this.diagnosticsSeasonId.set(s.id);
+        this.diagnostics.set(d);
+      },
+      error: () => this.diagnosingSeasonId.set(null),
     });
   }
 
