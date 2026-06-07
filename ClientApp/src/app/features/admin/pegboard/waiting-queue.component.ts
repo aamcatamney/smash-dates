@@ -1,5 +1,6 @@
-import { ChangeDetectionStrategy, Component, computed, input, output } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, input, output, signal } from '@angular/core';
 import { BoardAttendee } from '../pegboard.api';
+import { ModalComponent } from '../../../shared/modal.component';
 
 // Minutes an attendee has been waiting, relative to a reference `now` (ms) captured when the
 // board last loaded. Kept pure so the template can call it without an arrow function.
@@ -14,6 +15,7 @@ export function waitMinutes(sinceIso: string, nowMs: number): number {
 // flat, read-only roster of everyone who attended with their final played/won stats.
 @Component({
   selector: 'app-waiting-queue',
+  imports: [ModalComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     @if (live()) {
@@ -38,49 +40,23 @@ export function waitMinutes(sinceIso: string, nowMs: number): number {
             class="rounded-md border border-slate-200 bg-white p-3 dark:border-slate-800 dark:bg-slate-900"
           >
             <div class="flex items-center justify-between gap-2">
-              <span class="font-mono text-sm font-medium text-slate-900 dark:text-slate-100">{{
+              <span class="min-w-0 truncate font-mono text-sm font-medium text-slate-900 dark:text-slate-100">{{
                 a.displayName
               }}</span>
-              <span
-                class="font-mono text-xs uppercase tracking-wider text-slate-500 dark:text-slate-400"
+              <button
+                type="button"
+                [attr.aria-label]="'Actions for ' + a.displayName"
+                aria-haspopup="dialog"
+                (click)="menuFor.set(a)"
+                class="-mr-1 inline-flex min-h-11 min-w-11 shrink-0 items-center justify-center rounded font-mono text-lg text-slate-500 hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-slate-900 dark:text-slate-400 dark:hover:bg-slate-800 dark:focus:ring-slate-100"
               >
-                {{ a.gender }}
-                @if (a.grade !== null) {
-                  · G{{ a.grade }}
-                }
-              </span>
+                ⋯
+              </button>
             </div>
-            <div class="mt-2 flex items-center justify-between gap-2">
-              <span class="font-mono text-xs text-slate-500 dark:text-slate-400">
-                waiting {{ wait(a) }}m · {{ a.gamesPlayed }} played · {{ a.gamesWon }} won
-              </span>
-              <div class="flex gap-1">
-                <button
-                  type="button"
-                  [attr.aria-label]="'Rest ' + a.displayName"
-                  (click)="rest.emit(a)"
-                  class="min-h-11 rounded border border-slate-300 px-3 py-1 font-mono text-xs text-slate-600 hover:bg-slate-50 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800"
-                >
-                  Rest
-                </button>
-                <button
-                  type="button"
-                  [attr.aria-label]="a.displayName + ' has left'"
-                  (click)="leave.emit(a)"
-                  class="min-h-11 rounded border border-slate-300 px-3 py-1 font-mono text-xs text-slate-600 hover:bg-slate-50 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800"
-                >
-                  Leave
-                </button>
-                <button
-                  type="button"
-                  [attr.aria-label]="'Remove ' + a.displayName"
-                  (click)="remove.emit(a)"
-                  class="min-h-11 min-w-11 rounded border border-red-300 px-3 py-1 font-mono text-xs text-red-700 hover:bg-red-50 dark:border-red-800 dark:text-red-400 dark:hover:bg-red-950"
-                >
-                  ✕
-                </button>
-              </div>
-            </div>
+            <p class="mt-1 font-mono text-xs text-slate-500 dark:text-slate-400">
+              {{ a.gender }}@if (a.grade !== null) { · G{{ a.grade }} } · waiting {{ wait(a) }}m ·
+              {{ a.gamesPlayed }} played · {{ a.gamesWon }} won
+            </p>
           </li>
         } @empty {
           <li
@@ -117,6 +93,38 @@ export function waitMinutes(sinceIso: string, nowMs: number): number {
           }
         </ol>
       }
+
+      <!-- Per-attendee action sheet: keeps each queue row to one line and separates the
+           destructive Remove from the routine Rest / Leave. -->
+      <app-modal
+        [open]="menuFor() !== null"
+        [title]="menuFor()?.displayName ?? ''"
+        (closed)="menuFor.set(null)"
+      >
+        <div class="grid gap-2">
+          <button
+            type="button"
+            (click)="pick('rest')"
+            class="min-h-11 rounded-md border border-slate-300 px-4 py-2.5 text-left font-mono text-sm text-slate-700 hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-slate-900 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800 dark:focus:ring-slate-100"
+          >
+            Rest
+          </button>
+          <button
+            type="button"
+            (click)="pick('leave')"
+            class="min-h-11 rounded-md border border-slate-300 px-4 py-2.5 text-left font-mono text-sm text-slate-700 hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-slate-900 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800 dark:focus:ring-slate-100"
+          >
+            Leave for the night
+          </button>
+          <button
+            type="button"
+            (click)="pick('remove')"
+            class="min-h-11 rounded-md border border-red-300 px-4 py-2.5 text-left font-mono text-sm text-red-700 hover:bg-red-50 focus:outline-none focus:ring-2 focus:ring-red-600 dark:border-red-800 dark:text-red-400 dark:hover:bg-red-950"
+          >
+            Remove from board
+          </button>
+        </div>
+      </app-modal>
     } @else {
       <h2
         class="font-mono text-sm font-semibold uppercase tracking-wider text-slate-900 dark:text-slate-100"
@@ -157,6 +165,20 @@ export class WaitingQueueComponent {
   readonly leave = output<BoardAttendee>();
   readonly unrest = output<BoardAttendee>();
   readonly remove = output<BoardAttendee>();
+
+  // The attendee whose action sheet is open (null = closed).
+  protected readonly menuFor = signal<BoardAttendee | null>(null);
+
+  // Fire the chosen action for the open attendee and close the sheet. Remove still routes
+  // through the parent's confirm step.
+  protected pick(action: 'rest' | 'leave' | 'remove'): void {
+    const a = this.menuFor();
+    if (!a) return;
+    this.menuFor.set(null);
+    if (action === 'rest') this.rest.emit(a);
+    else if (action === 'leave') this.leave.emit(a);
+    else this.remove.emit(a);
+  }
 
   protected readonly waiting = computed(() =>
     this.attendees()

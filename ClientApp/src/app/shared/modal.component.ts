@@ -22,10 +22,10 @@ import {
       #dlg
       (close)="closed.emit()"
       (click)="onBackdropClick($event)"
-      class="m-auto w-full max-w-lg rounded-md border border-slate-300 bg-white p-0 shadow-2xl dark:border-slate-700 dark:bg-slate-900"
+      class="m-auto flex max-h-[90dvh] w-[calc(100%-2rem)] max-w-lg flex-col overflow-hidden rounded-md border border-slate-300 bg-white p-0 shadow-2xl dark:border-slate-700 dark:bg-slate-900"
     >
       <div
-        class="flex items-center justify-between border-b border-slate-200 px-4 py-3 dark:border-slate-800"
+        class="flex shrink-0 items-center justify-between border-b border-slate-200 px-4 py-3 dark:border-slate-800"
       >
         <h2
           class="font-mono text-sm font-semibold uppercase tracking-wider text-slate-900 dark:text-slate-100"
@@ -41,7 +41,7 @@ import {
           ✕
         </button>
       </div>
-      <div class="p-4">
+      <div class="overflow-y-auto p-4">
         <ng-content />
       </div>
     </dialog>

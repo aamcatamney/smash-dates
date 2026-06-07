@@ -38,8 +38,8 @@ import { BoardCourt, BoardGamePlayer } from '../pegboard.api';
       </div>
 
       @if (court().activeGame; as g) {
-        <div class="mt-3 grid flex-1 grid-cols-[1fr_auto_1fr] items-stretch gap-2">
-          <div class="rounded-md bg-slate-50 p-3 dark:bg-slate-800/60">
+        <div class="mt-3 flex flex-1 items-stretch gap-2">
+          <div class="min-w-0 flex-1 rounded-md bg-slate-50 p-3 dark:bg-slate-800/60">
             <p
               class="font-mono text-xs uppercase tracking-wider text-slate-500 dark:text-slate-400"
             >
@@ -47,7 +47,9 @@ import { BoardCourt, BoardGamePlayer } from '../pegboard.api';
             </p>
             <ul class="mt-1 space-y-1">
               @for (p of sideA(); track p.attendanceId) {
-                <li class="font-mono text-sm font-medium text-slate-900 dark:text-slate-100">
+                <li
+                  class="break-words font-mono text-sm font-medium text-slate-900 dark:text-slate-100"
+                >
                   {{ p.displayName }}
                 </li>
               }
@@ -56,7 +58,7 @@ import { BoardCourt, BoardGamePlayer } from '../pegboard.api';
           <div class="flex items-center font-mono text-xs font-semibold uppercase text-slate-400">
             v
           </div>
-          <div class="rounded-md bg-slate-50 p-3 dark:bg-slate-800/60">
+          <div class="min-w-0 flex-1 rounded-md bg-slate-50 p-3 dark:bg-slate-800/60">
             <p
               class="font-mono text-xs uppercase tracking-wider text-slate-500 dark:text-slate-400"
             >
@@ -64,7 +66,9 @@ import { BoardCourt, BoardGamePlayer } from '../pegboard.api';
             </p>
             <ul class="mt-1 space-y-1">
               @for (p of sideB(); track p.attendanceId) {
-                <li class="font-mono text-sm font-medium text-slate-900 dark:text-slate-100">
+                <li
+                  class="break-words font-mono text-sm font-medium text-slate-900 dark:text-slate-100"
+                >
                   {{ p.displayName }}
                 </li>
               }

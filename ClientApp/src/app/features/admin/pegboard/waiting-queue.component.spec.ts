@@ -80,14 +80,23 @@ describe('WaitingQueueComponent', () => {
     expect(text).not.toContain('Leave');
   });
 
-  it('emits rest with the attendee when the Rest button is clicked', () => {
+  it('opening an attendee menu and choosing Rest emits rest with that attendee', () => {
+    // Row actions live in a per-attendee action sheet. The sheet's buttons are always in the
+    // DOM (the modal renders its content closed), so we set the open attendee via its ⋯ button
+    // and click Rest without a detectChanges (jsdom's <dialog> has no showModal()).
     const fixture = render(true);
     let emitted: BoardAttendee | null = null;
     fixture.componentInstance.rest.subscribe((a) => (emitted = a));
-    const btn = (fixture.nativeElement as HTMLElement).querySelector<HTMLButtonElement>(
-      'button[aria-label="Rest Carol"]',
+    const host = fixture.nativeElement as HTMLElement;
+
+    host
+      .querySelector<HTMLButtonElement>('button[aria-label="Actions for Carol"]')
+      ?.dispatchEvent(new Event('click'));
+    const restBtn = Array.from(host.querySelectorAll<HTMLButtonElement>('button')).find(
+      (b) => b.textContent?.trim() === 'Rest',
     );
-    btn?.dispatchEvent(new Event('click'));
+    restBtn?.dispatchEvent(new Event('click'));
+
     expect(emitted!).toBe(attendees[0]);
   });
 });
