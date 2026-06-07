@@ -118,6 +118,21 @@
               backed by PostgreSQL. The first account registered becomes the admin.
             </p>
           </div>
+<pre><code><span class="c"># 1. PostgreSQL</span>
+docker run -d --name smash-db -p 5432:5432 \
+  -e POSTGRES_DB=smash_dates -e POSTGRES_USER=postgres -e POSTGRES_PASSWORD=postgres \
+  postgres:17-alpine
+
+<span class="c"># 2. The app (pulls the published image from GHCR)</span>
+docker run -p 8080:8080 \
+  -e "ConnectionStrings__Postgres=Host=host.docker.internal;Port=5432;Database=smash_dates;Username=postgres;Password=postgres" \
+  ghcr.io/aamcatamney/smash-dates:latest
+
+<span class="c"># open http://localhost:8080 — the first account you register becomes the admin</span></code></pre>
+          <p class="tag" style="font-size: .85rem; text-align: left; margin: 0 0 1.5rem">
+            Full dev setup, configuration and HTTPS notes are in the
+            <a href="https://github.com/aamcatamney/smash-dates#quick-start">README</a>.
+          </p>
           <div class="tech">
             <span class="chip">.NET 10 · Minimal APIs</span>
             <span class="chip">PostgreSQL · Dapper</span>
