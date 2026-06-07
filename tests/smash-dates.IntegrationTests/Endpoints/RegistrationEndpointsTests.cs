@@ -73,7 +73,8 @@ public sealed class RegistrationEndpointsTests : IntegrationTestBase
         var s = await ArrangeAsync();
         var reg = await (await Request(s.ClubA, s.PlayerId, s.LeagueId, "Level")).Content.ReadFromJsonAsync<CreatedDto>();
         await Client.PostAsync($"/api/leagues/{s.LeagueId}/registrations/{reg!.Id}/confirm", null);
-        await Client.PostAsJsonAsync($"/api/clubs/{s.ClubB}/players", new { playerId = s.PlayerId, type = "Member" });
+        // Same player held as a Member of a second club — a state reached in product via a transfer.
+        await Seeder.LinkPlayerToClubAsync(s.PlayerId, s.ClubB);
 
         var response = await Request(s.ClubB, s.PlayerId, s.LeagueId, "Level");
 
@@ -84,7 +85,8 @@ public sealed class RegistrationEndpointsTests : IntegrationTestBase
     public async Task Confirm_SecondClubForSameDiscipline_Returns409_ExclusivityEnforced()
     {
         var s = await ArrangeAsync();
-        await Client.PostAsJsonAsync($"/api/clubs/{s.ClubB}/players", new { playerId = s.PlayerId, type = "Member" });
+        // Same player held as a Member of a second club — a state reached in product via a transfer.
+        await Seeder.LinkPlayerToClubAsync(s.PlayerId, s.ClubB);
         var regA = await (await Request(s.ClubA, s.PlayerId, s.LeagueId, "Level")).Content.ReadFromJsonAsync<CreatedDto>();
         var regB = await (await Request(s.ClubB, s.PlayerId, s.LeagueId, "Level")).Content.ReadFromJsonAsync<CreatedDto>();
         await Client.PostAsync($"/api/leagues/{s.LeagueId}/registrations/{regA!.Id}/confirm", null);

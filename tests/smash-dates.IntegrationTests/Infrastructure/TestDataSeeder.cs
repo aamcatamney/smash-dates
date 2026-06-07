@@ -290,4 +290,18 @@ public sealed class TestDataSeeder
               RETURNING id",
             new { clubId, scope = scope.ToString(), venueId, teamId, startDate, endDate, reason });
     }
+
+    // Links an existing Player to a Club. Club admins can no longer link an existing Player by id
+    // (each club creates its own record); the only product path to a second affiliation for the
+    // same Player is a Registration Transfer. Tests that need that pre-existing state seed it here.
+    public async Task LinkPlayerToClubAsync(Guid playerId, Guid clubId, PlayerClubType type = PlayerClubType.Member)
+    {
+        await using var conn = new NpgsqlConnection(_connectionString);
+        await conn.OpenAsync();
+        await conn.ExecuteAsync(
+            @"INSERT INTO player_clubs (player_id, club_id, type)
+              VALUES (@playerId, @clubId, @type)
+              ON CONFLICT (player_id, club_id) DO UPDATE SET type = EXCLUDED.type, updated_at = now()",
+            new { playerId, clubId, type = type.ToString() });
+    }
 }
