@@ -2,7 +2,7 @@ import { TestBed } from '@angular/core/testing';
 import { of } from 'rxjs';
 import { describe, beforeEach, expect, it, vi } from 'vitest';
 import { ClubPlayersComponent } from './club-players.component';
-import { PlayersApi, Player } from './players.api';
+import { PlayersApi, TransferCandidate } from './players.api';
 
 function apiMock(overrides: Partial<PlayersApi> = {}): PlayersApi {
   return {
@@ -11,7 +11,7 @@ function apiMock(overrides: Partial<PlayersApi> = {}): PlayersApi {
     listClubTransfers: vi.fn(() => of([])),
     updateLinkType: vi.fn(() => of(void 0)),
     unlinkPlayer: vi.fn(() => of(void 0)),
-    searchPlayers: vi.fn(() => of([])),
+    transferCandidates: vi.fn(() => of([])),
     ...overrides,
   } as unknown as PlayersApi;
 }
@@ -23,6 +23,17 @@ function create(api: PlayersApi) {
   fixture.componentRef.setInput('leagues', []);
   return fixture.componentInstance as unknown as Record<string, any>;
 }
+
+const candidate = (over: Partial<TransferCandidate> = {}): TransferCandidate => ({
+  playerId: 'p1',
+  fullName: 'Jane Smith',
+  gender: 'Female',
+  leagueId: 'l1',
+  leagueName: 'Mens 1',
+  discipline: 'Level',
+  currentClubShortCode: 'ACME',
+  ...over,
+});
 
 describe('ClubPlayersComponent', () => {
   beforeEach(() => TestBed.resetTestingModule());
@@ -49,21 +60,23 @@ describe('ClubPlayersComponent', () => {
     expect(api.updateLinkType).toHaveBeenCalledWith('club-1', 'p1', 'Visitor');
   });
 
-  it('onCreateNameInput flags an exact-name duplicate (case-insensitive)', () => {
-    const api = apiMock({
-      searchPlayers: vi.fn(() =>
-        of<Player[]>([
-          { id: '1', fullName: 'Jane Smith', gender: 'Female' },
-          { id: '2', fullName: 'jane smith', gender: 'Female' },
-          { id: '3', fullName: 'Janet Smithers', gender: 'Female' },
-        ]),
-      ),
-    });
+  it('onTransferSearch loads candidates scoped to this club', () => {
+    const api = apiMock({ transferCandidates: vi.fn(() => of([candidate()])) });
     const c = create(api);
-    c['createForm'].controls.fullName.setValue('Jane Smith');
+    c['transferSearchControl'].setValue('jane');
 
-    c['onCreateNameInput']();
+    c['onTransferSearch']();
 
-    expect(c['createDup']()).toBe(2);
+    expect(api.transferCandidates).toHaveBeenCalledWith('club-1', 'jane');
+    expect(c['transferResults']()).toHaveLength(1);
+  });
+
+  it('isPicked matches on player + league + discipline, not name alone', () => {
+    const c = create(apiMock());
+    c['pickTransfer'](candidate());
+
+    expect(c['isPicked'](candidate())).toBe(true);
+    // Same person, different registration → not the picked one.
+    expect(c['isPicked'](candidate({ leagueId: 'l2', discipline: 'Mixed' }))).toBe(false);
   });
 });

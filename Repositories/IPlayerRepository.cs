@@ -9,10 +9,6 @@ public interface IPlayerRepository
 {
     Task<Guid> CreateAsync(string fullName, Gender gender, CancellationToken ct = default);
     Task<Player?> GetByIdAsync(Guid id, CancellationToken ct = default);
-    Task<IReadOnlyList<Player>> SearchAsync(string query, int limit, CancellationToken ct = default);
-    // Exact (case-insensitive name + gender) matches, used by the bulk import to reuse an
-    // existing global player. More than one match means the name+gender is ambiguous.
-    Task<IReadOnlyList<Player>> FindByNameAndGenderAsync(string fullName, Gender gender, CancellationToken ct = default);
 
     // Upserts the affiliation: links the player to the club, or changes its type.
     Task LinkAsync(Guid playerId, Guid clubId, PlayerClubType type, CancellationToken ct = default);

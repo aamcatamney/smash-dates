@@ -27,7 +27,7 @@ The whole thing ships as a single container: a .NET 10 API that also serves the 
 - **Leagues** and **Divisions** (gender, rank, rubbers-per-match, configurable points scheme).
 - **Clubs** (open registry with short codes), **Teams** (fixed gender) and **Venues** (a court count plus a max-concurrent-matches ceiling; a match occupies several courts, set per league).
 - **Club ↔ League memberships** with a full lifecycle: invite → accept / decline → withdraw / expel, with mid-season locks.
-- **Bulk CSV import** for clubs, teams, venues, season entries and club players — partial import with a per-row report, upsert on match, and a downloadable template per importer. The players importer can reuse an existing global player (`useExisting`) instead of creating a duplicate.
+- **Bulk CSV import** for clubs, teams, venues, season entries and club players — partial import with a per-row report, upsert on match, and a downloadable template per importer. The players importer always creates a fresh player per row; duplicate identities across clubs are reconciled later by a separate merge, not matched on import.
 
 **Seasons**
 - **Seasons** with an explicit ordered list of **Weeks** (Level vs Mixed), validated for non-overlap and in-range.

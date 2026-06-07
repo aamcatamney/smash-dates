@@ -29,20 +29,20 @@ public sealed class PlayerEndpointsTests : IntegrationTestBase
     }
 
     [Fact]
-    public async Task Add_ExistingGlobalPlayer_LinksToSecondClubAsVisitor()
+    public async Task Add_SameNameToTwoClubs_CreatesDistinctPlayers()
     {
         var clubA = await Seeder.CreateClubAsync("Acme", "ACME");
         var clubB = await Seeder.CreateClubAsync("Beta", "BETA");
         await Client.LoginAsSystemAdminAsync("sys@example.com", "correct-horse-battery", Seeder);
-        var created = await (await Client.PostAsJsonAsync($"/api/clubs/{clubA}/players",
+        var a = await (await Client.PostAsJsonAsync($"/api/clubs/{clubA}/players",
             new { fullName = "Jane Smith", gender = "Female", type = "Member" })).Content.ReadFromJsonAsync<PlayerDto>();
 
-        var response = await Client.PostAsJsonAsync($"/api/clubs/{clubB}/players",
-            new { playerId = created!.Id, type = "Visitor" });
+        var b = await (await Client.PostAsJsonAsync($"/api/clubs/{clubB}/players",
+            new { fullName = "Jane Smith", gender = "Female", type = "Member" })).Content.ReadFromJsonAsync<PlayerDto>();
 
-        response.StatusCode.Should().Be(HttpStatusCode.Created);
-        var bLinks = await Client.GetFromJsonAsync<PlayerLinkDto[]>($"/api/clubs/{clubB}/players");
-        bLinks!.Should().ContainSingle(l => l.PlayerId == created.Id && l.Type == "Visitor");
+        // No link-by-name at the club level: each club gets its own Player record, even for an
+        // identical name+gender. Duplicate identities are reconciled later by a separate merge.
+        b!.Id.Should().NotBe(a!.Id);
     }
 
     [Fact]
@@ -70,26 +70,5 @@ public sealed class PlayerEndpointsTests : IntegrationTestBase
             new { fullName = "Jane Smith", gender = "Female", type = "Member" });
 
         response.StatusCode.Should().Be(HttpStatusCode.Forbidden);
-    }
-
-    [Fact]
-    public async Task Search_AsNonClubAdmin_Returns403()
-    {
-        await Client.LoginAsAsync("plain@example.com", "correct-horse-battery", Seeder);
-
-        var response = await Client.GetAsync("/api/players?search=jane");
-
-        response.StatusCode.Should().Be(HttpStatusCode.Forbidden);
-    }
-
-    [Fact]
-    public async Task Search_FindsByName()
-    {
-        var clubId = await Seeder.CreateClubAsync("Acme", "ACME");
-        await Client.LoginAsSystemAdminAsync("sys@example.com", "correct-horse-battery", Seeder);
-        await Client.PostAsJsonAsync($"/api/clubs/{clubId}/players", new { fullName = "Jane Smith", gender = "Female", type = "Member" });
-
-        var found = await Client.GetFromJsonAsync<PlayerDto[]>("/api/players?search=jane");
-        found!.Should().ContainSingle(p => p.FullName == "Jane Smith");
     }
 }

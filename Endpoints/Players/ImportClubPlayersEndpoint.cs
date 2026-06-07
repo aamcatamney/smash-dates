@@ -6,9 +6,9 @@ using smash_dates.Services.Import;
 
 namespace smash_dates.Endpoints.Players;
 
-// Bulk-import a club's players from CSV (columns: name, gender, grade?, useExisting?). Each row
-// links a Member affiliation to this club. `useExisting` (default false) reuses an existing global
-// player with the same name+gender instead of creating a new one; an ambiguous match is an error.
+// Bulk-import a club's players from CSV (columns: name, gender, grade?). Each row creates a NEW
+// player and links a Member affiliation to this club. There is no reuse-by-name: duplicate
+// identities across clubs are reconciled later by a separate merge, not matched on import.
 public static class ImportClubPlayersEndpoint
 {
     private const int MaxNameLength = 200;
@@ -64,38 +64,12 @@ public static class ImportClubPlayersEndpoint
                 grade = g;
             }
 
-            var useExistingText = row.Get("useExisting");
-            var useExisting = false;
-            if (useExistingText.Length > 0 && !bool.TryParse(useExistingText, out useExisting))
-            {
-                result.Error(row.LineNumber, $"Invalid useExisting '{useExistingText}' (true/false)");
-                continue;
-            }
-
-            Guid playerId;
-            if (useExisting)
-            {
-                var matches = await players.FindByNameAndGenderAsync(name, gender, ct);
-                if (matches.Count > 1)
-                {
-                    result.Error(row.LineNumber, $"Ambiguous: {matches.Count} existing players named '{name}' ({gender})");
-                    continue;
-                }
-                playerId = matches.Count == 1 ? matches[0].Id : await players.CreateAsync(name, gender, ct);
-            }
-            else
-            {
-                playerId = await players.CreateAsync(name, gender, ct);
-            }
-
-            // A pre-existing affiliation to this club counts as an update, not a create.
-            var alreadyLinked = await players.GetLinkAsync(playerId, clubId, ct) is not null;
+            var playerId = await players.CreateAsync(name, gender, ct);
             await players.LinkAsync(playerId, clubId, PlayerClubType.Member, ct);
             if (grade is not null)
                 await players.SetGradeAsync(playerId, grade, ct);
 
-            if (alreadyLinked) result.Updated++;
-            else result.Created++;
+            result.Created++;
         }
 
         return Results.Ok(result);

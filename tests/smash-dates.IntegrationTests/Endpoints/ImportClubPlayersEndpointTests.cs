@@ -28,7 +28,7 @@ public sealed class ImportClubPlayersEndpointTests : IntegrationTestBase
 
         var response = await Client.PostAsJsonAsync($"/api/clubs/{clubId}/players/import", new
         {
-            csv = "name,gender,grade,useExisting\nAlice Tan,Female,2,\nBob Reyes,Male,,",
+            csv = "name,gender,grade\nAlice Tan,Female,2\nBob Reyes,Male,",
         });
 
         var result = await response.Content.ReadFromJsonAsync<ImportResultDto>();
@@ -43,46 +43,32 @@ public sealed class ImportClubPlayersEndpointTests : IntegrationTestBase
     }
 
     [Fact]
-    public async Task Import_UseExisting_LinksTheExistingGlobalPlayer_NoDuplicate()
+    public async Task Import_NameExistingAtAnotherClub_CreatesDistinctPlayer()
     {
-        var clubId = await ArrangeClubWithAdminAsync();
+        // SystemAdmin so a single login can add players to both clubs.
+        await Seeder.CreateSystemAdminUserAsync("sys@example.com", "correct-horse-battery");
+        var clubId = await Seeder.CreateClubAsync("Acme", "ACME");
         var otherClub = await Seeder.CreateClubAsync("Beta", "BETA");
-        // Alice already exists globally (affiliated to another club).
+        await Client.PostAsJsonAsync("/api/auth/login", new { email = "sys@example.com", password = "correct-horse-battery" });
+        // An "Alice Tan" already exists at another club.
         await Client.PostAsJsonAsync($"/api/clubs/{otherClub}/players",
             new { fullName = "Alice Tan", gender = "Female", type = "Member" });
 
         var response = await Client.PostAsJsonAsync($"/api/clubs/{clubId}/players/import", new
         {
-            csv = "name,gender,grade,useExisting\nAlice Tan,Female,,true",
+            csv = "name,gender,grade\nAlice Tan,Female,",
         });
 
         var result = await response.Content.ReadFromJsonAsync<ImportResultDto>();
         result!.Created.Should().Be(1);
         result.Errors.Should().BeEmpty();
 
-        // Cross-club search finds exactly one Alice Tan — the import reused the global player.
-        var found = await Client.GetFromJsonAsync<JsonPlayer[]>("/api/players?search=Alice");
-        found!.Count(p => p.FullName == "Alice Tan").Should().Be(1);
-    }
-
-    [Fact]
-    public async Task Import_UseExisting_AmbiguousMatch_ReportsRowError()
-    {
-        var clubId = await ArrangeClubWithAdminAsync();
-        // Two global "Sam Lee (Male)" players via two non-useExisting imports.
-        await Client.PostAsJsonAsync($"/api/clubs/{clubId}/players/import", new
-        {
-            csv = "name,gender,grade,useExisting\nSam Lee,Male,,\nSam Lee,Male,,",
-        });
-
-        var response = await Client.PostAsJsonAsync($"/api/clubs/{clubId}/players/import", new
-        {
-            csv = "name,gender,grade,useExisting\nSam Lee,Male,,true",
-        });
-
-        var result = await response.Content.ReadFromJsonAsync<ImportResultDto>();
-        result!.Created.Should().Be(0);
-        result.Errors.Should().ContainSingle(e => e.Row == 2);
+        // No reuse-by-name: the import creates this club's own Alice Tan, distinct from the other
+        // club's. Duplicate identities are reconciled later by a separate merge.
+        var otherRoster = await Client.GetFromJsonAsync<PlayerDto[]>($"/api/clubs/{otherClub}/players");
+        var thisRoster = await Client.GetFromJsonAsync<PlayerDto[]>($"/api/clubs/{clubId}/players");
+        thisRoster!.Single(p => p.FullName == "Alice Tan").PlayerId
+            .Should().NotBe(otherRoster!.Single(p => p.FullName == "Alice Tan").PlayerId);
     }
 
     [Fact]
@@ -92,7 +78,7 @@ public sealed class ImportClubPlayersEndpointTests : IntegrationTestBase
 
         var response = await Client.PostAsJsonAsync($"/api/clubs/{clubId}/players/import", new
         {
-            csv = "name,gender,grade,useExisting\nValid Vic,Male,3,\nBad Gender,Other,,\nBad Grade,Female,9,",
+            csv = "name,gender,grade\nValid Vic,Male,3\nBad Gender,Other,\nBad Grade,Female,9",
         });
 
         var result = await response.Content.ReadFromJsonAsync<ImportResultDto>();
@@ -108,11 +94,9 @@ public sealed class ImportClubPlayersEndpointTests : IntegrationTestBase
 
         var response = await Client.PostAsJsonAsync($"/api/clubs/{clubId}/players/import", new
         {
-            csv = "name,gender,grade,useExisting\nAlice,Female,,",
+            csv = "name,gender,grade\nAlice,Female,",
         });
 
         response.StatusCode.Should().Be(HttpStatusCode.Forbidden);
     }
-
-    private sealed record JsonPlayer(Guid Id, string FullName, string Gender, int? Grade);
 }
