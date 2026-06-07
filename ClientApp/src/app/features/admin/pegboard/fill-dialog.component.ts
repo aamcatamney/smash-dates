@@ -81,7 +81,7 @@ export interface StartGamePayload {
           >
             Tap to assign — A then B
           </legend>
-          <ul class="max-h-64 space-y-1 overflow-y-auto">
+          <ul class="space-y-1 sm:max-h-64 sm:overflow-y-auto">
             @for (a of waiting(); track a.id) {
               <li>
                 <button

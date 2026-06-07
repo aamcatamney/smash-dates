@@ -100,9 +100,43 @@ import { FillDialogComponent, StartGamePayload } from './pegboard/fill-dialog.co
             </p>
           }
 
-          <div class="mt-6 grid gap-6 lg:grid-cols-[1fr_22rem] xl:grid-cols-[1fr_26rem]">
+          <!-- Phone/narrow: one pane at a time via tabs. At lg+ both panes show side-by-side
+               and this control is hidden (see ADR 0006). -->
+          <div
+            class="mt-6 flex gap-1 rounded-lg border-2 border-slate-900 bg-slate-100 p-1 dark:border-amber-400 dark:bg-slate-900 lg:hidden"
+          >
+            <button
+              type="button"
+              (click)="tab.set('courts')"
+              [attr.aria-pressed]="tab() === 'courts'"
+              class="min-h-11 flex-1 rounded-md px-3 py-2 font-mono text-sm font-semibold uppercase tracking-wider"
+              [class.bg-slate-900]="tab() === 'courts'"
+              [class.text-amber-300]="tab() === 'courts'"
+              [class.dark:bg-amber-400]="tab() === 'courts'"
+              [class.dark:text-slate-900]="tab() === 'courts'"
+              [class.text-slate-500]="tab() !== 'courts'"
+            >
+              Courts <span class="text-xs">({{ freeCourtCount() }} free)</span>
+            </button>
+            <button
+              type="button"
+              (click)="tab.set('waiting')"
+              [attr.aria-pressed]="tab() === 'waiting'"
+              class="min-h-11 flex-1 rounded-md px-3 py-2 font-mono text-sm font-semibold uppercase tracking-wider"
+              [class.bg-slate-900]="tab() === 'waiting'"
+              [class.text-amber-300]="tab() === 'waiting'"
+              [class.dark:bg-amber-400]="tab() === 'waiting'"
+              [class.dark:text-slate-900]="tab() === 'waiting'"
+              [class.text-slate-500]="tab() !== 'waiting'"
+            >
+              {{ isLive() ? 'Waiting' : 'Players' }}
+              <span class="text-xs">({{ isLive() ? waitingCount() : attendeeCount() }})</span>
+            </button>
+          </div>
+
+          <div class="mt-4 grid gap-6 lg:mt-6 lg:grid-cols-[1fr_22rem] xl:grid-cols-[1fr_26rem]">
             <!-- Courts grid -->
-            <section aria-label="Courts">
+            <section aria-label="Courts" class="lg:block" [class.hidden]="tab() !== 'courts'">
               <div class="flex items-center justify-between">
                 <h2
                   class="font-mono text-sm font-semibold uppercase tracking-wider text-slate-900 dark:text-slate-100"
@@ -144,7 +178,11 @@ import { FillDialogComponent, StartGamePayload } from './pegboard/fill-dialog.co
             </section>
 
             <!-- Players -->
-            <aside aria-label="Players" class="lg:sticky lg:top-6 lg:self-start">
+            <aside
+              aria-label="Players"
+              class="lg:sticky lg:top-6 lg:block lg:self-start"
+              [class.hidden]="tab() !== 'waiting'"
+            >
               <app-waiting-queue
                 [attendees]="b.attendees"
                 [live]="isLive()"
@@ -327,6 +365,9 @@ export default class PegboardBoardPage {
   protected readonly courtDialogOpen = signal(false);
   protected readonly attendeeDialogOpen = signal(false);
 
+  // Phone/narrow layout: which pane the tabs show. Ignored at lg+ (both panes render).
+  protected readonly tab = signal<'courts' | 'waiting'>('courts');
+
   // Fill flow state. The dialog owns the assignment UI; the page owns the court + suggestion.
   protected readonly fillCourt = signal<BoardCourt | null>(null);
   protected readonly fillSuggestion = signal<FillSuggestion | null>(null);
@@ -351,8 +392,12 @@ export default class PegboardBoardPage {
       .sort((x, y) => x.waitingSince.localeCompare(y.waitingSince)),
   );
   protected readonly waitingCount = computed(() => this.waiting().length);
+  protected readonly attendeeCount = computed(() => this.attendees().length);
   protected readonly playingCount = computed(
     () => this.attendees().filter((a) => a.status === 'Playing').length,
+  );
+  protected readonly freeCourtCount = computed(
+    () => this.board()?.courts.filter((c) => c.activeGame === null).length ?? 0,
   );
 
   protected readonly courtForm = new FormGroup({
