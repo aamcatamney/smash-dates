@@ -2,6 +2,17 @@ using smash_dates.Models;
 
 namespace smash_dates.Repositories;
 
+// A Confirmed registration offered as a transfer-in candidate: the player, the league the
+// registration lives in, its discipline, and the club currently holding it.
+public sealed record TransferCandidate(
+    Guid PlayerId,
+    string FullName,
+    Gender Gender,
+    Guid LeagueId,
+    string LeagueName,
+    Discipline Discipline,
+    string CurrentClubShortCode);
+
 // A registration enriched with player/club/league display fields.
 public sealed record RegistrationView(
     Guid Id,
@@ -30,4 +41,9 @@ public interface IDisciplineRegistrationRepository
 
     Task<IReadOnlyList<RegistrationView>> ListByLeagueAsync(Guid leagueId, CancellationToken ct = default);
     Task<IReadOnlyList<RegistrationView>> ListByClubAsync(Guid clubId, CancellationToken ct = default);
+
+    // Confirmed registrations a club may transfer in: held by another club, in a league the
+    // receiving club is an Accepted member of, with the player's name matching `query`. This is
+    // the only cross-club player lookup, and it is scoped to the receiving club's leagues.
+    Task<IReadOnlyList<TransferCandidate>> SearchTransferCandidatesAsync(Guid receivingClubId, string query, int limit, CancellationToken ct = default);
 }

@@ -41,6 +41,17 @@ export interface SquadMember {
   gender: Gender;
 }
 
+// A Confirmed registration a club may transfer in — scoped to the receiving club's leagues.
+export interface TransferCandidate {
+  playerId: string;
+  fullName: string;
+  gender: Gender;
+  leagueId: string;
+  leagueName: string;
+  discipline: Discipline;
+  currentClubShortCode: string;
+}
+
 export interface Transfer {
   id: string;
   playerId: string;
@@ -61,10 +72,6 @@ export interface Transfer {
 export class PlayersApi {
   private readonly http = inject(HttpClient);
 
-  searchPlayers(query: string): Observable<Player[]> {
-    return this.http.get<Player[]>(`/api/players?search=${encodeURIComponent(query)}`);
-  }
-
   // --- club affiliations ---
   listClubPlayers(clubId: string): Observable<PlayerLink[]> {
     return this.http.get<PlayerLink[]>(`/api/clubs/${clubId}/players`);
@@ -81,10 +88,6 @@ export class PlayersApi {
     type: PlayerClubType,
   ): Observable<Player> {
     return this.http.post<Player>(`/api/clubs/${clubId}/players`, { fullName, gender, type });
-  }
-
-  linkExistingPlayer(clubId: string, playerId: string, type: PlayerClubType): Observable<Player> {
-    return this.http.post<Player>(`/api/clubs/${clubId}/players`, { playerId, type });
   }
 
   updateLinkType(clubId: string, playerId: string, type: PlayerClubType): Observable<void> {
@@ -125,6 +128,12 @@ export class PlayersApi {
   }
 
   // --- transfers ---
+  transferCandidates(clubId: string, query: string): Observable<TransferCandidate[]> {
+    return this.http.get<TransferCandidate[]>(
+      `/api/clubs/${clubId}/transfers/candidates?search=${encodeURIComponent(query)}`,
+    );
+  }
+
   listClubTransfers(clubId: string): Observable<Transfer[]> {
     return this.http.get<Transfer[]>(`/api/clubs/${clubId}/transfers`);
   }

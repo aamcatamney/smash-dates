@@ -21,6 +21,7 @@ public static class TransferEndpoints
         var club = app.MapGroup("/api/clubs/{clubId:guid}/transfers").RequireAuthorization();
         club.MapPost("/", Open);
         club.MapGet("/", ListForClub);
+        club.MapGet("/candidates", Candidates);
         club.MapPost("/{id:guid}/approve", ClubApprove);
         club.MapPost("/{id:guid}/reject", ClubReject);
 
@@ -70,6 +71,26 @@ public static class TransferEndpoints
         {
             return Results.Problem(statusCode: StatusCodes.Status409Conflict, title: "A transfer for this registration is already in progress");
         }
+    }
+
+    // Candidate players a club may transfer in: Confirmed registrations held by other clubs in a
+    // league this club is an Accepted member of, matched by name. Scoped to the club's leagues —
+    // it never enumerates players across clubs the receiving club shares no league with.
+    private static async Task<IResult> Candidates(
+        Guid clubId,
+        string? search,
+        ClaimsPrincipal principal,
+        IClubRepository clubs,
+        IClubAdminRepository clubAdmins,
+        IDisciplineRegistrationRepository registrations,
+        CancellationToken ct)
+    {
+        if (await clubs.GetByIdAsync(clubId, ct) is null) return Results.NotFound();
+        var authz = await ClubAuthorizer.RequireClubAdminAsync(principal, clubId, clubAdmins, ct);
+        if (authz is not null) return authz;
+
+        var rows = await registrations.SearchTransferCandidatesAsync(clubId, search ?? string.Empty, 20, ct);
+        return Results.Ok(rows);
     }
 
     private static async Task<IResult> ClubApprove(

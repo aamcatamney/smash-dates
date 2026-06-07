@@ -107,4 +107,29 @@ public sealed class DisciplineRegistrationRepository : IDisciplineRegistrationRe
                 cancellationToken: ct));
         return rows.AsList();
     }
+
+    public async Task<IReadOnlyList<TransferCandidate>> SearchTransferCandidatesAsync(Guid receivingClubId, string query, int limit, CancellationToken ct = default)
+    {
+        using var conn = _factory.Create();
+        var rows = await conn.QueryAsync<TransferCandidate>(
+            new CommandDefinition(
+                @"SELECT p.id AS player_id, p.full_name, p.gender,
+                         l.id AS league_id, l.name AS league_name,
+                         r.discipline, c.short_code AS current_club_short_code
+                  FROM discipline_registrations r
+                  JOIN players p ON p.id = r.player_id
+                  JOIN clubs c ON c.id = r.club_id
+                  JOIN leagues l ON l.id = r.league_id
+                  WHERE r.status = 'Confirmed'
+                    AND r.club_id <> @receivingClubId
+                    AND p.full_name ILIKE '%' || @query || '%'
+                    AND EXISTS (
+                        SELECT 1 FROM club_league_memberships m
+                        WHERE m.club_id = @receivingClubId AND m.league_id = r.league_id AND m.status = 'Accepted')
+                  ORDER BY p.full_name, l.name
+                  LIMIT @limit",
+                new { receivingClubId, query, limit },
+                cancellationToken: ct));
+        return rows.AsList();
+    }
 }

@@ -33,33 +33,6 @@ public sealed class PlayerRepository : IPlayerRepository
                 cancellationToken: ct));
     }
 
-    public async Task<IReadOnlyList<Player>> SearchAsync(string query, int limit, CancellationToken ct = default)
-    {
-        using var conn = _factory.Create();
-        var rows = await conn.QueryAsync<Player>(
-            new CommandDefinition(
-                @"SELECT id, full_name, gender, grade, created_at, updated_at FROM players
-                  WHERE full_name ILIKE '%' || @query || '%'
-                  ORDER BY full_name
-                  LIMIT @limit",
-                new { query, limit },
-                cancellationToken: ct));
-        return rows.AsList();
-    }
-
-    public async Task<IReadOnlyList<Player>> FindByNameAndGenderAsync(string fullName, Gender gender, CancellationToken ct = default)
-    {
-        using var conn = _factory.Create();
-        var rows = await conn.QueryAsync<Player>(
-            new CommandDefinition(
-                @"SELECT id, full_name, gender, grade, created_at, updated_at FROM players
-                  WHERE lower(full_name) = lower(@fullName) AND gender = @gender
-                  ORDER BY created_at",
-                new { fullName, gender = gender.ToString() },
-                cancellationToken: ct));
-        return rows.AsList();
-    }
-
     public async Task LinkAsync(Guid playerId, Guid clubId, PlayerClubType type, CancellationToken ct = default)
     {
         using var conn = _factory.Create();

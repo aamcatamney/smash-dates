@@ -14,6 +14,7 @@ public sealed class RegistrationTransferEndpointsTests : IntegrationTestBase
     private sealed record RegistrationDto(Guid Id, Guid PlayerId, Guid ClubId, string Discipline, string Status);
     private sealed record PlayerLinkDto(Guid PlayerId, string FullName, string Gender, string Type);
     private sealed record TransferDto(Guid Id, Guid PlayerId, string Discipline, Guid FromClubId, Guid ToClubId, string Status, bool ReleasingApproved, bool LeagueApproved);
+    private sealed record TransferCandidateDto(Guid PlayerId, string FullName, string Gender, Guid LeagueId, string LeagueName, string Discipline, string CurrentClubShortCode);
     private sealed record Setup(Guid LeagueId, Guid ClubA, Guid ClubB, Guid PlayerId);
 
     // Player confirmed for Level at ClubA; ClubB is an accepted member ready to receive.
@@ -36,6 +37,32 @@ public sealed class RegistrationTransferEndpointsTests : IntegrationTestBase
 
     private Task<HttpResponseMessage> OpenTransfer(Setup s) =>
         Client.PostAsJsonAsync($"/api/clubs/{s.ClubB}/transfers", new { playerId = s.PlayerId, leagueId = s.LeagueId, discipline = "Level" });
+
+    [Fact]
+    public async Task Candidates_FindConfirmedRegistrationInSharedLeague()
+    {
+        var s = await ArrangeConfirmedAtAAsync();
+
+        var rows = await Client.GetFromJsonAsync<TransferCandidateDto[]>(
+            $"/api/clubs/{s.ClubB}/transfers/candidates?search=jane");
+
+        rows!.Should().ContainSingle(r =>
+            r.PlayerId == s.PlayerId && r.Discipline == "Level" &&
+            r.LeagueId == s.LeagueId && r.CurrentClubShortCode == "ACME");
+    }
+
+    [Fact]
+    public async Task Candidates_ExcludeLeaguesTheClubIsNotIn()
+    {
+        var s = await ArrangeConfirmedAtAAsync();
+        // A club that shares no league with the player's confirmed registration.
+        var clubC = await Seeder.CreateClubAsync("Gamma", "GAMA", contactEmail: "c@test");
+
+        var rows = await Client.GetFromJsonAsync<TransferCandidateDto[]>(
+            $"/api/clubs/{clubC}/transfers/candidates?search=jane");
+
+        rows!.Should().BeEmpty();
+    }
 
     [Fact]
     public async Task Transfer_BothApprovals_MovesRegistrationAndGrantsMembership()

@@ -140,14 +140,14 @@ Gender exists so the [Level discipline](#discipline) resolves to the right gende
 
 **Grade** is an optional ability rating, `1` (strongest) to `5` (weakest), used only to balance [Games](#game) when a [Pegboard Session](#pegboard-session) suggests or auto-fills a court. It is purely a club-night aid and has no bearing on Leagues, Seasons, scheduling or standings.
 
-Player rosters follow the same open-registry read model as Clubs (any authenticated user may read a Club's roster; only its admins write). The **cross-club player search** is the exception — it can enumerate people across every Club, so it is limited to `ClubAdmin` (of any Club) or `SystemAdmin`.
+Player rosters follow the same open-registry read model as Clubs (any authenticated user may read a Club's roster; only its admins write). A Club admin adding a Player to their roster always creates a **new** Player record — there is **no by-name lookup of Players across other Clubs**. A person known to several Clubs is therefore held as a separate Player record per Club until a future **identity merge** reconciles them. The one cross-Club path is a [Registration Transfer](#registration-transfer), whose candidate search is scoped to Leagues the receiving Club is an Accepted member of.
 
 ### Player–Club Affiliation
 A link between a Player and a Club with a **type**: `Member` or `Visitor`.
 - **Member** — the Club may **register** this Player for [disciplines](#discipline-registration). A Player may be a Member of more than one Club.
 - **Visitor** — the Player is listed at this Club as a guest only; their registration lives at the Club where they are a Member. A Visitor cannot be registered by this Club.
 
-Set by the Club when adding the Player. Adding an existing global Player to a second Club creates a second affiliation; it does not duplicate the Player.
+Set by the Club when adding the Player. A Club admin adding a Player always creates a **new** Player record plus this affiliation; there is no link-an-existing-Player step at the Club level. A second affiliation to an **existing** Player arises only when a [Registration Transfer](#registration-transfer) lands at a Club lacking a Member affiliation (the Club gains one) — or, in future, when separate Player records are merged.
 
 ### Discipline
 The category of play a Player registers for. Two values, mirroring [Week Type](#week-type):

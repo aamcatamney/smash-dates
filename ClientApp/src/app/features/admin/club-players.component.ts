@@ -10,12 +10,12 @@ import {
 import { FormControl, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import {
   Discipline,
-  Player,
   PlayerClubType,
   PlayersApi,
   PlayerLink,
   Registration,
   Transfer,
+  TransferCandidate,
 } from './players.api';
 import { ModalComponent } from '../../shared/modal.component';
 import { StatusColorPipe } from '../../shared/status-color.pipe';
@@ -28,8 +28,9 @@ interface LeagueOption {
 }
 
 // Club-side player management: affiliations (Member/Visitor), discipline registrations,
-// and initiating / approving transfers. The parent passes the club id and the leagues the
-// club is an accepted member of (for the register / transfer-in selects).
+// and initiating / approving transfers. Players are always created fresh here — there is no
+// link-an-existing-player-by-name step. The parent passes the club id and the leagues the
+// club is an accepted member of (for the register select).
 @Component({
   selector: 'app-club-players',
   imports: [ReactiveFormsModule, ModalComponent, StatusColorPipe, CsvImportComponent],
@@ -129,69 +130,20 @@ interface LeagueOption {
       </p>
     }
 
-    <!-- Add / link player -->
+    <!-- Add player -->
     <app-modal [open]="addOpen()" title="Add player" (closed)="addOpen.set(false)">
       <div class="grid gap-4 font-mono text-sm">
-        <div class="grid gap-2">
+        <form [formGroup]="createForm" (ngSubmit)="createNew()" class="grid gap-2">
           <span class="text-xs uppercase tracking-wider text-slate-600 dark:text-slate-400"
-            >Link an existing player</span
-          >
-          <input
-            type="text"
-            [formControl]="searchControl"
-            (input)="onSearch()"
-            placeholder="Search by name…"
-            aria-label="Search existing players by name"
-            class="rounded-md border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-slate-900 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 dark:focus:ring-slate-100"
-          />
-          @for (r of searchResults(); track r.id) {
-            <div
-              class="flex items-center justify-between rounded border border-slate-200 px-3 py-1.5 dark:border-slate-800"
-            >
-              <span
-                >{{ r.fullName }} <span class="text-slate-400">{{ r.gender }}</span></span
-              >
-              <span class="flex gap-1">
-                <button
-                  type="button"
-                  (click)="linkExisting(r, 'Member')"
-                  class="rounded border border-slate-300 px-2 py-0.5 text-xs dark:border-slate-700"
-                >
-                  + Member
-                </button>
-                <button
-                  type="button"
-                  (click)="linkExisting(r, 'Visitor')"
-                  class="rounded border border-slate-300 px-2 py-0.5 text-xs dark:border-slate-700"
-                >
-                  + Visitor
-                </button>
-              </span>
-            </div>
-          }
-        </div>
-        <form
-          [formGroup]="createForm"
-          (ngSubmit)="createNew()"
-          class="grid gap-2 border-t border-slate-200 pt-3 dark:border-slate-800"
-        >
-          <span class="text-xs uppercase tracking-wider text-slate-600 dark:text-slate-400"
-            >Or create a new player</span
+            >Create a new player</span
           >
           <input
             type="text"
             formControlName="fullName"
-            (input)="onCreateNameInput()"
             placeholder="Full name"
             aria-label="New player full name"
             class="rounded-md border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-slate-900 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 dark:focus:ring-slate-100"
           />
-          @if (createDup() > 0) {
-            <p class="text-xs text-amber-700 dark:text-amber-400" role="status">
-              A player named that already exists — consider linking them above instead of creating a
-              duplicate.
-            </p>
-          }
           <div class="flex gap-2">
             <select
               formControlName="gender"
@@ -279,54 +231,50 @@ interface LeagueOption {
           aria-label="Search players by name"
           class="rounded-md border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-slate-900 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 dark:focus:ring-slate-100"
         />
-        @for (r of transferResults(); track r.id) {
+        <p class="text-xs text-slate-500 dark:text-slate-400">
+          Only players with a confirmed registration in a league this club belongs to.
+        </p>
+        @for (r of transferResults(); track r.playerId + r.leagueId + r.discipline) {
           <button
             type="button"
-            (click)="pickTransferPlayer(r)"
+            (click)="pickTransfer(r)"
             [class]="
-              'rounded border px-3 py-1.5 text-left ' +
-              (transferPlayer()?.id === r.id
+              'grid gap-0.5 rounded border px-3 py-1.5 text-left ' +
+              (isPicked(r)
                 ? 'border-slate-900 dark:border-slate-100'
                 : 'border-slate-200 dark:border-slate-800')
             "
           >
-            {{ r.fullName }} <span class="text-slate-400">{{ r.gender }}</span>
+            <span
+              >{{ r.fullName }} <span class="text-slate-400">{{ r.gender }}</span></span
+            >
+            <span class="text-xs text-slate-500 dark:text-slate-400"
+              >{{ r.leagueName }} · {{ r.discipline }} · from {{ r.currentClubShortCode }}</span
+            >
           </button>
-        }
-        <form
-          [formGroup]="transferForm"
-          (ngSubmit)="submitTransfer()"
-          class="grid gap-2 border-t border-slate-200 pt-3 dark:border-slate-800"
-        >
-          <select
-            formControlName="leagueId"
-            aria-label="League"
-            class="rounded-md border border-slate-300 px-3 py-2 text-sm dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
-          >
-            <option value="">-- league --</option>
-            @for (l of leagues(); track l.id) {
-              <option [value]="l.id">{{ l.name }}</option>
-            }
-          </select>
-          <select
-            formControlName="discipline"
-            aria-label="Discipline"
-            class="rounded-md border border-slate-300 px-3 py-2 text-sm dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
-          >
-            <option value="Level">Level</option>
-            <option value="Mixed">Mixed</option>
-          </select>
-          <button
-            type="submit"
-            [disabled]="transferForm.invalid || transferPlayer() === null"
-            class="justify-self-start rounded-md bg-slate-900 px-4 py-2 text-sm font-medium text-amber-300 disabled:opacity-50 dark:bg-amber-400 dark:text-slate-900"
-          >
-            Request transfer
-          </button>
-          @if (modalError()) {
-            <p class="text-red-600 dark:text-red-400" role="alert">{{ modalError() }}</p>
+        } @empty {
+          @if (transferSearchControl.value.trim().length >= 2) {
+            <p class="text-slate-500 dark:text-slate-400">No transferable players found.</p>
           }
-        </form>
+        }
+        @if (transferPick(); as p) {
+          <div class="grid gap-2 border-t border-slate-200 pt-3 dark:border-slate-800">
+            <p class="text-slate-700 dark:text-slate-300">
+              Transferring <span class="font-semibold">{{ p.fullName }}</span> —
+              {{ p.leagueName }} / {{ p.discipline }} from {{ p.currentClubShortCode }}
+            </p>
+            <button
+              type="button"
+              (click)="submitTransfer()"
+              class="justify-self-start rounded-md bg-slate-900 px-4 py-2 text-sm font-medium text-amber-300 dark:bg-amber-400 dark:text-slate-900"
+            >
+              Request transfer
+            </button>
+          </div>
+        }
+        @if (modalError()) {
+          <p class="text-red-600 dark:text-red-400" role="alert">{{ modalError() }}</p>
+        }
       </div>
     </app-modal>
 
@@ -394,15 +342,12 @@ export class ClubPlayersComponent {
   protected readonly importOpen = signal(false);
   protected readonly importBusy = signal(false);
   protected readonly importResult = signal<ImportResult | null>(null);
-  protected readonly importColumns = ['name', 'gender', 'grade', 'useExisting'];
+  protected readonly importColumns = ['name', 'gender', 'grade'];
   protected readonly registerFor = signal<PlayerLink | null>(null);
   protected readonly transferOpen = signal(false);
-  protected readonly searchResults = signal<Player[]>([]);
-  protected readonly transferResults = signal<Player[]>([]);
-  protected readonly transferPlayer = signal<Player | null>(null);
-  protected readonly createDup = signal(0);
+  protected readonly transferResults = signal<TransferCandidate[]>([]);
+  protected readonly transferPick = signal<TransferCandidate | null>(null);
 
-  protected readonly searchControl = new FormControl('', { nonNullable: true });
   protected readonly transferSearchControl = new FormControl('', { nonNullable: true });
 
   protected readonly createForm = new FormGroup({
@@ -411,10 +356,6 @@ export class ClubPlayersComponent {
     type: new FormControl<PlayerClubType>('Member', { nonNullable: true }),
   });
   protected readonly registerForm = new FormGroup({
-    leagueId: new FormControl('', { nonNullable: true, validators: [Validators.required] }),
-    discipline: new FormControl<Discipline>('Level', { nonNullable: true }),
-  });
-  protected readonly transferForm = new FormGroup({
     leagueId: new FormControl('', { nonNullable: true, validators: [Validators.required] }),
     discipline: new FormControl<Discipline>('Level', { nonNullable: true }),
   });
@@ -459,44 +400,8 @@ export class ClubPlayersComponent {
   }
 
   protected openAdd(): void {
-    this.searchControl.reset('');
-    this.searchResults.set([]);
-    this.createDup.set(0);
     this.createForm.reset({ fullName: '', gender: 'Male', type: 'Member' });
     this.addOpen.set(true);
-  }
-
-  // Soft duplicate hint: flag if a player with the exact name already exists globally.
-  protected onCreateNameInput(): void {
-    const name = this.createForm.controls.fullName.value.trim();
-    if (name.length < 2) {
-      this.createDup.set(0);
-      return;
-    }
-    this.api.searchPlayers(name).subscribe({
-      next: (rows) =>
-        this.createDup.set(
-          rows.filter((p) => p.fullName.toLowerCase() === name.toLowerCase()).length,
-        ),
-    });
-  }
-
-  protected onSearch(): void {
-    const q = this.searchControl.value.trim();
-    if (q.length < 2) {
-      this.searchResults.set([]);
-      return;
-    }
-    this.api.searchPlayers(q).subscribe({ next: (rows) => this.searchResults.set(rows) });
-  }
-
-  protected linkExisting(player: Player, type: PlayerClubType): void {
-    this.api.linkExistingPlayer(this.clubId(), player.id, type).subscribe({
-      next: () => {
-        this.addOpen.set(false);
-        this.refresh();
-      },
-    });
   }
 
   protected createNew(): void {
@@ -551,30 +456,41 @@ export class ClubPlayersComponent {
     this.modalError.set(null);
     this.transferSearchControl.reset('');
     this.transferResults.set([]);
-    this.transferPlayer.set(null);
-    this.transferForm.reset({ leagueId: '', discipline: 'Level' });
+    this.transferPick.set(null);
     this.transferOpen.set(true);
   }
 
   protected onTransferSearch(): void {
     const q = this.transferSearchControl.value.trim();
+    this.transferPick.set(null);
     if (q.length < 2) {
       this.transferResults.set([]);
       return;
     }
-    this.api.searchPlayers(q).subscribe({ next: (rows) => this.transferResults.set(rows) });
+    this.api
+      .transferCandidates(this.clubId(), q)
+      .subscribe({ next: (rows) => this.transferResults.set(rows) });
   }
 
-  protected pickTransferPlayer(p: Player): void {
-    this.transferPlayer.set(p);
+  protected pickTransfer(c: TransferCandidate): void {
+    this.transferPick.set(c);
+  }
+
+  protected isPicked(c: TransferCandidate): boolean {
+    const p = this.transferPick();
+    return (
+      p !== null &&
+      p.playerId === c.playerId &&
+      p.leagueId === c.leagueId &&
+      p.discipline === c.discipline
+    );
   }
 
   protected submitTransfer(): void {
-    const player = this.transferPlayer();
-    if (player === null) return;
-    const { leagueId, discipline } = this.transferForm.getRawValue();
+    const pick = this.transferPick();
+    if (pick === null) return;
     this.modalError.set(null);
-    this.api.openTransfer(this.clubId(), player.id, leagueId, discipline).subscribe({
+    this.api.openTransfer(this.clubId(), pick.playerId, pick.leagueId, pick.discipline).subscribe({
       next: () => {
         this.transferOpen.set(false);
         this.refresh();
