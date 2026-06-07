@@ -125,15 +125,27 @@ Every screen supports light and dark, following the OS preference with a persist
 
 ## Quick start
 
-### Run with Docker (recommended)
+Two ways to run it: **Development** — from a clone, with the .NET/Node toolchain and a hot-reload loop; or **Production** — self-host the published container image with one command, no checkout or build.
 
-Start PostgreSQL:
+### Development (run from source)
+
+Prerequisites: **.NET 10 SDK**, **Node.js + npm**, **Docker** (for Postgres / integration tests). Clone the repo, then start Postgres and install the client deps:
 
 ```bash
-docker compose up -d
+docker compose up -d                  # Postgres on localhost:5432 (docker-compose.yml)
+cd ClientApp && npm install && cd ..   # first run only
 ```
 
-Build and run the app image (serves API + client on **:8080**, applies all migrations on startup):
+Run the dev loop in two terminals, same origin (no `ng serve`, no proxy):
+
+```bash
+cd ClientApp && npm run watch   # Terminal 1 — rebuild the Angular bundle on change
+dotnet run                      # Terminal 2 — API + serves the client + SPA fallback
+```
+
+Open <http://localhost:5079> and register — the first account becomes the SystemAdmin. The connection string is read from `ConnectionStrings:Postgres` (default `localhost:5432`, `postgres`/`postgres`); override with the `ConnectionStrings__Postgres` env var.
+
+To exercise the whole container locally instead, build and run the image:
 
 ```bash
 docker build -t smash-dates .
@@ -142,32 +154,31 @@ docker run -p 8080:8080 \
   smash-dates
 ```
 
-Open <http://localhost:8080> and register — the first account becomes the SystemAdmin.
+### Production (self-host the published image)
 
-> **HTTPS in production:** auth/antiforgery cookies are `Secure`, so a production deployment must be reached over HTTPS. The container is built to sit behind a TLS-terminating reverse proxy / ingress and honours `X-Forwarded-Proto` / `X-Forwarded-For` (`UseForwardedHeaders`). Over plain HTTP, cookie-issuing endpoints (register/login) return 500 by design.
-
-> **Email delivery:** verification and password-reset links (and all other notifications) only reach users once SMTP is configured. Set the `Smtp__*` env vars — at minimum `Smtp__Host` — e.g. `-e "Smtp__Host=smtp.example.com" -e "Smtp__Port=587" -e "Smtp__Username=…" -e "Smtp__Password=…" -e "Smtp__FromAddress=no-reply@yourdomain"`. With no host set, mail is written to the application log instead.
-
-### Run locally (dev loop)
-
-Prerequisites: **.NET 10 SDK**, **Node.js + npm**, **Docker** (for Postgres / integration tests).
+One command downloads a production `docker-compose.yml` + Caddy config, generates a database password, and starts the stack — **PostgreSQL + the published image + Caddy** (which terminates HTTPS) — then `docker compose up -d`:
 
 ```bash
-docker compose up -d                 # Postgres on localhost:5432
-cd ClientApp && npm install && cd ..  # first run only
+# bash / Linux / macOS
+curl -fsSL https://raw.githubusercontent.com/aamcatamney/smash-dates/main/scripts/install.sh | bash
 ```
 
-Two terminals, same origin (no `ng serve`, no proxy):
+```powershell
+# Windows / PowerShell
+irm https://raw.githubusercontent.com/aamcatamney/smash-dates/main/scripts/install.ps1 | iex
+```
+
+It writes `docker-compose.yml`, `Caddyfile` and `.env` into `./smash-dates` and brings the stack up. By default it serves `https://localhost` with a self-signed cert; for a **trusted** certificate, point a domain's DNS at the host (ports 80/443 open) and pass it in:
 
 ```bash
-# Terminal 1 — rebuild the Angular bundle on change
-cd ClientApp && npm run watch
-
-# Terminal 2 — run the API (also serves the client + SPA fallback)
-dotnet run
+curl -fsSL .../install.sh | DOMAIN=league.example.com bash
 ```
 
-The connection string is read from `ConnectionStrings:Postgres` (default `localhost:5432`, `postgres`/`postgres`); override with the `ConnectionStrings__Postgres` env var.
+HTTPS is required, not optional: the app's auth/antiforgery cookies are `Secure`, so cookie-issuing endpoints (register/login) only work over HTTPS — Caddy provides it and forwards `X-Forwarded-Proto`, which the app honours (`UseForwardedHeaders`). Register the first account to become the SystemAdmin. (Self-hosting by hand instead? The compose file + Caddyfile live in [`deploy/`](deploy/).)
+
+> **Make the image public:** the published package `ghcr.io/aamcatamney/smash-dates` must be **public** for the anonymous pull above to work — set it in the repo's Packages → `smash-dates` → Package settings → Change visibility. Otherwise `docker login ghcr.io` with a token that has `read:packages` first.
+
+> **Email delivery:** verification and password-reset links (and all other notifications) only reach users once SMTP is configured — set the `Smtp__*` env vars in `.env` (at minimum `Smtp__Host`). With no host set, mail is written to the application log instead.
 
 ### Tests
 

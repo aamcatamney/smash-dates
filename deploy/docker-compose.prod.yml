@@ -1,0 +1,61 @@
+# Smash Dates — production deployment.
+#
+# Runs the published image (no source checkout / build) behind Caddy, which terminates HTTPS
+# automatically. HTTPS matters: the app's auth cookies are Secure, so it must be reached over
+# https — Caddy provides that and forwards X-Forwarded-Proto, which the app honours.
+#
+# Bootstrap (recommended): scripts/install.sh (bash) or scripts/install.ps1 (PowerShell).
+# Manual: drop this file + Caddyfile in a folder, create .env with POSTGRES_PASSWORD (and a real
+# DOMAIN), then `docker compose up -d`.
+services:
+  db:
+    image: postgres:17-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: smash_dates
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}
+    volumes:
+      - db-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U postgres -d smash_dates']
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  app:
+    image: ghcr.io/aamcatamney/smash-dates:${TAG:-latest}
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      ConnectionStrings__Postgres: 'Host=db;Port=5432;Database=smash_dates;Username=postgres;Password=${POSTGRES_PASSWORD}'
+      # Email delivery is optional — uncomment and set to send verification / reset links.
+      # Smtp__Host: smtp.example.com
+      # Smtp__Port: '587'
+      # Smtp__Username: apikey
+      # Smtp__Password: ${SMTP_PASSWORD}
+      # Smtp__FromAddress: no-reply@${DOMAIN}
+    expose:
+      - '8080' # internal only; Caddy is the public entrypoint
+
+  caddy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    depends_on:
+      - app
+    ports:
+      - '80:80'
+      - '443:443'
+    environment:
+      DOMAIN: ${DOMAIN:-localhost}
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy-data:/data
+      - caddy-config:/config
+
+volumes:
+  db-data:
+  caddy-data:
+  caddy-config:
