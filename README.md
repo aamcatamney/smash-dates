@@ -111,6 +111,11 @@ The league confirms discipline registrations and adjudicates transfers between c
 
 ![Player registrations & transfers awaiting league approval](docs/screenshots/players.png)
 
+### Public view (no login)
+A logged-out, read-only view of a league's standings and fixtures at `/public` — PII-free.
+
+![Public league standings & fixtures](docs/screenshots/public-standings.png)
+
 ### Light & dark themes
 Every screen supports light and dark, following the OS preference with a persisted toggle.
 
