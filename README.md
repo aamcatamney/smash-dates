@@ -11,7 +11,7 @@ Smash Dates is a web application for running multi-club badminton leagues end to
 
 The whole thing ships as a single container: a .NET 10 API that also serves the Angular client, backed by PostgreSQL.
 
-**Contents:** [Features](#features) · [Screenshots](#screenshots) · [Quick start](#quick-start) · [Tech stack](#tech-stack) · [License](#license)
+**Contents:** [Features](#features) · [Screenshots](#screenshots) · [Quick start](#quick-start) · [Email configuration](#email-configuration) · [Tech stack](#tech-stack) · [License](#license)
 
 ---
 
@@ -180,7 +180,7 @@ HTTPS is required, not optional: the app's auth/antiforgery cookies are `Secure`
 
 > **Make the image public:** the published package `ghcr.io/aamcatamney/smash-dates` must be **public** for the anonymous pull above to work — set it in the repo's Packages → `smash-dates` → Package settings → Change visibility. Otherwise `docker login ghcr.io` with a token that has `read:packages` first.
 
-> **Email delivery:** verification and password-reset links (and all other notifications) only reach users once SMTP is configured — set the `Smtp__*` env vars in `.env` (at minimum `Smtp__Host`). With no host set, mail is written to the application log instead.
+> **Email delivery:** verification and password-reset links (and all other notifications) only reach users once SMTP is configured — set the `Smtp__*` env vars in `.env` (at minimum `Smtp__Host`). With no host set, mail is written to the application log instead. See [Email configuration](#email-configuration) for every setting.
 
 ### Tests
 
@@ -210,6 +210,26 @@ docker pull ghcr.io/aamcatamney/smash-dates:latest
 ```
 
 A running container exposes `GET /health` (liveness) and `GET /api/version` (the CalVer version stamped in at build).
+
+---
+
+## Email configuration
+
+Notifications (membership invites/responses, match updates) and auth emails (verification, password reset, resend) are written to an outbox and delivered by a background sender. **Delivery is opt-in:** with no `Smtp__Host` set the app uses a **logging sender** — every message is written to the application log instead of being sent — so development and the test suite need no mail server. Set `Smtp__Host` to switch to real SMTP delivery (MailKit).
+
+Settings bind from the `Smtp` configuration section; as environment variables they take the double-underscore form `Smtp__<Name>` (e.g. in the deploy `.env`).
+
+| Variable | Default | Notes |
+|----------|---------|-------|
+| `Smtp__Host` | *(unset)* | SMTP server hostname. **When empty/unset, the app falls back to the logging sender** (mail written to the application log; no mail server needed for dev/tests). Setting it enables SMTP delivery. |
+| `Smtp__Port` | `587` | SMTP port. |
+| `Smtp__Username` | *(unset)* | Auth username. If unset, the sender connects without authenticating. |
+| `Smtp__Password` | *(unset)* | Auth password, used with `Smtp__Username`. |
+| `Smtp__FromAddress` | `no-reply@smash-dates.local` | Envelope/From address on outbound mail. |
+| `Smtp__FromName` | `Smash Dates` | Display name paired with the From address. |
+| `Smtp__UseStartTls` | `true` | Negotiate STARTTLS when the server advertises it. Set `false` only for a plaintext relay (e.g. a local test server). |
+
+Every delivered email ends with a footer line `smash-dates <version>`, sourced from the same build-stamped value as `GET /api/version`, so a received mail is traceable to the build that sent it.
 
 ---
 
