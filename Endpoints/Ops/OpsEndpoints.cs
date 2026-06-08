@@ -1,4 +1,4 @@
-using System.Reflection;
+using smash_dates.Services;
 
 namespace smash_dates.Endpoints.Ops;
 
@@ -8,15 +8,7 @@ public static class OpsEndpoints
     public static IEndpointRouteBuilder MapOpsEndpoints(this IEndpointRouteBuilder app)
     {
         app.MapGet("/health", () => Results.Ok(new { status = "ok" }));
-        app.MapGet("/api/version", () => Results.Ok(new { version = ResolveVersion() }));
+        app.MapGet("/api/version", (IAppVersion version) => Results.Ok(new { version = version.Current }));
         return app;
     }
-
-    // APP_VERSION is stamped into the container image from the CalVer release tag; falls back
-    // to the assembly informational version, then "dev" for a plain local run.
-    private static string ResolveVersion() =>
-        Environment.GetEnvironmentVariable("APP_VERSION") is { Length: > 0 } env
-            ? env
-            : Assembly.GetExecutingAssembly().GetCustomAttribute<AssemblyInformationalVersionAttribute>()?.InformationalVersion
-              ?? "dev";
 }

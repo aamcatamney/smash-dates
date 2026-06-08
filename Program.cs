@@ -48,6 +48,7 @@ builder.Services.ConfigureHttpJsonOptions(o =>
     o.SerializerOptions.Converters.Add(new System.Text.Json.Serialization.JsonStringEnumConverter()));
 
 builder.Services.AddSingleton<IDbConnectionFactory, NpgsqlConnectionFactory>();
+builder.Services.AddSingleton<smash_dates.Services.IAppVersion, smash_dates.Services.AppVersion>();
 builder.Services.AddSingleton<IPasswordHasher, BCryptPasswordHasher>();
 builder.Services.AddScoped<IUserRepository, UserRepository>();
 builder.Services.AddScoped<IAuthTokenRepository, AuthTokenRepository>();
