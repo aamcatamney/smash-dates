@@ -30,6 +30,12 @@ import { ThemeToggleComponent } from '../../shared/theme-toggle.component';
             class="font-mono text-xs uppercase tracking-wider text-slate-600 hover:text-slate-900 focus-visible:outline-2 focus-visible:outline-slate-900 dark:text-slate-400 dark:hover:text-slate-100 dark:focus-visible:outline-slate-100"
             >Clubs</a
           >
+          <a
+            [routerLink]="['/profile']"
+            routerLinkActive="text-slate-900 underline dark:text-slate-100"
+            class="font-mono text-xs uppercase tracking-wider text-slate-600 hover:text-slate-900 focus-visible:outline-2 focus-visible:outline-slate-900 dark:text-slate-400 dark:hover:text-slate-100 dark:focus-visible:outline-slate-100"
+            >Profile</a
+          >
           <span class="hidden text-sm text-slate-600 dark:text-slate-400 sm:inline" aria-live="polite">
             Hi, <span class="font-medium text-slate-900 dark:text-slate-100">{{ store.displayName() }}</span>
           </span>
