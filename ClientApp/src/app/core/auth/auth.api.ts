@@ -1,7 +1,7 @@
 import { HttpClient } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
 import { Observable } from 'rxjs';
-import { AuthenticatedUser } from './user.model';
+import { AuthenticatedUser, MyGrants } from './user.model';
 
 export interface LoginPayload {
   email: string;
@@ -19,7 +19,9 @@ export interface RegisterPayload {
 // kicks off email verification and returns a flag instead of a session.
 export type RegisterResult = AuthenticatedUser | { emailVerificationRequired: true };
 
-export function isVerificationRequired(r: RegisterResult): r is { emailVerificationRequired: true } {
+export function isVerificationRequired(
+  r: RegisterResult,
+): r is { emailVerificationRequired: true } {
   return (r as { emailVerificationRequired?: boolean }).emailVerificationRequired === true;
 }
 
@@ -30,6 +32,10 @@ export class AuthApi {
 
   me(): Observable<AuthenticatedUser> {
     return this.http.get<AuthenticatedUser>(`${this.base}/me`);
+  }
+
+  myGrants(): Observable<MyGrants> {
+    return this.http.get<MyGrants>(`${this.base}/me/grants`);
   }
 
   login(payload: LoginPayload): Observable<AuthenticatedUser> {

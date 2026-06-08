@@ -1,4 +1,5 @@
-import { ChangeDetectionStrategy, Component, inject, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
+import { toSignal } from '@angular/core/rxjs-interop';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { firstValueFrom } from 'rxjs';
 import { AuthApi } from '../../core/auth/auth.api';
@@ -18,7 +19,9 @@ import { AdminHeaderComponent } from '../admin/admin-header.component';
         <h1 class="text-2xl font-semibold text-slate-900 dark:text-slate-100">Profile</h1>
         <p class="mt-1 text-sm text-slate-600 dark:text-slate-400">
           Signed in as
-          <span class="font-medium text-slate-900 dark:text-slate-100">{{ store.displayName() }}</span>
+          <span class="font-medium text-slate-900 dark:text-slate-100">{{
+            store.displayName()
+          }}</span>
         </p>
 
         <section
@@ -123,6 +126,65 @@ import { AdminHeaderComponent } from '../admin/admin-header.component';
             </fieldset>
           </form>
         </section>
+
+        <section
+          class="mt-8 rounded-xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-900"
+          aria-labelledby="roles-title"
+        >
+          <h2 id="roles-title" class="text-lg font-semibold text-slate-900 dark:text-slate-100">
+            Your roles
+          </h2>
+          <p class="mt-1 text-sm text-slate-600 dark:text-slate-400">
+            The access you currently hold. Read-only — ask a league or club admin to change it.
+          </p>
+
+          @if (grants(); as g) {
+            @if (hasAnyGrant()) {
+              <ul class="mt-4 space-y-2">
+                @if (g.systemAdmin) {
+                  <li class="flex items-center gap-3 text-sm">
+                    <span
+                      class="inline-block w-28 shrink-0 font-mono text-xs uppercase tracking-wider text-slate-500 dark:text-slate-400"
+                      >System</span
+                    >
+                    <span class="text-slate-900 dark:text-slate-100">System administrator</span>
+                  </li>
+                }
+                @for (l of g.leagueAdmin; track l.id) {
+                  <li class="flex items-center gap-3 text-sm">
+                    <span
+                      class="inline-block w-28 shrink-0 font-mono text-xs uppercase tracking-wider text-slate-500 dark:text-slate-400"
+                      >League admin</span
+                    >
+                    <span class="text-slate-900 dark:text-slate-100">{{ l.name }}</span>
+                  </li>
+                }
+                @for (c of g.clubAdmin; track c.id) {
+                  <li class="flex items-center gap-3 text-sm">
+                    <span
+                      class="inline-block w-28 shrink-0 font-mono text-xs uppercase tracking-wider text-slate-500 dark:text-slate-400"
+                      >Club admin</span
+                    >
+                    <span class="text-slate-900 dark:text-slate-100">{{ c.name }}</span>
+                  </li>
+                }
+                @for (h of g.sessionHost; track h.id) {
+                  <li class="flex items-center gap-3 text-sm">
+                    <span
+                      class="inline-block w-28 shrink-0 font-mono text-xs uppercase tracking-wider text-slate-500 dark:text-slate-400"
+                      >Session host</span
+                    >
+                    <span class="text-slate-900 dark:text-slate-100">{{ h.name }}</span>
+                  </li>
+                }
+              </ul>
+            } @else {
+              <p class="mt-4 text-sm text-slate-500 dark:text-slate-400">
+                You don't hold any role grants yet.
+              </p>
+            }
+          }
+        </section>
       </main>
     </div>
   `,
@@ -141,6 +203,18 @@ export default class ProfilePage {
   protected readonly form = this.fb.nonNullable.group({
     currentPassword: ['', [Validators.required]],
     newPassword: ['', [Validators.required, Validators.minLength(12)]],
+  });
+
+  protected readonly grants = toSignal(this.api.myGrants());
+  protected readonly hasAnyGrant = computed(() => {
+    const g = this.grants();
+    return (
+      !!g &&
+      (g.systemAdmin ||
+        g.leagueAdmin.length > 0 ||
+        g.clubAdmin.length > 0 ||
+        g.sessionHost.length > 0)
+    );
   });
 
   protected toggleCurrent(): void {

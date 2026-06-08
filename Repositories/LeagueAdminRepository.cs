@@ -37,6 +37,21 @@ public sealed class LeagueAdminRepository : ILeagueAdminRepository
         return rows.AsList();
     }
 
+    public async Task<IReadOnlyList<LeagueAdminGrantView>> ListByUserAsync(Guid userId, CancellationToken ct = default)
+    {
+        using var conn = _factory.Create();
+        var rows = await conn.QueryAsync<LeagueAdminGrantView>(
+            new CommandDefinition(
+                @"SELECT la.league_id, l.name AS league_name
+                  FROM league_admins la
+                  JOIN leagues l ON l.id = la.league_id
+                  WHERE la.user_id = @userId
+                  ORDER BY l.name",
+                new { userId },
+                cancellationToken: ct));
+        return rows.AsList();
+    }
+
     public async Task<int> CountByLeagueAsync(Guid leagueId, CancellationToken ct = default)
     {
         using var conn = _factory.Create();

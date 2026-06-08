@@ -109,6 +109,17 @@ public sealed class TestDataSeeder
             new { clubId, userId, grantedBy });
     }
 
+    public async Task GrantSessionHostAsync(Guid clubId, Guid userId, Guid? grantedBy = null)
+    {
+        await using var conn = new NpgsqlConnection(_connectionString);
+        await conn.OpenAsync();
+        await conn.ExecuteAsync(
+            @"INSERT INTO session_hosts (club_id, user_id, granted_by)
+              VALUES (@clubId, @userId, @grantedBy)
+              ON CONFLICT DO NOTHING",
+            new { clubId, userId, grantedBy });
+    }
+
     public async Task<Guid> CreateMembershipAsync(
         Guid clubId,
         Guid leagueId,

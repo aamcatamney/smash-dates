@@ -47,6 +47,21 @@ public sealed class ClubAdminRepository : IClubAdminRepository
         return rows.AsList();
     }
 
+    public async Task<IReadOnlyList<ClubAdminGrantView>> ListByUserAsync(Guid userId, CancellationToken ct = default)
+    {
+        using var conn = _factory.Create();
+        var rows = await conn.QueryAsync<ClubAdminGrantView>(
+            new CommandDefinition(
+                @"SELECT ca.club_id, c.name AS club_name
+                  FROM club_admins ca
+                  JOIN clubs c ON c.id = ca.club_id
+                  WHERE ca.user_id = @userId
+                  ORDER BY c.name",
+                new { userId },
+                cancellationToken: ct));
+        return rows.AsList();
+    }
+
     public async Task GrantAsync(Guid clubId, Guid userId, Guid? grantedBy, CancellationToken ct = default)
     {
         using var conn = _factory.Create();

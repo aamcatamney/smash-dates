@@ -29,4 +29,12 @@ describe('AuthApi', () => {
     });
     req.flush(null);
   });
+
+  it('myGrants GETs the current user grants', () => {
+    api.myGrants().subscribe();
+
+    const req = httpMock.expectOne('/api/auth/me/grants');
+    expect(req.request.method).toBe('GET');
+    req.flush({ systemAdmin: false, leagueAdmin: [], clubAdmin: [], sessionHost: [] });
+  });
 });

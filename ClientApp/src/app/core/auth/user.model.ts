@@ -5,6 +5,18 @@ export interface AuthenticatedUser {
   isSystemAdmin: boolean;
 }
 
+export interface RoleGrant {
+  id: string;
+  name: string;
+}
+
+export interface MyGrants {
+  systemAdmin: boolean;
+  leagueAdmin: RoleGrant[];
+  clubAdmin: RoleGrant[];
+  sessionHost: RoleGrant[];
+}
+
 export type AuthStatus = 'unknown' | 'anonymous' | 'authed';
 
 export interface ProblemDetails {
