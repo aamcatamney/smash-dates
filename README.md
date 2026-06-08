@@ -66,6 +66,7 @@ The whole thing ships as a single container: a .NET 10 API that also serves the 
 **Interface**
 - **Light / dark theme** — follows the OS preference by default, with a toggle that persists an explicit choice (no flash on load).
 - **Action feedback** — create / invite / grant actions confirm with a dismissable **toast** (announced to screen readers); inline actions disable while in flight to prevent double-submits.
+- **Version footer** — a global footer shows the running build's version (read live from `GET /api/version`) on every page, authenticated and public alike.
 
 ---
 
