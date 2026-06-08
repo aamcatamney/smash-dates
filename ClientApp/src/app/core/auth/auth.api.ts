@@ -52,6 +52,10 @@ export class AuthApi {
     return this.http.post<void>(`${this.base}/reset-password`, { token, password });
   }
 
+  changePassword(currentPassword: string, newPassword: string): Observable<void> {
+    return this.http.post<void>(`${this.base}/change-password`, { currentPassword, newPassword });
+  }
+
   verifyEmail(token: string): Observable<void> {
     return this.http.post<void>(`${this.base}/verify-email`, { token });
   }

@@ -15,6 +15,12 @@ export const routes: Routes = [
     loadChildren: () => import('./features/admin/admin.routes').then((m) => m.ADMIN_ROUTES),
   },
   {
+    path: 'profile',
+    title: 'Profile · smash-dates',
+    canActivate: [authGuard],
+    loadComponent: () => import('./features/profile/profile.page'),
+  },
+  {
     // Anonymous public view — no authGuard.
     path: 'public',
     loadChildren: () => import('./features/public/public.routes').then((m) => m.PUBLIC_ROUTES),
