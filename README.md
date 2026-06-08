@@ -50,6 +50,7 @@ The whole thing ships as a single container: a .NET 10 API that also serves the 
 
 **Notifications**
 - Domain events (invites, membership responses, match confirmations/rejections/postponements) plus auth emails (verification, password reset) are written to an **outbox** and delivered by a background sender. **Set `Smtp:Host`** to deliver over **SMTP** (MailKit); with no host configured it falls back to a logging sender, so dev and tests need no mail server.
+- Every delivered email carries a **version footer** (`smash-dates <version>`) sourced from the same build-stamped value as `GET /api/version`, so a received mail is traceable to the build that sent it.
 
 **Players & registrations**
 - **Players** are global, club-managed roster records (no login); clubs link them as **Member** or **Visitor**.

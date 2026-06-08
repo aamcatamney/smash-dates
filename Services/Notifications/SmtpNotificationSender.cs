@@ -12,11 +12,13 @@ namespace smash_dates.Services.Notifications;
 public sealed class SmtpNotificationSender : INotificationSender
 {
     private readonly SmtpOptions _options;
+    private readonly IAppVersion _version;
     private readonly ILogger<SmtpNotificationSender> _logger;
 
-    public SmtpNotificationSender(IOptions<SmtpOptions> options, ILogger<SmtpNotificationSender> logger)
+    public SmtpNotificationSender(IOptions<SmtpOptions> options, IAppVersion version, ILogger<SmtpNotificationSender> logger)
     {
         _options = options.Value;
+        _version = version;
         _logger = logger;
     }
 
@@ -32,7 +34,10 @@ public sealed class SmtpNotificationSender : INotificationSender
         message.From.Add(new MailboxAddress(_options.FromName, _options.FromAddress));
         message.To.Add(MailboxAddress.Parse(notification.RecipientEmail));
         message.Subject = notification.Subject;
-        message.Body = new TextPart("plain") { Text = notification.Body };
+        message.Body = new TextPart("plain")
+        {
+            Text = NotificationEmail.BodyWithVersionFooter(notification.Body, _version.Current),
+        };
 
         // StartTlsWhenAvailable upgrades to TLS if the server offers it but still works against a
         // plaintext relay (e.g. a local test server) — UseStartTls=false forces no upgrade.

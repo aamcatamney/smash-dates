@@ -5,6 +5,7 @@ using DotNet.Testcontainers.Containers;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 using smash_dates.Models;
+using smash_dates.Services;
 using smash_dates.Services.Notifications;
 
 namespace smash_dates.IntegrationTests.Services;
@@ -35,7 +36,7 @@ public sealed class SmtpNotificationSenderTests : IAsyncLifetime
             FromAddress = "no-reply@smash-dates.test",
             FromName = "Smash Dates",
         });
-        var sender = new SmtpNotificationSender(options, NullLogger<SmtpNotificationSender>.Instance);
+        var sender = new SmtpNotificationSender(options, new StubVersion("v2026.6.0-test"), NullLogger<SmtpNotificationSender>.Instance);
 
         var notification = new Notification
         {
@@ -57,9 +58,19 @@ public sealed class SmtpNotificationSenderTests : IAsyncLifetime
         inbox!.Messages.Should().ContainSingle();
         inbox.Messages[0].Subject.Should().Be("Verify your smash-dates email");
         inbox.Messages[0].To.Should().ContainSingle(t => t.Address == "player@example.com");
+
+        // The delivered body carries the build version in a footer, sourced from IAppVersion.
+        var delivered = await http.GetFromJsonAsync<MailpitMessage>($"/api/v1/message/{inbox.Messages[0].ID}");
+        delivered!.Text.Should().Contain("Confirm your email to finish setting up your account.");
+        delivered.Text.Should().Contain("smash-dates v2026.6.0-test");
     }
 
     private sealed record MailpitMessages(List<MailpitMessage> Messages);
-    private sealed record MailpitMessage(string Subject, List<MailpitAddress> To);
+    private sealed record MailpitMessage(string ID, string Subject, string Text, List<MailpitAddress> To);
     private sealed record MailpitAddress(string Address);
+
+    private sealed class StubVersion(string current) : IAppVersion
+    {
+        public string Current { get; } = current;
+    }
 }

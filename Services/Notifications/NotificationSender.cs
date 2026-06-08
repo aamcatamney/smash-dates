@@ -12,18 +12,21 @@ public interface INotificationSender
 
 public sealed class LoggingNotificationSender : INotificationSender
 {
+    private readonly IAppVersion _version;
     private readonly ILogger<LoggingNotificationSender> _logger;
 
-    public LoggingNotificationSender(ILogger<LoggingNotificationSender> logger)
+    public LoggingNotificationSender(IAppVersion version, ILogger<LoggingNotificationSender> logger)
     {
+        _version = version;
         _logger = logger;
     }
 
     public Task SendAsync(Notification notification, CancellationToken ct = default)
     {
+        // Mirror the real sender's version stamp so the dev/test log matches what SMTP would deliver.
         _logger.LogInformation(
-            "Notification {Id} to {Recipient}: {Subject}",
-            notification.Id, notification.RecipientEmail, notification.Subject);
+            "Notification {Id} to {Recipient}: {Subject} [smash-dates {Version}]",
+            notification.Id, notification.RecipientEmail, notification.Subject, _version.Current);
         return Task.CompletedTask;
     }
 }
