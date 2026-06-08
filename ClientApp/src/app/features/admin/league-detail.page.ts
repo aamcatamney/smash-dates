@@ -7,12 +7,13 @@ import {
   signal,
 } from '@angular/core';
 import { FormArray, FormControl, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
-import { ActivatedRoute, RouterLink } from '@angular/router';
+import { ActivatedRoute } from '@angular/router';
 import { forkJoin, switchMap, tap } from 'rxjs';
 import {
   CreateDivisionRequest,
   DivisionGender,
   DivisionSummary,
+  LeagueAdminSummary,
   LeagueDetail,
   DivisionTable,
   LeaguesApi,
@@ -46,7 +47,6 @@ import { PlayersApi } from './players.api';
   selector: 'app-league-detail-page',
   imports: [
     ReactiveFormsModule,
-    RouterLink,
     AdminHeaderComponent,
     ModalComponent,
     ConfirmComponent,
@@ -76,11 +76,6 @@ import { PlayersApi } from './players.api';
                 {{ l.description }}
               </p>
             }
-            <a
-              [routerLink]="['/admin/leagues', leagueId, 'admins']"
-              class="mt-2 inline-block font-mono text-xs uppercase tracking-wider text-slate-500 dark:text-slate-400 hover:underline"
-              >manage admins →</a
-            >
             <div class="mt-2">
               <app-calendar-subscribe
                 [endpoint]="'/api/calendar/league/' + leagueId + '/url'"
@@ -1036,6 +1031,80 @@ import { PlayersApi } from './players.api';
               }
             </section>
           }
+
+          @if (tabs.active() === 'admins') {
+            <section role="tabpanel" id="panel-admins" aria-labelledby="tab-admins">
+              <div class="mt-8 flex items-center justify-between">
+                <h2 class="font-mono text-lg font-semibold text-slate-900 dark:text-slate-100">
+                  League admins
+                </h2>
+                <button
+                  type="button"
+                  (click)="adminDialogOpen.set(true)"
+                  class="rounded-md border border-slate-300 dark:border-slate-700 px-3 py-1 font-mono text-xs text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800"
+                >
+                  ＋ Add admin
+                </button>
+              </div>
+              <ul
+                class="mt-3 divide-y divide-slate-200 rounded-md border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900"
+              >
+                @for (admin of admins(); track admin.userId) {
+                  <li class="flex items-center justify-between px-4 py-3 font-mono text-sm">
+                    <span>
+                      {{ admin.displayName ?? admin.email }}
+                      <span class="ml-2 text-slate-500 dark:text-slate-400">{{ admin.email }}</span>
+                    </span>
+                    <button
+                      type="button"
+                      [attr.aria-label]="'Revoke ' + admin.email"
+                      (click)="askRevokeAdmin(admin)"
+                      class="rounded-md border border-red-300 dark:border-red-800 px-3 py-1 text-xs text-red-700 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950"
+                    >
+                      Revoke
+                    </button>
+                  </li>
+                } @empty {
+                  <li class="px-4 py-3 font-mono text-sm text-slate-500 dark:text-slate-400">
+                    No admins.
+                  </li>
+                }
+              </ul>
+
+              <app-modal
+                [open]="adminDialogOpen()"
+                title="Add league admin"
+                (closed)="adminDialogOpen.set(false)"
+              >
+                <form [formGroup]="adminForm" (ngSubmit)="onGrantAdmin()" class="grid gap-3">
+                  <label class="grid gap-1">
+                    <span
+                      class="font-mono text-xs uppercase tracking-wider text-slate-600 dark:text-slate-400"
+                      >Add admin by email</span
+                    >
+                    <input
+                      type="email"
+                      formControlName="email"
+                      class="rounded-md border border-slate-300 dark:border-slate-700 px-3 py-2 font-mono text-sm focus:outline-none focus:ring-2 focus:ring-slate-900 dark:focus:ring-slate-100 dark:bg-slate-800 dark:text-slate-100"
+                      required
+                    />
+                  </label>
+                  <button
+                    type="submit"
+                    [disabled]="adminBusy() || adminForm.invalid"
+                    class="justify-self-start rounded-md bg-slate-900 dark:bg-amber-400 px-4 py-2 font-mono text-sm font-medium text-amber-300 dark:text-slate-900 disabled:opacity-50"
+                  >
+                    {{ adminBusy() ? 'Granting…' : 'Grant admin' }}
+                  </button>
+                  @if (adminError()) {
+                    <p class="font-mono text-sm text-red-600 dark:text-red-400" role="alert">
+                      {{ adminError() }}
+                    </p>
+                  }
+                </form>
+              </app-modal>
+            </section>
+          }
         } @else {
           <p class="py-10 text-center font-mono text-sm text-slate-500 dark:text-slate-400">
             Couldn't load this league.
@@ -1084,6 +1153,16 @@ export default class LeagueDetailPage implements OnDestroy {
   protected readonly importResult = signal<ImportResult | null>(null);
   protected readonly entryImportColumns = ['team', 'division'];
   protected readonly pending = signal<{ message: string; action: () => void } | null>(null);
+  protected readonly admins = signal<LeagueAdminSummary[]>([]);
+  protected readonly adminBusy = signal(false);
+  protected readonly adminError = signal<string | null>(null);
+  protected readonly adminDialogOpen = signal(false);
+  protected readonly adminForm = new FormGroup({
+    email: new FormControl('', {
+      nonNullable: true,
+      validators: [Validators.required, Validators.email],
+    }),
+  });
   protected readonly seasonError = signal<string | null>(null);
   protected readonly seasonSubmitting = signal(false);
   protected readonly editingSeasonId = signal<string | null>(null);
@@ -1119,6 +1198,7 @@ export default class LeagueDetailPage implements OnDestroy {
     { id: 'clubs', label: 'Clubs', count: this.memberships().length },
     { id: 'players', label: 'Players', count: this.playersPending() },
     { id: 'scheduler', label: 'Scheduler' },
+    { id: 'admins', label: 'Admins', count: this.admins().length },
   ]);
 
   protected readonly configForm = new FormGroup({
@@ -1214,6 +1294,7 @@ export default class LeagueDetailPage implements OnDestroy {
           this.refreshSeasons();
           this.loadConfig();
           this.refreshPlayersPending();
+          this.refreshAdmins();
         }),
         switchMap((l) => this.api.listDivisions(l.id)),
       )
@@ -1272,6 +1353,55 @@ export default class LeagueDetailPage implements OnDestroy {
     const p = this.pending();
     this.pending.set(null);
     p?.action();
+  }
+
+  private refreshAdmins(): void {
+    this.api.listAdmins(this.leagueId).subscribe({
+      next: (rows) => this.admins.set(rows),
+    });
+  }
+
+  protected onGrantAdmin(): void {
+    const email = this.adminForm.getRawValue().email.trim();
+    if (!email) return;
+    this.adminBusy.set(true);
+    this.adminError.set(null);
+    this.api.lookupUser(email).subscribe({
+      next: (user) => {
+        this.api.grantAdmin(this.leagueId, user.id).subscribe({
+          next: () => {
+            this.adminBusy.set(false);
+            this.adminForm.reset({ email: '' });
+            this.adminDialogOpen.set(false);
+            this.toast.success(`Granted ${email} as a league admin.`);
+            this.refreshAdmins();
+          },
+          error: (err: { error?: { title?: string } }) => {
+            this.adminBusy.set(false);
+            this.adminError.set(err?.error?.title ?? 'Grant failed.');
+          },
+        });
+      },
+      error: () => {
+        this.adminBusy.set(false);
+        this.adminError.set('No registered user with that email.');
+      },
+    });
+  }
+
+  protected askRevokeAdmin(admin: LeagueAdminSummary): void {
+    this.pending.set({
+      message: `Revoke ${admin.email} as a league admin?`,
+      action: () => this.onRevokeAdmin(admin.userId),
+    });
+  }
+
+  protected onRevokeAdmin(userId: string): void {
+    this.api.revokeAdmin(this.leagueId, userId).subscribe({
+      next: () => this.refreshAdmins(),
+      error: (err: { error?: { title?: string } }) =>
+        this.toast.error(err?.error?.title ?? 'Revoke failed.'),
+    });
   }
 
   protected askExpel(m: MembershipSummary): void {
