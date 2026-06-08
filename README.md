@@ -114,6 +114,11 @@ The league confirms discipline registrations and adjudicates transfers between c
 
 ![Player registrations & transfers awaiting league approval](docs/screenshots/players.png)
 
+### Profile & access
+A signed-in user changes their own password and reviews the read-only list of role grants they hold.
+
+![Profile page — change password and role grants](docs/screenshots/profile.png)
+
 ### Public view (no login)
 A logged-out, read-only view of a league's standings and fixtures at `/public` — PII-free.
 
