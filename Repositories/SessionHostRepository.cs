@@ -32,6 +32,21 @@ public sealed class SessionHostRepository : ISessionHostRepository
         return rows.AsList();
     }
 
+    public async Task<IReadOnlyList<SessionHostGrantView>> ListByUserAsync(Guid userId, CancellationToken ct = default)
+    {
+        using var conn = _factory.Create();
+        var rows = await conn.QueryAsync<SessionHostGrantView>(
+            new CommandDefinition(
+                @"SELECT sh.club_id, c.name AS club_name
+                  FROM session_hosts sh
+                  JOIN clubs c ON c.id = sh.club_id
+                  WHERE sh.user_id = @userId
+                  ORDER BY c.name",
+                new { userId },
+                cancellationToken: ct));
+        return rows.AsList();
+    }
+
     public async Task GrantAsync(Guid clubId, Guid userId, Guid? grantedBy, CancellationToken ct = default)
     {
         using var conn = _factory.Create();

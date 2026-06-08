@@ -15,6 +15,7 @@ public static class AuthEndpoints
         group.MapLogoutEndpoint();
         group.MapRegisterEndpoint();
         group.MapMeEndpoint();
+        group.MapMyGrantsEndpoint();
         group.MapForgotPasswordEndpoint();
         group.MapResetPasswordEndpoint();
         group.MapChangePasswordEndpoint();
