@@ -26,16 +26,21 @@ import { PegboardApi, SessionSummary } from './pegboard.api';
     </div>
 
     @if (notice()) {
-      <p class="mt-3 rounded-md border border-amber-300 bg-amber-50 px-3 py-2 font-mono text-xs text-amber-800 dark:border-amber-800 dark:bg-amber-950 dark:text-amber-300" role="status">
+      <p
+        class="mt-3 rounded-md border border-amber-300 bg-amber-50 px-3 py-2 font-mono text-xs text-amber-800 dark:border-amber-800 dark:bg-amber-950 dark:text-amber-300"
+        role="status"
+      >
         {{ notice() }}
       </p>
     }
 
-    <ul class="mt-3 divide-y divide-slate-200 rounded-md border border-slate-200 bg-white dark:divide-slate-800 dark:border-slate-800 dark:bg-slate-900">
+    <ul
+      class="mt-3 divide-y divide-slate-200 rounded-md border border-slate-200 bg-white dark:divide-slate-800 dark:border-slate-800 dark:bg-slate-900"
+    >
       @for (s of sessions(); track s.id) {
         <li class="px-4 py-3 font-mono text-sm">
           <a
-            [routerLink]="['/admin/clubs', clubId(), 'pegboard', s.id]"
+            [routerLink]="['/clubs', clubId(), 'pegboard', s.id]"
             class="flex flex-wrap items-center gap-x-3 gap-y-1 hover:underline"
           >
             <span class="font-medium text-slate-900 dark:text-slate-100">{{ s.name }}</span>
@@ -48,18 +53,25 @@ import { PegboardApi, SessionSummary } from './pegboard.api';
               "
               >{{ s.status }}</span
             >
-            <span class="text-slate-500 dark:text-slate-400">opened {{ s.openedAt | date: 'medium' }}</span>
+            <span class="text-slate-500 dark:text-slate-400"
+              >opened {{ s.openedAt | date: 'medium' }}</span
+            >
           </a>
         </li>
       } @empty {
-        <li class="px-4 py-3 font-mono text-sm text-slate-500 dark:text-slate-400">No sessions yet.</li>
+        <li class="px-4 py-3 font-mono text-sm text-slate-500 dark:text-slate-400">
+          No sessions yet.
+        </li>
       }
     </ul>
 
     <app-modal [open]="dialogOpen()" title="Open session" (closed)="dialogOpen.set(false)">
       <form [formGroup]="form" (ngSubmit)="onOpen()" class="grid gap-3">
         <label class="grid gap-1">
-          <span class="font-mono text-xs uppercase tracking-wider text-slate-600 dark:text-slate-400">Session name</span>
+          <span
+            class="font-mono text-xs uppercase tracking-wider text-slate-600 dark:text-slate-400"
+            >Session name</span
+          >
           <input
             type="text"
             formControlName="name"
@@ -125,7 +137,7 @@ export class PegboardSessionsComponent {
       next: (created) => {
         this.busy.set(false);
         this.dialogOpen.set(false);
-        this.router.navigate(['/admin/clubs', this.clubId(), 'pegboard', created.id]);
+        this.router.navigate(['/clubs', this.clubId(), 'pegboard', created.id]);
       },
       error: (err: { status?: number; error?: { title?: string } }) => {
         this.busy.set(false);

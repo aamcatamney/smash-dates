@@ -183,7 +183,7 @@ import { ToastService } from '../../shared/toast.service';
             @for (club of clubs(); track club.id) {
               <li class="px-4 py-3">
                 <a
-                  [routerLink]="['/admin/clubs', club.id]"
+                  [routerLink]="['/clubs', club.id]"
                   class="font-mono text-sm font-medium text-slate-900 hover:underline dark:text-slate-100"
                   >{{ club.shortCode }} · {{ club.name }}</a
                 >

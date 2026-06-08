@@ -4,7 +4,7 @@ Screenshots embedded in the root `README.md`, captured from a seeded demo league
 
 | File | Shows |
 |------|-------|
-| `leagues.png` | Leagues list (`/admin/leagues`) |
+| `leagues.png` | Leagues list (`/leagues`) |
 | `league-detail.png` | League detail — divisions, seasons, member clubs |
 | `season-setup.png` | Season weeks editor + team entries |
 | `fixtures.png` | A generated season's fixtures |
