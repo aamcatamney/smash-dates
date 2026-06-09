@@ -22,3 +22,24 @@ Screenshots embedded in the root `README.md`, captured from a seeded demo league
 Dark-theme variants `pegboard-sessions-dark.png`, `pegboard-board-dark.png` and `public-standings-dark.png` are also kept.
 
 Suggested width ~1400px, PNG.
+
+## Seeding the demo
+
+[`scripts/seed-demo.sh`](../../scripts/seed-demo.sh) populates a fresh instance with the demo
+league these screenshots are taken from — a league with two divisions, four clubs (each with a
+venue, a team and an accepted membership), players + discipline registrations, a fully generated
+and partly-played season (so standings and fixtures have content), and an open pegboard club
+night with a finished game. It drives the real HTTP API as the bootstrap SystemAdmin.
+
+```bash
+# 1. Start a FRESH database + the app (build the client first so the SPA is served):
+cd ClientApp && npm run build && cd ..
+ConnectionStrings__Postgres="Host=localhost;Port=5432;Database=smash_dates;Username=postgres;Password=postgres" \
+  ASPNETCORE_ENVIRONMENT=Development dotnet run &
+# 2. Seed it (defaults to http://localhost:5080):
+scripts/seed-demo.sh
+# then sign in as admin@smash-dates.test / correct-horse-battery and capture.
+```
+
+Requires `bash`, `curl` and `python3`, and an empty database (it registers the first user, who
+becomes the SystemAdmin). `BASE_URL`, `ADMIN_EMAIL` and `ADMIN_PASSWORD` are overridable via env.
