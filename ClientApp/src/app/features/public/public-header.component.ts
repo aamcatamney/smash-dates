@@ -1,4 +1,5 @@
 import { ChangeDetectionStrategy, Component } from '@angular/core';
+import { NgOptimizedImage } from '@angular/common';
 import { RouterLink } from '@angular/router';
 import { ThemeToggleComponent } from '../../shared/theme-toggle.component';
 
@@ -6,7 +7,7 @@ import { ThemeToggleComponent } from '../../shared/theme-toggle.component';
 // toggle and a way in to sign in.
 @Component({
   selector: 'app-public-header',
-  imports: [RouterLink, ThemeToggleComponent],
+  imports: [RouterLink, ThemeToggleComponent, NgOptimizedImage],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <header
@@ -14,8 +15,9 @@ import { ThemeToggleComponent } from '../../shared/theme-toggle.component';
     >
       <a
         routerLink="/public"
-        class="font-mono text-sm font-semibold text-slate-900 dark:text-slate-100"
+        class="flex items-center gap-2 font-mono text-sm font-semibold text-slate-900 dark:text-slate-100"
       >
+        <img ngSrc="favicon.svg" width="20" height="20" priority alt="" />
         smash-dates
       </a>
       <div class="flex items-center gap-3">
