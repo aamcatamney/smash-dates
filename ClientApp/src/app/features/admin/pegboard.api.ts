@@ -141,6 +141,18 @@ export class PegboardApi {
   ): Observable<unknown> {
     return this.http.post(`${this.base(clubId)}/${sessionId}/attendances`, { playerId, grade });
   }
+  // Register a walk-in as a real Visitor player on the club, then add them to the board.
+  addVisitor(
+    clubId: string,
+    sessionId: string,
+    fullName: string,
+    gender: Gender,
+    grade: number | null,
+  ): Observable<unknown> {
+    return this.http.post(`${this.base(clubId)}/${sessionId}/attendances`, {
+      newVisitor: { fullName, gender, grade },
+    });
+  }
   setAttendanceStatus(
     clubId: string,
     sessionId: string,
