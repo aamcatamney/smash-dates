@@ -19,16 +19,15 @@ public abstract class IntegrationTestBase : IAsyncLifetime
     public async ValueTask InitializeAsync()
     {
         await Fixture.ResetAsync();
-        Factory = new TestWebApplicationFactory(Fixture.ConnectionString);
+        // Reuse the collection-wide factory; only the per-test HTTP client (and its cookies) is
+        // fresh. The factory is owned by the fixture, so we don't dispose it here.
+        Factory = Fixture.Factory;
         Client = Factory.CreateClient();
     }
 
-    public async ValueTask DisposeAsync()
+    public ValueTask DisposeAsync()
     {
         Client?.Dispose();
-        if (Factory is not null)
-        {
-            await Factory.DisposeAsync();
-        }
+        return ValueTask.CompletedTask;
     }
 }
