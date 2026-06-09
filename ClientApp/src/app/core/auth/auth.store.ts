@@ -103,6 +103,19 @@ export const AuthStore = signalStore(
           return 'error';
         }
       },
+      // Update the signed-in user's display name; on success patches the session so the
+      // header greeting and elsewhere reflect it immediately.
+      async updateDisplayName(displayName: string | null): Promise<boolean> {
+        patchState(store, { pending: true, error: null });
+        try {
+          const user = await firstValueFrom(api.updateDisplayName(displayName));
+          patchState(store, { user, error: null, pending: false });
+          return true;
+        } catch (error) {
+          patchState(store, { error: toAuthError(error, 'me'), pending: false });
+          return false;
+        }
+      },
       async logout(): Promise<void> {
         patchState(store, { pending: true });
         try {
