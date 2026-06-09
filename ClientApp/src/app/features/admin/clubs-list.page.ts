@@ -21,7 +21,7 @@ import { ToastService } from '../../shared/toast.service';
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
-    <div class="min-h-screen bg-slate-50 dark:bg-slate-950">
+    <div class="flex-1 bg-slate-50 dark:bg-slate-950">
       <app-admin-header />
 
       <main class="mx-auto w-full max-w-5xl px-4 py-10">

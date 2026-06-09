@@ -1,6 +1,6 @@
 /* You can add global styles to this file, and also import other style files */
 
-@import "tailwindcss";
+@import 'tailwindcss';
 
 /* Manual (class-based) dark mode: dark: utilities apply when <html> (or an ancestor)
    carries the `dark` class. ThemeService toggles it; an inline script in index.html
@@ -19,5 +19,16 @@
 @layer base {
   body {
     @apply bg-slate-50 text-slate-900 dark:bg-slate-950 dark:text-slate-100;
+  }
+
+  /* The routed page is rendered as the sibling immediately after <router-outlet> inside the
+     app shell (a min-h-screen flex column, with the version footer below). Make that page a
+     flex column that grows to fill the space above the footer, so each page's flex-1 root
+     stretches to the viewport without the footer adding overflow. */
+  app-root > div > router-outlet + * {
+    display: flex;
+    flex: 1 1 auto;
+    min-height: 0;
+    flex-direction: column;
   }
 }

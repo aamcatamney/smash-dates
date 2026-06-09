@@ -1,4 +1,12 @@
-import { ChangeDetectionStrategy, Component, ElementRef, OnInit, inject, signal, viewChild } from '@angular/core';
+import {
+  ChangeDetectionStrategy,
+  Component,
+  ElementRef,
+  OnInit,
+  inject,
+  signal,
+  viewChild,
+} from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { ActivatedRoute, RouterLink } from '@angular/router';
 import { firstValueFrom } from 'rxjs';
@@ -11,13 +19,17 @@ import { ThemeToggleComponent } from '../../shared/theme-toggle.component';
   imports: [ReactiveFormsModule, RouterLink, ThemeToggleComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
-    <main class="relative min-h-screen flex items-center justify-center bg-slate-50 dark:bg-slate-950 px-4 py-12">
+    <main
+      class="relative flex-1 flex items-center justify-center bg-slate-50 dark:bg-slate-950 px-4 py-12"
+    >
       <div class="absolute right-4 top-4"><app-theme-toggle /></div>
       <section
         class="w-full max-w-md bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl shadow-sm p-8"
         aria-labelledby="reset-title"
       >
-        <h1 id="reset-title" class="text-2xl font-semibold text-slate-900 dark:text-slate-100 mb-1">Choose a new password</h1>
+        <h1 id="reset-title" class="text-2xl font-semibold text-slate-900 dark:text-slate-100 mb-1">
+          Choose a new password
+        </h1>
 
         @if (done()) {
           <p class="text-sm text-slate-600 dark:text-slate-400 mb-6">All set.</p>
@@ -28,21 +40,37 @@ import { ThemeToggleComponent } from '../../shared/theme-toggle.component';
             Your password has been reset. You can now sign in with your new password.
           </div>
           <p class="mt-6 text-sm text-slate-600 dark:text-slate-400">
-            <a routerLink="/login" class="font-medium text-slate-900 dark:text-slate-100 underline">Continue to sign in</a>
+            <a routerLink="/login" class="font-medium text-slate-900 dark:text-slate-100 underline"
+              >Continue to sign in</a
+            >
           </p>
         } @else if (!token) {
-          <p class="text-sm text-slate-600 dark:text-slate-400 mb-6">This link is missing its reset token.</p>
-          <div role="alert" class="rounded-md border border-red-200 dark:border-red-900 bg-red-50 dark:bg-red-950 px-4 py-3 text-sm text-red-800 dark:text-red-300">
+          <p class="text-sm text-slate-600 dark:text-slate-400 mb-6">
+            This link is missing its reset token.
+          </p>
+          <div
+            role="alert"
+            class="rounded-md border border-red-200 dark:border-red-900 bg-red-50 dark:bg-red-950 px-4 py-3 text-sm text-red-800 dark:text-red-300"
+          >
             Open the link from your reset email, or request a new one.
           </div>
           <p class="mt-6 text-sm text-slate-600 dark:text-slate-400">
-            <a routerLink="/forgot-password" class="font-medium text-slate-900 dark:text-slate-100 underline">Request a reset link</a>
+            <a
+              routerLink="/forgot-password"
+              class="font-medium text-slate-900 dark:text-slate-100 underline"
+              >Request a reset link</a
+            >
           </p>
         } @else {
-          <p class="text-sm text-slate-600 dark:text-slate-400 mb-6">Pick a password with at least 12 characters.</p>
+          <p class="text-sm text-slate-600 dark:text-slate-400 mb-6">
+            Pick a password with at least 12 characters.
+          </p>
 
           @if (error(); as msg) {
-            <div role="alert" class="mb-4 rounded-md border border-red-200 dark:border-red-900 bg-red-50 dark:bg-red-950 px-3 py-2 text-sm text-red-800 dark:text-red-300">
+            <div
+              role="alert"
+              class="mb-4 rounded-md border border-red-200 dark:border-red-900 bg-red-50 dark:bg-red-950 px-3 py-2 text-sm text-red-800 dark:text-red-300"
+            >
               {{ msg }}
             </div>
           }
@@ -50,7 +78,11 @@ import { ThemeToggleComponent } from '../../shared/theme-toggle.component';
           <form [formGroup]="form" (ngSubmit)="submit()" novalidate>
             <fieldset [disabled]="pending()" class="space-y-4">
               <div>
-                <label for="password" class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">New password</label>
+                <label
+                  for="password"
+                  class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1"
+                  >New password</label
+                >
                 <div class="relative">
                   <input
                     #passwordInput
@@ -73,7 +105,9 @@ import { ThemeToggleComponent } from '../../shared/theme-toggle.component';
                   </button>
                 </div>
                 @if (showError()) {
-                  <p id="password-error" class="mt-1 text-sm text-red-700 dark:text-red-400">Password must be at least 12 characters.</p>
+                  <p id="password-error" class="mt-1 text-sm text-red-700 dark:text-red-400">
+                    Password must be at least 12 characters.
+                  </p>
                 }
               </div>
               <button
