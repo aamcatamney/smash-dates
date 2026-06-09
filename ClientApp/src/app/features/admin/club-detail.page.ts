@@ -28,6 +28,7 @@ import { TabsComponent, TabDef } from '../../shared/tabs.component';
 import { CalendarSubscribeComponent } from '../../shared/calendar-subscribe.component';
 import { ToastService } from '../../shared/toast.service';
 import { PlayersApi } from './players.api';
+import { AuthStore } from '../../core/auth/auth.store';
 
 @Component({
   selector: 'app-club-detail-page',
@@ -88,13 +89,15 @@ import { PlayersApi } from './players.api';
                 <h2 class="font-mono text-lg font-semibold text-slate-900 dark:text-slate-100">
                   Club admins
                 </h2>
-                <button
-                  type="button"
-                  (click)="adminDialogOpen.set(true)"
-                  class="rounded-md border border-slate-300 dark:border-slate-700 px-3 py-1 font-mono text-xs text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800"
-                >
-                  ＋ Add admin
-                </button>
+                @if (canManage()) {
+                  <button
+                    type="button"
+                    (click)="adminDialogOpen.set(true)"
+                    class="rounded-md border border-slate-300 dark:border-slate-700 px-3 py-1 font-mono text-xs text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800"
+                  >
+                    ＋ Add admin
+                  </button>
+                }
               </div>
               <ul
                 class="mt-3 divide-y divide-slate-200 rounded-md border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900"
@@ -105,14 +108,16 @@ import { PlayersApi } from './players.api';
                       {{ admin.displayName ?? admin.email }}
                       <span class="ml-2 text-slate-500 dark:text-slate-400">{{ admin.email }}</span>
                     </span>
-                    <button
-                      type="button"
-                      [attr.aria-label]="'Revoke ' + admin.email"
-                      (click)="askRevoke(admin)"
-                      class="rounded-md border border-red-300 dark:border-red-800 px-3 py-1 text-xs text-red-700 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950"
-                    >
-                      Revoke
-                    </button>
+                    @if (canManage()) {
+                      <button
+                        type="button"
+                        [attr.aria-label]="'Revoke ' + admin.email"
+                        (click)="askRevoke(admin)"
+                        class="rounded-md border border-red-300 dark:border-red-800 px-3 py-1 text-xs text-red-700 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950"
+                      >
+                        Revoke
+                      </button>
+                    }
                   </li>
                 } @empty {
                   <li class="px-4 py-3 font-mono text-sm text-slate-500 dark:text-slate-400">
@@ -172,36 +177,38 @@ import { PlayersApi } from './players.api';
                         >{{ m.status }}</span
                       >
                     </span>
-                    <div class="flex gap-2">
-                      @if (m.status === 'Pending') {
-                        <button
-                          type="button"
-                          (click)="onAccept(m)"
-                          [disabled]="isBusy(m.id)"
-                          class="rounded-md border border-emerald-300 dark:border-emerald-800 px-3 py-1 text-xs text-emerald-700 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-950 disabled:opacity-50"
-                        >
-                          Accept
-                        </button>
-                        <button
-                          type="button"
-                          (click)="onDecline(m)"
-                          [disabled]="isBusy(m.id)"
-                          class="rounded-md border border-amber-300 dark:border-amber-800 px-3 py-1 text-xs text-amber-700 dark:text-amber-400 hover:bg-amber-50 dark:hover:bg-amber-950 disabled:opacity-50"
-                        >
-                          Decline
-                        </button>
-                      }
-                      @if (m.status === 'Accepted') {
-                        <button
-                          type="button"
-                          (click)="onWithdraw(m)"
-                          [disabled]="isBusy(m.id)"
-                          class="rounded-md border border-red-300 dark:border-red-800 px-3 py-1 text-xs text-red-700 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950 disabled:opacity-50"
-                        >
-                          Withdraw
-                        </button>
-                      }
-                    </div>
+                    @if (canManage()) {
+                      <div class="flex gap-2">
+                        @if (m.status === 'Pending') {
+                          <button
+                            type="button"
+                            (click)="onAccept(m)"
+                            [disabled]="isBusy(m.id)"
+                            class="rounded-md border border-emerald-300 dark:border-emerald-800 px-3 py-1 text-xs text-emerald-700 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-950 disabled:opacity-50"
+                          >
+                            Accept
+                          </button>
+                          <button
+                            type="button"
+                            (click)="onDecline(m)"
+                            [disabled]="isBusy(m.id)"
+                            class="rounded-md border border-amber-300 dark:border-amber-800 px-3 py-1 text-xs text-amber-700 dark:text-amber-400 hover:bg-amber-50 dark:hover:bg-amber-950 disabled:opacity-50"
+                          >
+                            Decline
+                          </button>
+                        }
+                        @if (m.status === 'Accepted') {
+                          <button
+                            type="button"
+                            (click)="onWithdraw(m)"
+                            [disabled]="isBusy(m.id)"
+                            class="rounded-md border border-red-300 dark:border-red-800 px-3 py-1 text-xs text-red-700 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950 disabled:opacity-50"
+                          >
+                            Withdraw
+                          </button>
+                        }
+                      </div>
+                    }
                   </li>
                 } @empty {
                   <li class="px-4 py-3 font-mono text-sm text-slate-500 dark:text-slate-400">
@@ -218,22 +225,24 @@ import { PlayersApi } from './players.api';
                 <h2 class="font-mono text-lg font-semibold text-slate-900 dark:text-slate-100">
                   Teams
                 </h2>
-                <div class="flex gap-2">
-                  <button
-                    type="button"
-                    (click)="openImport('teams')"
-                    class="rounded-md border border-slate-300 dark:border-slate-700 px-3 py-1 font-mono text-xs text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800"
-                  >
-                    Import CSV
-                  </button>
-                  <button
-                    type="button"
-                    (click)="teamDialogOpen.set(true)"
-                    class="rounded-md border border-slate-300 dark:border-slate-700 px-3 py-1 font-mono text-xs text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800"
-                  >
-                    ＋ Add team
-                  </button>
-                </div>
+                @if (canManage()) {
+                  <div class="flex gap-2">
+                    <button
+                      type="button"
+                      (click)="openImport('teams')"
+                      class="rounded-md border border-slate-300 dark:border-slate-700 px-3 py-1 font-mono text-xs text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800"
+                    >
+                      Import CSV
+                    </button>
+                    <button
+                      type="button"
+                      (click)="teamDialogOpen.set(true)"
+                      class="rounded-md border border-slate-300 dark:border-slate-700 px-3 py-1 font-mono text-xs text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800"
+                    >
+                      ＋ Add team
+                    </button>
+                  </div>
+                }
               </div>
               <ul
                 class="mt-3 divide-y divide-slate-200 rounded-md border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900"
@@ -256,14 +265,16 @@ import { PlayersApi } from './players.api';
                         >
                           {{ squadTeamId() === t.id ? 'Close' : 'Squad' }}
                         </button>
-                        <button
-                          type="button"
-                          [attr.aria-label]="'Delete team ' + t.name"
-                          (click)="askDeleteTeam(t)"
-                          class="rounded-md border border-red-300 dark:border-red-800 px-3 py-1 text-xs text-red-700 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950"
-                        >
-                          Delete
-                        </button>
+                        @if (canManage()) {
+                          <button
+                            type="button"
+                            [attr.aria-label]="'Delete team ' + t.name"
+                            (click)="askDeleteTeam(t)"
+                            class="rounded-md border border-red-300 dark:border-red-800 px-3 py-1 text-xs text-red-700 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950"
+                          >
+                            Delete
+                          </button>
+                        }
                       </div>
                     </div>
                     <div class="mt-2">
@@ -338,22 +349,24 @@ import { PlayersApi } from './players.api';
                 <h2 class="font-mono text-lg font-semibold text-slate-900 dark:text-slate-100">
                   Venues
                 </h2>
-                <div class="flex gap-2">
-                  <button
-                    type="button"
-                    (click)="openImport('venues')"
-                    class="rounded-md border border-slate-300 dark:border-slate-700 px-3 py-1 font-mono text-xs text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800"
-                  >
-                    Import CSV
-                  </button>
-                  <button
-                    type="button"
-                    (click)="venueDialogOpen.set(true)"
-                    class="rounded-md border border-slate-300 dark:border-slate-700 px-3 py-1 font-mono text-xs text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800"
-                  >
-                    ＋ Add venue
-                  </button>
-                </div>
+                @if (canManage()) {
+                  <div class="flex gap-2">
+                    <button
+                      type="button"
+                      (click)="openImport('venues')"
+                      class="rounded-md border border-slate-300 dark:border-slate-700 px-3 py-1 font-mono text-xs text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800"
+                    >
+                      Import CSV
+                    </button>
+                    <button
+                      type="button"
+                      (click)="venueDialogOpen.set(true)"
+                      class="rounded-md border border-slate-300 dark:border-slate-700 px-3 py-1 font-mono text-xs text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800"
+                    >
+                      ＋ Add venue
+                    </button>
+                  </div>
+                }
               </div>
               <ul
                 class="mt-3 divide-y divide-slate-200 rounded-md border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900"
@@ -370,14 +383,16 @@ import { PlayersApi } from './players.api';
                         {{ v.maxConcurrentMatches === 1 ? 'match' : 'matches' }} at once
                       </span>
                     </span>
-                    <button
-                      type="button"
-                      [attr.aria-label]="'Delete venue ' + v.name"
-                      (click)="askDeleteVenue(v)"
-                      class="rounded-md border border-red-300 dark:border-red-800 px-3 py-1 text-xs text-red-700 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950"
-                    >
-                      Delete
-                    </button>
+                    @if (canManage()) {
+                      <button
+                        type="button"
+                        [attr.aria-label]="'Delete venue ' + v.name"
+                        (click)="askDeleteVenue(v)"
+                        class="rounded-md border border-red-300 dark:border-red-800 px-3 py-1 text-xs text-red-700 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950"
+                      >
+                        Delete
+                      </button>
+                    }
                   </li>
                 } @empty {
                   <li class="px-4 py-3 font-mono text-sm text-slate-500 dark:text-slate-400">
@@ -486,7 +501,7 @@ import { PlayersApi } from './players.api';
                       "
                       >{{ m.status }}</span
                     >
-                    @if (m.status === 'Proposed') {
+                    @if (canManage() && m.status === 'Proposed') {
                       <span class="text-xs text-slate-400 dark:text-slate-500"
                         >({{ m.homeAccepted ? 'home ✓' : 'home …' }},
                         {{ m.awayAccepted ? 'away ✓' : 'away …' }})</span
@@ -506,7 +521,7 @@ import { PlayersApi } from './players.api';
                         Reject
                       </button>
                     }
-                    @if (m.status === 'Confirmed') {
+                    @if (canManage() && m.status === 'Confirmed') {
                       <button
                         type="button"
                         (click)="onOpenMatchResult(m)"
@@ -579,13 +594,15 @@ import { PlayersApi } from './players.api';
                 <h2 class="font-mono text-lg font-semibold text-slate-900 dark:text-slate-100">
                   Blocked dates
                 </h2>
-                <button
-                  type="button"
-                  (click)="blockDialogOpen.set(true)"
-                  class="rounded-md border border-slate-300 dark:border-slate-700 px-3 py-1 font-mono text-xs text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800"
-                >
-                  ＋ Add blocked date
-                </button>
+                @if (canManage()) {
+                  <button
+                    type="button"
+                    (click)="blockDialogOpen.set(true)"
+                    class="rounded-md border border-slate-300 dark:border-slate-700 px-3 py-1 font-mono text-xs text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800"
+                  >
+                    ＋ Add blocked date
+                  </button>
+                }
               </div>
               <ul
                 class="mt-3 divide-y divide-slate-200 rounded-md border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900"
@@ -615,14 +632,16 @@ import { PlayersApi } from './players.api';
                       </span>
                       <span class="ml-2 text-slate-500 dark:text-slate-400">{{ b.reason }}</span>
                     </span>
-                    <button
-                      type="button"
-                      [attr.aria-label]="'Delete blocked date ' + b.reason"
-                      (click)="askDeleteBlockedDate(b)"
-                      class="rounded-md border border-red-300 dark:border-red-800 px-3 py-1 text-xs text-red-700 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950"
-                    >
-                      Delete
-                    </button>
+                    @if (canManage()) {
+                      <button
+                        type="button"
+                        [attr.aria-label]="'Delete blocked date ' + b.reason"
+                        (click)="askDeleteBlockedDate(b)"
+                        class="rounded-md border border-red-300 dark:border-red-800 px-3 py-1 text-xs text-red-700 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950"
+                      >
+                        Delete
+                      </button>
+                    }
                   </li>
                 } @empty {
                   <li class="px-4 py-3 font-mono text-sm text-slate-500 dark:text-slate-400">
@@ -794,8 +813,12 @@ export default class ClubDetailPage {
   private readonly api = inject(ClubsApi);
   private readonly leagues = inject(LeaguesApi);
   private readonly toast = inject(ToastService);
+  private readonly store = inject(AuthStore);
 
   protected readonly clubId = signal('');
+  // Whether the current user may manage this club (SystemAdmin or a ClubAdmin grant for it).
+  // Gates the admin controls; the backend enforces the same rule regardless.
+  protected readonly canManage = computed(() => this.store.isClubAdmin(this.clubId()));
   private readonly playersApi = inject(PlayersApi);
   protected readonly playerCount = signal(0);
   protected readonly clubTabs = computed<TabDef[]>(() => [

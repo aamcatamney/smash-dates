@@ -4,6 +4,8 @@ import { FormControl, FormGroup, ReactiveFormsModule, Validators } from '@angula
 import { Router, RouterLink } from '@angular/router';
 import { ModalComponent } from '../../shared/modal.component';
 import { PegboardApi, SessionSummary } from './pegboard.api';
+import { computed } from '@angular/core';
+import { AuthStore } from '../../core/auth/auth.store';
 
 // "Sessions" tab on the club page: lists this club's pegboard sessions (current + past) and
 // opens a new one. Each row links to the full-screen board route. Opening a session navigates
@@ -16,13 +18,15 @@ import { PegboardApi, SessionSummary } from './pegboard.api';
   template: `
     <div class="mt-10 flex items-center justify-between">
       <h2 class="font-mono text-lg font-semibold text-slate-900 dark:text-slate-100">Sessions</h2>
-      <button
-        type="button"
-        (click)="openDialog()"
-        class="rounded-md border border-slate-300 px-3 py-1 font-mono text-xs text-slate-700 hover:bg-slate-50 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800"
-      >
-        ＋ Open session
-      </button>
+      @if (canRun()) {
+        <button
+          type="button"
+          (click)="openDialog()"
+          class="rounded-md border border-slate-300 px-3 py-1 font-mono text-xs text-slate-700 hover:bg-slate-50 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800"
+        >
+          ＋ Open session
+        </button>
+      }
     </div>
 
     @if (notice()) {
@@ -97,8 +101,11 @@ import { PegboardApi, SessionSummary } from './pegboard.api';
 export class PegboardSessionsComponent {
   private readonly api = inject(PegboardApi);
   private readonly router = inject(Router);
+  private readonly store = inject(AuthStore);
 
   readonly clubId = input.required<string>();
+  // Only a club admin or SessionHost may open/run sessions.
+  protected readonly canRun = computed(() => this.store.isSessionRunner(this.clubId()));
 
   protected readonly sessions = signal<SessionSummary[]>([]);
   protected readonly dialogOpen = signal(false);
