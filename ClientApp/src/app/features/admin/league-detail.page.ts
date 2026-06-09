@@ -42,6 +42,7 @@ import { TabsComponent, TabDef } from '../../shared/tabs.component';
 import { CalendarSubscribeComponent } from '../../shared/calendar-subscribe.component';
 import { ToastService } from '../../shared/toast.service';
 import { PlayersApi } from './players.api';
+import { AuthStore } from '../../core/auth/auth.store';
 
 @Component({
   selector: 'app-league-detail-page',
@@ -92,13 +93,15 @@ import { PlayersApi } from './players.api';
                 <h2 class="font-mono text-lg font-semibold text-slate-900 dark:text-slate-100">
                   Divisions
                 </h2>
-                <button
-                  type="button"
-                  (click)="divisionDialogOpen.set(true)"
-                  class="rounded-md border border-slate-300 dark:border-slate-700 px-3 py-1 font-mono text-xs text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800"
-                >
-                  ＋ Add division
-                </button>
+                @if (canManage()) {
+                  <button
+                    type="button"
+                    (click)="divisionDialogOpen.set(true)"
+                    class="rounded-md border border-slate-300 dark:border-slate-700 px-3 py-1 font-mono text-xs text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800"
+                  >
+                    ＋ Add division
+                  </button>
+                }
               </div>
               <ul
                 class="mt-3 divide-y divide-slate-200 rounded-md border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900"
@@ -233,13 +236,15 @@ import { PlayersApi } from './players.api';
                 <h2 class="font-mono text-lg font-semibold text-slate-900 dark:text-slate-100">
                   Seasons
                 </h2>
-                <button
-                  type="button"
-                  (click)="seasonDialogOpen.set(true)"
-                  class="rounded-md border border-slate-300 dark:border-slate-700 px-3 py-1 font-mono text-xs text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800"
-                >
-                  ＋ Add season
-                </button>
+                @if (canManage()) {
+                  <button
+                    type="button"
+                    (click)="seasonDialogOpen.set(true)"
+                    class="rounded-md border border-slate-300 dark:border-slate-700 px-3 py-1 font-mono text-xs text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800"
+                  >
+                    ＋ Add season
+                  </button>
+                }
               </div>
               <ul
                 class="mt-3 divide-y divide-slate-200 rounded-md border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900"
@@ -260,100 +265,102 @@ import { PlayersApi } from './players.api';
                           >{{ s.status }}</span
                         >
                       </span>
-                      <div class="flex gap-2">
-                        @if (s.status === 'Draft') {
-                          <button
-                            type="button"
-                            (click)="onEditWeeks(s)"
-                            class="rounded-md border border-slate-300 dark:border-slate-700 px-3 py-1 text-xs text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800"
-                          >
-                            {{ editingSeasonId() === s.id ? 'Close' : 'Weeks' }}
-                          </button>
-                          <button
-                            type="button"
-                            (click)="onManageEntries(s)"
-                            class="rounded-md border border-slate-300 dark:border-slate-700 px-3 py-1 text-xs text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800"
-                          >
-                            {{ entriesSeasonId() === s.id ? 'Close' : 'Teams' }}
-                          </button>
-                          <button
-                            type="button"
-                            (click)="openImport(s)"
-                            class="rounded-md border border-slate-300 dark:border-slate-700 px-3 py-1 text-xs text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800"
-                          >
-                            Import
-                          </button>
-                          <button
-                            type="button"
-                            [disabled]="generatingSeasonId() === s.id"
-                            (click)="onGenerate(s)"
-                            class="rounded-md bg-slate-900 dark:bg-amber-400 px-3 py-1 text-xs font-medium text-amber-300 dark:text-slate-900 hover:bg-slate-800 dark:hover:bg-amber-300 disabled:opacity-50"
-                          >
-                            {{ generatingSeasonId() === s.id ? 'Generating…' : 'Generate' }}
-                          </button>
-                          <button
-                            type="button"
-                            [disabled]="diagnosingSeasonId() === s.id"
-                            (click)="onDiagnose(s)"
-                            class="rounded-md border border-slate-300 dark:border-slate-700 px-3 py-1 text-xs text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 disabled:opacity-50"
-                          >
-                            {{ diagnosingSeasonId() === s.id ? 'Diagnosing…' : 'Diagnose' }}
-                          </button>
-                          <button
-                            type="button"
-                            [attr.aria-label]="'Delete season ' + s.name"
-                            (click)="askDeleteSeason(s)"
-                            class="rounded-md border border-red-300 dark:border-red-800 px-3 py-1 text-xs text-red-700 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950"
-                          >
-                            Delete
-                          </button>
-                        } @else if (s.status === 'Scheduling') {
-                          <span class="font-mono text-xs text-blue-700 dark:text-blue-300"
-                            >Generating schedule…</span
-                          >
-                        } @else {
-                          <button
-                            type="button"
-                            (click)="onToggleFixtures(s)"
-                            class="rounded-md border border-slate-300 dark:border-slate-700 px-3 py-1 text-xs text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800"
-                          >
-                            {{ fixturesSeasonId() === s.id ? 'Close' : 'Fixtures' }}
-                          </button>
-                          @if (s.status === 'Proposed') {
+                      @if (canManage()) {
+                        <div class="flex gap-2">
+                          @if (s.status === 'Draft') {
                             <button
                               type="button"
-                              [disabled]="rerunningSeasonId() === s.id"
-                              (click)="onRerun(s)"
+                              (click)="onEditWeeks(s)"
+                              class="rounded-md border border-slate-300 dark:border-slate-700 px-3 py-1 text-xs text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800"
+                            >
+                              {{ editingSeasonId() === s.id ? 'Close' : 'Weeks' }}
+                            </button>
+                            <button
+                              type="button"
+                              (click)="onManageEntries(s)"
+                              class="rounded-md border border-slate-300 dark:border-slate-700 px-3 py-1 text-xs text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800"
+                            >
+                              {{ entriesSeasonId() === s.id ? 'Close' : 'Teams' }}
+                            </button>
+                            <button
+                              type="button"
+                              (click)="openImport(s)"
+                              class="rounded-md border border-slate-300 dark:border-slate-700 px-3 py-1 text-xs text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800"
+                            >
+                              Import
+                            </button>
+                            <button
+                              type="button"
+                              [disabled]="generatingSeasonId() === s.id"
+                              (click)="onGenerate(s)"
+                              class="rounded-md bg-slate-900 dark:bg-amber-400 px-3 py-1 text-xs font-medium text-amber-300 dark:text-slate-900 hover:bg-slate-800 dark:hover:bg-amber-300 disabled:opacity-50"
+                            >
+                              {{ generatingSeasonId() === s.id ? 'Generating…' : 'Generate' }}
+                            </button>
+                            <button
+                              type="button"
+                              [disabled]="diagnosingSeasonId() === s.id"
+                              (click)="onDiagnose(s)"
                               class="rounded-md border border-slate-300 dark:border-slate-700 px-3 py-1 text-xs text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 disabled:opacity-50"
                             >
-                              {{ rerunningSeasonId() === s.id ? 'Re-running…' : 'Re-run' }}
+                              {{ diagnosingSeasonId() === s.id ? 'Diagnosing…' : 'Diagnose' }}
                             </button>
                             <button
                               type="button"
-                              (click)="onActivate(s)"
-                              class="rounded-md bg-slate-900 dark:bg-amber-400 px-3 py-1 text-xs font-medium text-amber-300 dark:text-slate-900 hover:bg-slate-800 dark:hover:bg-amber-300"
-                            >
-                              Activate
-                            </button>
-                          }
-                          @if (s.status === 'Active') {
-                            <button
-                              type="button"
-                              (click)="onCloseSeason(s)"
+                              [attr.aria-label]="'Delete season ' + s.name"
+                              (click)="askDeleteSeason(s)"
                               class="rounded-md border border-red-300 dark:border-red-800 px-3 py-1 text-xs text-red-700 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950"
                             >
-                              Close season
+                              Delete
+                            </button>
+                          } @else if (s.status === 'Scheduling') {
+                            <span class="font-mono text-xs text-blue-700 dark:text-blue-300"
+                              >Generating schedule…</span
+                            >
+                          } @else {
+                            <button
+                              type="button"
+                              (click)="onToggleFixtures(s)"
+                              class="rounded-md border border-slate-300 dark:border-slate-700 px-3 py-1 text-xs text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800"
+                            >
+                              {{ fixturesSeasonId() === s.id ? 'Close' : 'Fixtures' }}
+                            </button>
+                            @if (s.status === 'Proposed') {
+                              <button
+                                type="button"
+                                [disabled]="rerunningSeasonId() === s.id"
+                                (click)="onRerun(s)"
+                                class="rounded-md border border-slate-300 dark:border-slate-700 px-3 py-1 text-xs text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 disabled:opacity-50"
+                              >
+                                {{ rerunningSeasonId() === s.id ? 'Re-running…' : 'Re-run' }}
+                              </button>
+                              <button
+                                type="button"
+                                (click)="onActivate(s)"
+                                class="rounded-md bg-slate-900 dark:bg-amber-400 px-3 py-1 text-xs font-medium text-amber-300 dark:text-slate-900 hover:bg-slate-800 dark:hover:bg-amber-300"
+                              >
+                                Activate
+                              </button>
+                            }
+                            @if (s.status === 'Active') {
+                              <button
+                                type="button"
+                                (click)="onCloseSeason(s)"
+                                class="rounded-md border border-red-300 dark:border-red-800 px-3 py-1 text-xs text-red-700 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950"
+                              >
+                                Close season
+                              </button>
+                            }
+                            <button
+                              type="button"
+                              (click)="onToggleStandings(s)"
+                              class="rounded-md border border-slate-300 dark:border-slate-700 px-3 py-1 text-xs text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800"
+                            >
+                              {{ standingsSeasonId() === s.id ? 'Close' : 'Table' }}
                             </button>
                           }
-                          <button
-                            type="button"
-                            (click)="onToggleStandings(s)"
-                            class="rounded-md border border-slate-300 dark:border-slate-700 px-3 py-1 text-xs text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800"
-                          >
-                            {{ standingsSeasonId() === s.id ? 'Close' : 'Table' }}
-                          </button>
-                        }
-                      </div>
+                        </div>
+                      }
                       @if (rerunError() && rerunErrorSeasonId() === s.id) {
                         <p class="mt-1 text-xs text-red-600 dark:text-red-400" role="alert">
                           {{ rerunError() }}
@@ -845,13 +852,15 @@ import { PlayersApi } from './players.api';
                 <h2 class="font-mono text-lg font-semibold text-slate-900 dark:text-slate-100">
                   Member clubs
                 </h2>
-                <button
-                  type="button"
-                  (click)="inviteDialogOpen.set(true)"
-                  class="rounded-md border border-slate-300 dark:border-slate-700 px-3 py-1 font-mono text-xs text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800"
-                >
-                  ＋ Invite club
-                </button>
+                @if (canManage()) {
+                  <button
+                    type="button"
+                    (click)="inviteDialogOpen.set(true)"
+                    class="rounded-md border border-slate-300 dark:border-slate-700 px-3 py-1 font-mono text-xs text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800"
+                  >
+                    ＋ Invite club
+                  </button>
+                }
               </div>
               <ul
                 class="mt-3 divide-y divide-slate-200 rounded-md border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900"
@@ -868,7 +877,7 @@ import { PlayersApi } from './players.api';
                         >{{ m.status }}</span
                       >
                     </span>
-                    @if (m.status === 'Accepted') {
+                    @if (canManage() && m.status === 'Accepted') {
                       <button
                         type="button"
                         (click)="askExpel(m)"
@@ -1038,13 +1047,15 @@ import { PlayersApi } from './players.api';
                 <h2 class="font-mono text-lg font-semibold text-slate-900 dark:text-slate-100">
                   League admins
                 </h2>
-                <button
-                  type="button"
-                  (click)="adminDialogOpen.set(true)"
-                  class="rounded-md border border-slate-300 dark:border-slate-700 px-3 py-1 font-mono text-xs text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800"
-                >
-                  ＋ Add admin
-                </button>
+                @if (canManage()) {
+                  <button
+                    type="button"
+                    (click)="adminDialogOpen.set(true)"
+                    class="rounded-md border border-slate-300 dark:border-slate-700 px-3 py-1 font-mono text-xs text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800"
+                  >
+                    ＋ Add admin
+                  </button>
+                }
               </div>
               <ul
                 class="mt-3 divide-y divide-slate-200 rounded-md border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900"
@@ -1055,14 +1066,16 @@ import { PlayersApi } from './players.api';
                       {{ admin.displayName ?? admin.email }}
                       <span class="ml-2 text-slate-500 dark:text-slate-400">{{ admin.email }}</span>
                     </span>
-                    <button
-                      type="button"
-                      [attr.aria-label]="'Revoke ' + admin.email"
-                      (click)="askRevokeAdmin(admin)"
-                      class="rounded-md border border-red-300 dark:border-red-800 px-3 py-1 text-xs text-red-700 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950"
-                    >
-                      Revoke
-                    </button>
+                    @if (canManage()) {
+                      <button
+                        type="button"
+                        [attr.aria-label]="'Revoke ' + admin.email"
+                        (click)="askRevokeAdmin(admin)"
+                        class="rounded-md border border-red-300 dark:border-red-800 px-3 py-1 text-xs text-red-700 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950"
+                      >
+                        Revoke
+                      </button>
+                    }
                   </li>
                 } @empty {
                   <li class="px-4 py-3 font-mono text-sm text-slate-500 dark:text-slate-400">
@@ -1136,6 +1149,10 @@ export default class LeagueDetailPage implements OnDestroy {
   private readonly api = inject(LeaguesApi);
   private readonly clubsApi = inject(ClubsApi);
   private readonly toast = inject(ToastService);
+  private readonly store = inject(AuthStore);
+  // Whether the current user may manage this league (SystemAdmin or a LeagueAdmin grant for it).
+  // Gates the admin controls; the backend enforces the same rule regardless.
+  protected readonly canManage = computed(() => this.store.isLeagueAdmin(this.leagueId));
 
   protected readonly league = signal<LeagueDetail | null>(null);
   protected readonly loading = signal(true);

@@ -1,12 +1,14 @@
 import {
   ChangeDetectionStrategy,
   Component,
+  computed,
   effect,
   inject,
   input,
   output,
   signal,
 } from '@angular/core';
+import { AuthStore } from '../../core/auth/auth.store';
 import { FormControl, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import {
   Discipline,
@@ -38,29 +40,31 @@ interface LeagueOption {
   template: `
     <div class="mt-10 flex items-center justify-between">
       <h2 class="font-mono text-lg font-semibold text-slate-900 dark:text-slate-100">Players</h2>
-      <div class="flex gap-2">
-        <button
-          type="button"
-          (click)="openImport()"
-          class="rounded-md border border-slate-300 px-3 py-1 font-mono text-xs text-slate-700 hover:bg-slate-50 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800"
-        >
-          Import CSV
-        </button>
-        <button
-          type="button"
-          (click)="openTransferIn()"
-          class="rounded-md border border-slate-300 px-3 py-1 font-mono text-xs text-slate-700 hover:bg-slate-50 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800"
-        >
-          Transfer in
-        </button>
-        <button
-          type="button"
-          (click)="openAdd()"
-          class="rounded-md border border-slate-300 px-3 py-1 font-mono text-xs text-slate-700 hover:bg-slate-50 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800"
-        >
-          ＋ Add player
-        </button>
-      </div>
+      @if (canManage()) {
+        <div class="flex gap-2">
+          <button
+            type="button"
+            (click)="openImport()"
+            class="rounded-md border border-slate-300 px-3 py-1 font-mono text-xs text-slate-700 hover:bg-slate-50 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800"
+          >
+            Import CSV
+          </button>
+          <button
+            type="button"
+            (click)="openTransferIn()"
+            class="rounded-md border border-slate-300 px-3 py-1 font-mono text-xs text-slate-700 hover:bg-slate-50 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800"
+          >
+            Transfer in
+          </button>
+          <button
+            type="button"
+            (click)="openAdd()"
+            class="rounded-md border border-slate-300 px-3 py-1 font-mono text-xs text-slate-700 hover:bg-slate-50 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800"
+          >
+            ＋ Add player
+          </button>
+        </div>
+      }
     </div>
 
     <app-csv-import
@@ -94,31 +98,33 @@ interface LeagueOption {
               >{{ r.discipline }} · {{ r.leagueName }} · {{ r.status }}</span
             >
           }
-          <span class="ml-auto flex gap-2">
-            @if (p.type === 'Member') {
+          @if (canManage()) {
+            <span class="ml-auto flex gap-2">
+              @if (p.type === 'Member') {
+                <button
+                  type="button"
+                  (click)="openRegister(p)"
+                  class="rounded-md border border-slate-300 px-2 py-0.5 text-xs text-slate-700 hover:bg-slate-50 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800"
+                >
+                  Register
+                </button>
+              }
               <button
                 type="button"
-                (click)="openRegister(p)"
+                (click)="toggleType(p)"
                 class="rounded-md border border-slate-300 px-2 py-0.5 text-xs text-slate-700 hover:bg-slate-50 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800"
               >
-                Register
+                Make {{ p.type === 'Member' ? 'visitor' : 'member' }}
               </button>
-            }
-            <button
-              type="button"
-              (click)="toggleType(p)"
-              class="rounded-md border border-slate-300 px-2 py-0.5 text-xs text-slate-700 hover:bg-slate-50 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800"
-            >
-              Make {{ p.type === 'Member' ? 'visitor' : 'member' }}
-            </button>
-            <button
-              type="button"
-              (click)="remove(p)"
-              class="rounded-md border border-red-300 px-2 py-0.5 text-xs text-red-700 hover:bg-red-50 dark:border-red-800 dark:text-red-400 dark:hover:bg-red-950"
-            >
-              Remove
-            </button>
-          </span>
+              <button
+                type="button"
+                (click)="remove(p)"
+                class="rounded-md border border-red-300 px-2 py-0.5 text-xs text-red-700 hover:bg-red-50 dark:border-red-800 dark:text-red-400 dark:hover:bg-red-950"
+              >
+                Remove
+              </button>
+            </span>
+          }
         </li>
       } @empty {
         <li class="px-4 py-3 font-mono text-sm text-slate-500 dark:text-slate-400">No players.</li>
@@ -327,8 +333,10 @@ interface LeagueOption {
 })
 export class ClubPlayersComponent {
   private readonly api = inject(PlayersApi);
+  private readonly store = inject(AuthStore);
 
   readonly clubId = input.required<string>();
+  protected readonly canManage = computed(() => this.store.isClubAdmin(this.clubId()));
   readonly leagues = input<LeagueOption[]>([]);
   readonly playerCount = output<number>();
 
