@@ -7,7 +7,7 @@ import { AdminHeaderComponent } from '../admin/admin-header.component';
   imports: [RouterLink, AdminHeaderComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
-    <div class="min-h-screen flex flex-col bg-slate-50 dark:bg-slate-950">
+    <div class="flex-1 flex flex-col bg-slate-50 dark:bg-slate-950">
       <app-admin-header />
 
       <main class="mx-auto w-full max-w-5xl flex-1 px-4 py-12">

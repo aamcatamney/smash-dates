@@ -11,40 +11,71 @@ type VerifyStatus = 'verifying' | 'ok' | 'failed' | 'no-token';
   imports: [RouterLink, ThemeToggleComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
-    <main class="relative min-h-screen flex items-center justify-center bg-slate-50 dark:bg-slate-950 px-4 py-12">
+    <main
+      class="relative flex-1 flex items-center justify-center bg-slate-50 dark:bg-slate-950 px-4 py-12"
+    >
       <div class="absolute right-4 top-4"><app-theme-toggle /></div>
       <section
         class="w-full max-w-md bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl shadow-sm p-8"
         aria-labelledby="verify-title"
       >
-        <h1 id="verify-title" class="text-2xl font-semibold text-slate-900 dark:text-slate-100 mb-4">Email verification</h1>
+        <h1
+          id="verify-title"
+          class="text-2xl font-semibold text-slate-900 dark:text-slate-100 mb-4"
+        >
+          Email verification
+        </h1>
 
         @switch (status()) {
           @case ('verifying') {
-            <p role="status" class="text-sm text-slate-600 dark:text-slate-400">Verifying your email…</p>
+            <p role="status" class="text-sm text-slate-600 dark:text-slate-400">
+              Verifying your email…
+            </p>
           }
           @case ('ok') {
-            <div role="status" class="rounded-md border border-emerald-200 dark:border-emerald-900 bg-emerald-50 dark:bg-emerald-950 px-4 py-3 text-sm text-emerald-800 dark:text-emerald-300">
+            <div
+              role="status"
+              class="rounded-md border border-emerald-200 dark:border-emerald-900 bg-emerald-50 dark:bg-emerald-950 px-4 py-3 text-sm text-emerald-800 dark:text-emerald-300"
+            >
               Your email is verified. You can now sign in.
             </div>
             <p class="mt-6 text-sm text-slate-600 dark:text-slate-400">
-              <a routerLink="/login" class="font-medium text-slate-900 dark:text-slate-100 underline">Continue to sign in</a>
+              <a
+                routerLink="/login"
+                class="font-medium text-slate-900 dark:text-slate-100 underline"
+                >Continue to sign in</a
+              >
             </p>
           }
           @case ('failed') {
-            <div role="alert" class="rounded-md border border-red-200 dark:border-red-900 bg-red-50 dark:bg-red-950 px-4 py-3 text-sm text-red-800 dark:text-red-300">
+            <div
+              role="alert"
+              class="rounded-md border border-red-200 dark:border-red-900 bg-red-50 dark:bg-red-950 px-4 py-3 text-sm text-red-800 dark:text-red-300"
+            >
               This verification link is invalid or has expired.
             </div>
             <p class="mt-6 text-sm text-slate-600 dark:text-slate-400">
-              Sign in to request a fresh link — <a routerLink="/login" class="font-medium text-slate-900 dark:text-slate-100 underline">go to sign in</a>.
+              Sign in to request a fresh link —
+              <a
+                routerLink="/login"
+                class="font-medium text-slate-900 dark:text-slate-100 underline"
+                >go to sign in</a
+              >.
             </p>
           }
           @case ('no-token') {
-            <div role="alert" class="rounded-md border border-red-200 dark:border-red-900 bg-red-50 dark:bg-red-950 px-4 py-3 text-sm text-red-800 dark:text-red-300">
+            <div
+              role="alert"
+              class="rounded-md border border-red-200 dark:border-red-900 bg-red-50 dark:bg-red-950 px-4 py-3 text-sm text-red-800 dark:text-red-300"
+            >
               This link is missing its verification token.
             </div>
             <p class="mt-6 text-sm text-slate-600 dark:text-slate-400">
-              <a routerLink="/login" class="font-medium text-slate-900 dark:text-slate-100 underline">Back to sign in</a>
+              <a
+                routerLink="/login"
+                class="font-medium text-slate-900 dark:text-slate-100 underline"
+                >Back to sign in</a
+              >
             </p>
           }
         }

@@ -1,4 +1,13 @@
-import { ChangeDetectionStrategy, Component, ElementRef, OnInit, computed, inject, signal, viewChild } from '@angular/core';
+import {
+  ChangeDetectionStrategy,
+  Component,
+  ElementRef,
+  OnInit,
+  computed,
+  inject,
+  signal,
+  viewChild,
+} from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { firstValueFrom } from 'rxjs';
@@ -11,14 +20,20 @@ import { ThemeToggleComponent } from '../../shared/theme-toggle.component';
   imports: [ReactiveFormsModule, RouterLink, ThemeToggleComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
-    <main class="relative min-h-screen flex items-center justify-center bg-slate-50 dark:bg-slate-950 px-4 py-12">
+    <main
+      class="relative flex-1 flex items-center justify-center bg-slate-50 dark:bg-slate-950 px-4 py-12"
+    >
       <div class="absolute right-4 top-4"><app-theme-toggle /></div>
       <section
         class="w-full max-w-md bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl shadow-sm p-8"
         aria-labelledby="login-title"
       >
-        <h1 id="login-title" class="text-2xl font-semibold text-slate-900 dark:text-slate-100 mb-1">Sign in</h1>
-        <p class="text-sm text-slate-600 dark:text-slate-400 mb-6">Welcome back. Enter your credentials to continue.</p>
+        <h1 id="login-title" class="text-2xl font-semibold text-slate-900 dark:text-slate-100 mb-1">
+          Sign in
+        </h1>
+        <p class="text-sm text-slate-600 dark:text-slate-400 mb-6">
+          Welcome back. Enter your credentials to continue.
+        </p>
 
         @if (store.error(); as err) {
           <div
@@ -28,7 +43,9 @@ import { ThemeToggleComponent } from '../../shared/theme-toggle.component';
             <p>{{ err.message }}</p>
             @if (err.kind === 'email-unverified') {
               @if (resendState() === 'sent') {
-                <p class="mt-2 text-emerald-700 dark:text-emerald-400">Verification email sent — check your inbox.</p>
+                <p class="mt-2 text-emerald-700 dark:text-emerald-400">
+                  Verification email sent — check your inbox.
+                </p>
               } @else {
                 <button
                   type="button"
@@ -46,7 +63,11 @@ import { ThemeToggleComponent } from '../../shared/theme-toggle.component';
         <form [formGroup]="form" (ngSubmit)="submit()" novalidate>
           <fieldset [disabled]="store.pending()" class="space-y-4">
             <div>
-              <label for="email" class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Email</label>
+              <label
+                for="email"
+                class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1"
+                >Email</label
+              >
               <input
                 #emailInput
                 id="email"
@@ -58,14 +79,24 @@ import { ThemeToggleComponent } from '../../shared/theme-toggle.component';
                 class="block w-full rounded-md border border-slate-300 dark:border-slate-700 px-3 py-2 text-slate-900 dark:text-slate-100 shadow-sm focus:border-slate-900 dark:focus:border-slate-100 focus:outline-none focus:ring-2 focus:ring-slate-900 dark:focus:ring-slate-100 dark:bg-slate-800"
               />
               @if (showError('email')) {
-                <p id="email-error" class="mt-1 text-sm text-red-700 dark:text-red-400">Enter a valid email.</p>
+                <p id="email-error" class="mt-1 text-sm text-red-700 dark:text-red-400">
+                  Enter a valid email.
+                </p>
               }
             </div>
 
             <div>
               <div class="flex items-baseline justify-between mb-1">
-                <label for="password" class="block text-sm font-medium text-slate-700 dark:text-slate-300">Password</label>
-                <a routerLink="/forgot-password" class="text-xs font-medium text-slate-600 dark:text-slate-400 underline hover:text-slate-900 dark:hover:text-slate-100">Forgot password?</a>
+                <label
+                  for="password"
+                  class="block text-sm font-medium text-slate-700 dark:text-slate-300"
+                  >Password</label
+                >
+                <a
+                  routerLink="/forgot-password"
+                  class="text-xs font-medium text-slate-600 dark:text-slate-400 underline hover:text-slate-900 dark:hover:text-slate-100"
+                  >Forgot password?</a
+                >
               </div>
               <div class="relative">
                 <input
@@ -88,7 +119,9 @@ import { ThemeToggleComponent } from '../../shared/theme-toggle.component';
                 </button>
               </div>
               @if (showError('password')) {
-                <p id="password-error" class="mt-1 text-sm text-red-700 dark:text-red-400">Password must be at least 12 characters.</p>
+                <p id="password-error" class="mt-1 text-sm text-red-700 dark:text-red-400">
+                  Password must be at least 12 characters.
+                </p>
               }
             </div>
 
@@ -112,7 +145,12 @@ import { ThemeToggleComponent } from '../../shared/theme-toggle.component';
 
         <p class="mt-6 text-sm text-slate-600 dark:text-slate-400">
           Don't have an account?
-          <a routerLink="/register" [queryParams]="passThroughReturnUrl()" class="font-medium text-slate-900 dark:text-slate-100 underline">Create one</a>.
+          <a
+            routerLink="/register"
+            [queryParams]="passThroughReturnUrl()"
+            class="font-medium text-slate-900 dark:text-slate-100 underline"
+            >Create one</a
+          >.
         </p>
       </section>
     </main>

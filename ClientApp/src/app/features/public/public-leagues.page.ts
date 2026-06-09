@@ -9,7 +9,7 @@ import { PublicHeaderComponent } from './public-header.component';
   imports: [RouterLink, PublicHeaderComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
-    <div class="min-h-screen bg-slate-50 dark:bg-slate-950">
+    <div class="flex-1 bg-slate-50 dark:bg-slate-950">
       <app-public-header />
       <main class="mx-auto w-full max-w-3xl px-4 py-10">
         <h1 class="font-mono text-2xl font-semibold text-slate-900 dark:text-slate-100">Leagues</h1>

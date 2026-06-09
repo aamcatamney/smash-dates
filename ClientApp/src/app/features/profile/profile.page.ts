@@ -12,7 +12,7 @@ import { AdminHeaderComponent } from '../admin/admin-header.component';
   imports: [ReactiveFormsModule, AdminHeaderComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
-    <div class="flex min-h-screen flex-col bg-slate-50 dark:bg-slate-950">
+    <div class="flex flex-1 flex-col bg-slate-50 dark:bg-slate-950">
       <app-admin-header />
 
       <main class="mx-auto w-full max-w-2xl flex-1 px-4 py-12">
