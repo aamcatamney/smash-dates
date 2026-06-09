@@ -2,7 +2,7 @@ import { TestBed } from '@angular/core/testing';
 import { ActivatedRouteSnapshot, RouterStateSnapshot, UrlTree } from '@angular/router';
 import { Router } from '@angular/router';
 import { describe, beforeEach, expect, it, vi } from 'vitest';
-import { authGuard, redirectIfAuthedGuard } from './auth.guard';
+import { authGuard, landingGuard, redirectIfAuthedGuard } from './auth.guard';
 import { AuthStore } from './auth.store';
 
 interface AuthStoreStub {
@@ -27,7 +27,10 @@ function runGuard<T>(fn: () => T): T {
   return TestBed.runInInjectionContext(fn);
 }
 
-function snapshot(url: string, queryParams: Record<string, string> = {}): { route: ActivatedRouteSnapshot; state: RouterStateSnapshot } {
+function snapshot(
+  url: string,
+  queryParams: Record<string, string> = {},
+): { route: ActivatedRouteSnapshot; state: RouterStateSnapshot } {
   const route = {
     queryParamMap: {
       get: (k: string) => queryParams[k] ?? null,
@@ -51,7 +54,9 @@ describe('authGuard', () => {
     const { createUrlTree } = setupGuardEnv(false);
     const { route, state } = snapshot('/dashboard');
     runGuard(() => authGuard(route, state));
-    expect(createUrlTree).toHaveBeenCalledWith(['/login'], { queryParams: { returnUrl: '/dashboard' } });
+    expect(createUrlTree).toHaveBeenCalledWith(['/login'], {
+      queryParams: { returnUrl: '/dashboard' },
+    });
   });
 });
 
@@ -91,5 +96,23 @@ describe('redirectIfAuthedGuard', () => {
     const { route, state } = snapshot('/login');
     runGuard(() => redirectIfAuthedGuard(route, state));
     expect(parseUrl).toHaveBeenCalledWith('/');
+  });
+});
+
+describe('landingGuard', () => {
+  beforeEach(() => TestBed.resetTestingModule());
+
+  it('allows authed user (their dashboard)', () => {
+    setupGuardEnv(true);
+    const { route, state } = snapshot('/');
+    const result = runGuard(() => landingGuard(route, state));
+    expect(result).toBe(true);
+  });
+
+  it('sends anonymous visitor to the public landing', () => {
+    const { createUrlTree } = setupGuardEnv(false);
+    const { route, state } = snapshot('/');
+    runGuard(() => landingGuard(route, state));
+    expect(createUrlTree).toHaveBeenCalledWith(['/public']);
   });
 });

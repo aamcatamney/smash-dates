@@ -26,6 +26,12 @@ import { ThemeToggleComponent } from '../../shared/theme-toggle.component';
         >
           Sign in
         </a>
+        <a
+          routerLink="/register"
+          class="rounded-md bg-slate-900 px-3 py-1.5 font-mono text-xs text-amber-300 hover:bg-slate-800 dark:bg-amber-400 dark:text-slate-900 dark:hover:bg-amber-300"
+        >
+          Create account
+        </a>
       </div>
     </header>
   `,

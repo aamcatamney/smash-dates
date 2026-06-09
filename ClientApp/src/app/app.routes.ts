@@ -1,12 +1,12 @@
 import { Routes } from '@angular/router';
-import { authGuard } from './core/auth/auth.guard';
+import { authGuard, landingGuard } from './core/auth/auth.guard';
 
 export const routes: Routes = [
   {
     path: '',
     pathMatch: 'full',
     title: 'Home · smash-dates',
-    canActivate: [authGuard],
+    canActivate: [landingGuard],
     loadComponent: () => import('./features/landing/landing.page'),
   },
   // Admin pages live at the top level (no /admin prefix). Each is guarded individually so
