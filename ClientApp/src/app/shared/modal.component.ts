@@ -48,6 +48,12 @@ import {
   `,
   styles: [
     `
+      /* The dialog carries a 'flex' utility for its open layout; that author-set display
+         would otherwise override the UA 'dialog:not([open]) { display: none }', leaving a
+         closed dialog visible. Re-assert the hide so the modal only shows when opened. */
+      dialog:not([open]) {
+        display: none;
+      }
       dialog::backdrop {
         background: rgb(15 23 42 / 0.5);
       }
