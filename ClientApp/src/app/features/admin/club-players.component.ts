@@ -71,7 +71,7 @@ interface LeagueOption {
       [open]="importOpen()"
       title="Import players"
       [columns]="importColumns"
-      sample="Alice Tan,Female,2,false"
+      sample="Alice Tan,Female,2"
       [result]="importResult()"
       [busy]="importBusy()"
       (submit)="onImport($event)"
