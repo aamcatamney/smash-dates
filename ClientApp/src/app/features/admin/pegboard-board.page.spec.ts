@@ -47,6 +47,8 @@ const board: BoardView = {
     },
   ],
   canManage: true,
+  clubName: 'Acme Badminton Club',
+  clubShortCode: 'ACME',
 };
 
 function apiMock(overrides: Partial<PegboardApi> = {}): PegboardApi {

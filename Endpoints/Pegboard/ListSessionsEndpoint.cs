@@ -4,7 +4,11 @@ namespace smash_dates.Endpoints.Pegboard;
 
 public static class ListSessionsEndpoint
 {
-    public sealed record SessionDto(Guid Id, string Name, string Status, System.DateTime OpenedAt, System.DateTime? ClosedAt);
+    public sealed record SessionDto(
+        Guid Id, string Name, string Status,
+        DateOnly? ScheduledDate, TimeOnly? StartTime, int? DurationMinutes,
+        Guid? VenueId, string? VenueName,
+        System.DateTime? OpenedAt, System.DateTime? ClosedAt);
 
     public static IEndpointRouteBuilder MapListSessionsEndpoint(this IEndpointRouteBuilder app)
     {
@@ -15,6 +19,9 @@ public static class ListSessionsEndpoint
     private static async Task<IResult> Handle(Guid clubId, IPegboardRepository pegboard, CancellationToken ct)
     {
         var rows = await pegboard.ListByClubAsync(clubId, ct);
-        return Results.Ok(rows.Select(s => new SessionDto(s.Id, s.Name, s.Status.ToString(), s.OpenedAt, s.ClosedAt)));
+        return Results.Ok(rows.Select(s => new SessionDto(
+            s.Id, s.Name, s.Status.ToString(),
+            s.ScheduledDate, s.StartTime, s.DurationMinutes,
+            s.VenueId, s.VenueName, s.OpenedAt, s.ClosedAt)));
     }
 }

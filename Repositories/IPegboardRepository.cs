@@ -17,7 +17,18 @@ public sealed record BoardView(
     // Caller-scoped: true when the requester may run this session (SessionHost/ClubAdmin/SystemAdmin).
     // The repo always builds it false; the endpoint sets it from the principal. Drives the client's
     // host-vs-viewer chrome — viewers get a read-only board (see GetBoardEndpoint).
-    bool CanManage = false);
+    bool CanManage = false,
+    // Club identity for the board header. Like CanManage, the repo leaves these blank and the
+    // endpoint fills them (the session itself only carries the club id).
+    string ClubName = "",
+    string ClubShortCode = "");
+
+// A session in the club's list, with the venue name resolved for display.
+public sealed record SessionListRow(
+    Guid Id, string Name, PegboardSessionStatus Status,
+    DateOnly? ScheduledDate, TimeOnly? StartTime, int? DurationMinutes,
+    Guid? VenueId, string? VenueName,
+    DateTime? OpenedAt, DateTime? ClosedAt);
 
 // One attendee's makeup-relevant facts, used by the fill engine.
 public sealed record WaitingAttendee(Guid Id, Gender Gender, int? Grade, DateTime WaitingSince, int GamesPlayed);
@@ -27,9 +38,18 @@ public interface IPegboardRepository
     // Sessions
     Task<PegboardSession?> GetSessionAsync(Guid sessionId, CancellationToken ct = default);
     Task<PegboardSession?> GetOpenByClubAsync(Guid clubId, CancellationToken ct = default);
-    Task<IReadOnlyList<PegboardSession>> ListByClubAsync(Guid clubId, CancellationToken ct = default);
+    Task<IReadOnlyList<SessionListRow>> ListByClubAsync(Guid clubId, CancellationToken ct = default);
     Task<Guid> OpenAsync(Guid clubId, string name, Guid openedBy, CancellationToken ct = default);
     Task<bool> CloseAsync(Guid sessionId, CancellationToken ct = default);
+
+    // Scheduling: plan a session ahead of time, open it when the night begins, or edit/drop it
+    // while still Scheduled. Opening enforces the one-Open-per-club rule (unique index -> 23505).
+    Task<Guid> ScheduleAsync(Guid clubId, string name, DateOnly scheduledDate, TimeOnly? startTime,
+        int? durationMinutes, Guid? venueId, CancellationToken ct = default);
+    Task<bool> OpenScheduledAsync(Guid sessionId, Guid openedBy, CancellationToken ct = default);
+    Task<bool> UpdateScheduledAsync(Guid sessionId, string name, DateOnly scheduledDate, TimeOnly? startTime,
+        int? durationMinutes, Guid? venueId, CancellationToken ct = default);
+    Task<bool> DeleteScheduledAsync(Guid sessionId, CancellationToken ct = default);
 
     // Courts
     Task<PegboardCourt?> GetCourtAsync(Guid courtId, CancellationToken ct = default);

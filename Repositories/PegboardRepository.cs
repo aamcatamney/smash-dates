@@ -7,7 +7,9 @@ namespace smash_dates.Repositories;
 
 public sealed class PegboardRepository : IPegboardRepository
 {
-    private const string SessionCols = "id, club_id, name, status, opened_by, opened_at, closed_at";
+    private const string SessionCols =
+        "id, club_id, name, status, opened_by, opened_at, closed_at, " +
+        "scheduled_date, start_time, duration_minutes, venue_id";
     private readonly IDbConnectionFactory _factory;
 
     public PegboardRepository(IDbConnectionFactory factory) => _factory = factory;
@@ -28,11 +30,21 @@ public sealed class PegboardRepository : IPegboardRepository
             new { clubId }, cancellationToken: ct));
     }
 
-    public async Task<IReadOnlyList<PegboardSession>> ListByClubAsync(Guid clubId, CancellationToken ct = default)
+    public async Task<IReadOnlyList<SessionListRow>> ListByClubAsync(Guid clubId, CancellationToken ct = default)
     {
         using var conn = _factory.Create();
-        var rows = await conn.QueryAsync<PegboardSession>(new CommandDefinition(
-            $"SELECT {SessionCols} FROM pegboard_sessions WHERE club_id = @clubId ORDER BY opened_at DESC",
+        // Upcoming (Scheduled) first by soonest date, then live/past by most-recent open time.
+        var rows = await conn.QueryAsync<SessionListRow>(new CommandDefinition(
+            @"SELECT s.id, s.name, s.status,
+                     s.scheduled_date, s.start_time, s.duration_minutes,
+                     s.venue_id, v.name AS venue_name,
+                     s.opened_at, s.closed_at
+              FROM pegboard_sessions s
+              LEFT JOIN venues v ON v.id = s.venue_id
+              WHERE s.club_id = @clubId
+              ORDER BY (s.status = 'Scheduled') DESC,
+                       CASE WHEN s.status = 'Scheduled' THEN s.scheduled_date END ASC,
+                       s.opened_at DESC NULLS LAST",
             new { clubId }, cancellationToken: ct));
         return rows.AsList();
     }
@@ -40,10 +52,57 @@ public sealed class PegboardRepository : IPegboardRepository
     public async Task<Guid> OpenAsync(Guid clubId, string name, Guid openedBy, CancellationToken ct = default)
     {
         using var conn = _factory.Create();
+        // opened_at no longer defaults at the column level (a Scheduled row leaves it null), so set it here.
         return await conn.ExecuteScalarAsync<Guid>(new CommandDefinition(
-            @"INSERT INTO pegboard_sessions (club_id, name, opened_by)
-              VALUES (@clubId, @name, @openedBy) RETURNING id",
+            @"INSERT INTO pegboard_sessions (club_id, name, status, opened_by, opened_at)
+              VALUES (@clubId, @name, 'Open', @openedBy, now()) RETURNING id",
             new { clubId, name, openedBy }, cancellationToken: ct));
+    }
+
+    public async Task<Guid> ScheduleAsync(Guid clubId, string name, DateOnly scheduledDate, TimeOnly? startTime,
+        int? durationMinutes, Guid? venueId, CancellationToken ct = default)
+    {
+        using var conn = _factory.Create();
+        return await conn.ExecuteScalarAsync<Guid>(new CommandDefinition(
+            @"INSERT INTO pegboard_sessions
+                  (club_id, name, status, scheduled_date, start_time, duration_minutes, venue_id)
+              VALUES (@clubId, @name, 'Scheduled', @scheduledDate, @startTime, @durationMinutes, @venueId)
+              RETURNING id",
+            new { clubId, name, scheduledDate, startTime, durationMinutes, venueId }, cancellationToken: ct));
+    }
+
+    public async Task<bool> OpenScheduledAsync(Guid sessionId, Guid openedBy, CancellationToken ct = default)
+    {
+        using var conn = _factory.Create();
+        // Scheduled -> Open. The partial unique index throws 23505 if the club already has an Open one.
+        var rows = await conn.ExecuteAsync(new CommandDefinition(
+            @"UPDATE pegboard_sessions
+              SET status = 'Open', opened_at = now(), opened_by = @openedBy
+              WHERE id = @sessionId AND status = 'Scheduled'",
+            new { sessionId, openedBy }, cancellationToken: ct));
+        return rows > 0;
+    }
+
+    public async Task<bool> UpdateScheduledAsync(Guid sessionId, string name, DateOnly scheduledDate, TimeOnly? startTime,
+        int? durationMinutes, Guid? venueId, CancellationToken ct = default)
+    {
+        using var conn = _factory.Create();
+        var rows = await conn.ExecuteAsync(new CommandDefinition(
+            @"UPDATE pegboard_sessions
+              SET name = @name, scheduled_date = @scheduledDate, start_time = @startTime,
+                  duration_minutes = @durationMinutes, venue_id = @venueId
+              WHERE id = @sessionId AND status = 'Scheduled'",
+            new { sessionId, name, scheduledDate, startTime, durationMinutes, venueId }, cancellationToken: ct));
+        return rows > 0;
+    }
+
+    public async Task<bool> DeleteScheduledAsync(Guid sessionId, CancellationToken ct = default)
+    {
+        using var conn = _factory.Create();
+        var rows = await conn.ExecuteAsync(new CommandDefinition(
+            "DELETE FROM pegboard_sessions WHERE id = @sessionId AND status = 'Scheduled'",
+            new { sessionId }, cancellationToken: ct));
+        return rows > 0;
     }
 
     public async Task<bool> CloseAsync(Guid sessionId, CancellationToken ct = default)

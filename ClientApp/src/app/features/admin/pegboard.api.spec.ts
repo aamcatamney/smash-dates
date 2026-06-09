@@ -36,6 +36,8 @@ describe('PegboardApi', () => {
       courts: [],
       attendees: [],
       canManage: true,
+      clubName: 'Acme BC',
+      clubShortCode: 'ACME',
     };
     let result: BoardView | undefined;
     api.getBoard(clubId, sessionId).subscribe((b) => (result = b));

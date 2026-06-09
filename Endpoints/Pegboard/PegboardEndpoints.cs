@@ -14,6 +14,10 @@ public static class PegboardEndpoints
 
         // Lifecycle (host/admin)
         group.MapOpenSessionEndpoint();
+        group.MapScheduleSessionEndpoint();
+        group.MapOpenScheduledSessionEndpoint();
+        group.MapUpdateScheduledSessionEndpoint();
+        group.MapDeleteScheduledSessionEndpoint();
         group.MapCloseSessionEndpoint();
 
         // Courts & attendances (host/admin)

@@ -180,12 +180,13 @@ A Team's persistent list of Players, managed by a `ClubAdmin@Club`. A Player may
 A separate, in-person concern from league play. A Pegboard Session is the digital replacement for the physical pegboard a Club uses on a social/practice night to track who turned up, who's waiting, the courts, and who's playing on them. It is **entirely disconnected** from Leagues, Seasons, Matches and Standings — no result here affects any league table.
 
 ### Pegboard Session
-A single club night, owned by one [Club](#club). Has a **Name** (or date) and a status: `Open → Closed`.
+A single club night, owned by one [Club](#club). Has a **Name** (or date) and a status: `Scheduled → Open → Closed`.
 
-- Opened, run and closed by a [SessionHost@Club](#roles-and-access) (or ClubAdmin / SystemAdmin). A Club has **at most one `Open` Session at a time**.
-- Holds the night's [Courts](#court), [Attendances](#attendance) and [Games](#game).
+- Opened, run, scheduled and closed by a [SessionHost@Club](#roles-and-access) (or ClubAdmin / SystemAdmin). A Club has **at most one `Open` Session at a time**.
+- **Scheduled** is the optional leading state: a session planned ahead of time. It carries a **ScheduledDate** (required) and an optional **StartTime**, **Duration** and **Venue** — these are informational ("when and where"); they do not auto-open or auto-close the session. A Club may have **any number** of Scheduled sessions queued. A host **opens** a Scheduled session when the night begins (`Scheduled → Open`), subject to the one-`Open`-per-club rule. A Scheduled session may be edited or deleted while still Scheduled; once Open it follows the normal lifecycle.
+- Holds the night's [Courts](#court), [Attendances](#attendance) and [Games](#game) (only from when it is Open).
 - **Closing** ends any in-progress Games with no result recorded and makes the board read-only. `Closed` is terminal (no reopen) and retained as history — viewable, not editable.
-- Not pinned to a [Venue](#venue); the Club picks how many Courts to run on the night.
+- Optionally references a [Venue](#venue) as its location, but is **not** pinned to it: the Club still picks how many Courts to run on the night (a Venue's court count does not seed the board).
 - Any authenticated User may **view** a running Session; only the host (or admin) may mutate it. The board updates live for all viewers.
 
 ### Court

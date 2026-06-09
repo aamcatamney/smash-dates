@@ -62,6 +62,7 @@ The whole thing ships as a single container: a .NET 10 API that also serves the 
 **Club night (pegboard)**
 - A live **pegboard session** replaces the physical club-night board: track who turned up (roster players or ad-hoc guests), a fair waiting queue (with each player's wait time), courts you add/remove on the fly, and the games on them — singles, level doubles, mixed, or a "funny" (e.g. 3+1) — with a required winner, optional score, and per-night played/won stats.
 - Fill a free court three ways — **manual**, **suggest**, or **auto-fill** — balancing longest-waiting, valid gender makeup, partner/opponent variety, and player **grade**. A makeup that breaks the game type's rule warns but never blocks the host.
+- **Schedule sessions ahead of time** — plan the next few weeks with an optional start time, duration and venue; a host opens a scheduled session when the night begins (`Scheduled → Open → Closed`). Many can be queued, but only one runs at a time. See [ADR 0009](docs/adr/0009-scheduled-pegboard-sessions.md). The live board header shows the **club's name**.
 - Run by a new per-club **Session Host** role (or any club admin / SystemAdmin); any signed-in user can watch. The board streams live to every viewer over **Server-Sent Events** — see [ADR 0004](docs/adr/0004-sse-for-pegboard-live-updates.md). Viewers get the same board **read-only** (host controls hidden), and a **closed** session stays viewable as a read-only history with each attendee's final stats.
 
 **Interface**
@@ -99,7 +100,7 @@ The club page, tabbed into Teams · Venues · Players · Matches · Blocked date
 ![Club page — Teams tab with a squad](docs/screenshots/club-detail.png)
 
 ### Club night (pegboard)
-The **Sessions** tab opens a club night; the full-screen board tracks courts, live games (with sides + type), and a fair waiting queue — streamed live to every viewer over SSE.
+The **Sessions** tab opens a club night now or schedules one ahead of time (grouped into Upcoming / Live / Past); the full-screen board — headed with the club's name — tracks courts, live games (with sides + type), and a fair waiting queue, streamed live to every viewer over SSE.
 
 ![Pegboard sessions tab](docs/screenshots/pegboard-sessions.png)
 ![Pegboard live board](docs/screenshots/pegboard-board.png)
