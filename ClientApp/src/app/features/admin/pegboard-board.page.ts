@@ -48,7 +48,7 @@ import { FillDialogComponent, StartGamePayload } from './pegboard/fill-dialog.co
               <p
                 class="font-mono text-xs uppercase tracking-[0.2em] text-slate-500 dark:text-slate-400"
               >
-                Club night · live board
+                {{ b.clubName }} · club night
               </p>
               <h1 class="mt-1 font-mono text-3xl font-semibold text-slate-900 dark:text-slate-100">
                 {{ b.session.name }}

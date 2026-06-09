@@ -3,7 +3,7 @@ import { Injectable, NgZone, inject } from '@angular/core';
 import { Observable } from 'rxjs';
 import { Gender } from './players.api';
 
-export type PegSessionStatus = 'Open' | 'Closed';
+export type PegSessionStatus = 'Scheduled' | 'Open' | 'Closed';
 export type AttendanceStatus = 'Waiting' | 'Playing' | 'Resting' | 'Left';
 export type GameType = 'Singles' | 'Doubles' | 'Mixed' | 'Funny';
 export type GameSide = 'A' | 'B';
@@ -12,8 +12,23 @@ export interface SessionSummary {
   id: string;
   name: string;
   status: PegSessionStatus;
-  openedAt: string;
+  // Planning fields, set on Scheduled sessions (date required; the rest optional).
+  scheduledDate: string | null;
+  startTime: string | null;
+  durationMinutes: number | null;
+  venueId: string | null;
+  venueName: string | null;
+  openedAt: string | null;
   closedAt: string | null;
+}
+
+// Create/edit payload for a scheduled session.
+export interface ScheduleInput {
+  name: string;
+  scheduledDate: string;
+  startTime: string | null;
+  durationMinutes: number | null;
+  venueId: string | null;
 }
 
 export interface BoardGamePlayer {
@@ -50,6 +65,9 @@ export interface BoardView {
   attendees: BoardAttendee[];
   // True when the requester may run this session; drives host-vs-viewer chrome.
   canManage: boolean;
+  // Club identity for the board header.
+  clubName: string;
+  clubShortCode: string;
 }
 
 export interface FillSuggestion {
@@ -71,6 +89,23 @@ export class PegboardApi {
   }
   openSession(clubId: string, name: string): Observable<{ id: string }> {
     return this.http.post<{ id: string }>(this.base(clubId), { name });
+  }
+  // Plan a session ahead of time (Scheduled). Opened later via openScheduledSession.
+  scheduleSession(clubId: string, input: ScheduleInput): Observable<{ id: string }> {
+    return this.http.post<{ id: string }>(`${this.base(clubId)}/scheduled`, input);
+  }
+  openScheduledSession(clubId: string, sessionId: string): Observable<{ id: string }> {
+    return this.http.post<{ id: string }>(`${this.base(clubId)}/${sessionId}/open`, null);
+  }
+  updateScheduledSession(
+    clubId: string,
+    sessionId: string,
+    input: ScheduleInput,
+  ): Observable<void> {
+    return this.http.patch<void>(`${this.base(clubId)}/${sessionId}`, input);
+  }
+  deleteScheduledSession(clubId: string, sessionId: string): Observable<void> {
+    return this.http.delete<void>(`${this.base(clubId)}/${sessionId}`);
   }
   closeSession(clubId: string, sessionId: string): Observable<void> {
     return this.http.post<void>(`${this.base(clubId)}/${sessionId}/close`, null);
