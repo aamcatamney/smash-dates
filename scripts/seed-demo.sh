@@ -100,6 +100,12 @@ for i in "${!PLAYER_NAMES[@]}"; do
 done
 say "Players + registrations at ${CLUB_NAMES[0]} (2 confirmed, 2 pending)"
 
+# The two confirmed players join the club's team squad (eligibility: confirmed Level + Male).
+for i in 0 1; do
+  post "/api/clubs/$riv/teams/${TEAM_IDS[0]}/players" "{\"playerId\":\"${RIV_PLAYER_IDS[$i]}\"}" >/dev/null
+done
+say "Squad: 2 players assigned to ${CLUB_NAMES[0]}'s team"
+
 # --- 5. Season with weekly Level weeks, team entries, generated schedule ----------------
 WEEKS_JSON=$(python3 -c '
 import datetime, json
@@ -150,6 +156,16 @@ for mid in $MATCH_IDS; do
   n=$((n + 1))
 done
 say "Confirmed $n fixtures; recorded ${#SCORES[@]} results"
+
+# --- 6b. A second season left in Draft (shows the weeks editor + entries setup UI) ------
+DRAFT_WEEKS='[{"startDate":"2027-01-11","endDate":"2027-01-17","weekType":"Level"},{"startDate":"2027-01-18","endDate":"2027-01-24","weekType":"Level"},{"startDate":"2027-01-25","endDate":"2027-01-31","weekType":"Level"}]'
+DRAFT_SEASON_ID=$(post "/api/leagues/$LEAGUE_ID/seasons" \
+  "{\"name\":\"Spring 2027\",\"startDate\":\"2027-01-01\",\"endDate\":\"2027-04-30\",\"weeks\":$DRAFT_WEEKS}" | jget id)
+for i in 0 1; do
+  post "/api/leagues/$LEAGUE_ID/seasons/$DRAFT_SEASON_ID/entries" \
+    "{\"teamId\":\"${TEAM_IDS[$i]}\",\"divisionId\":\"$DIV_ID\"}" >/dev/null
+done
+say "Draft season 'Spring 2027' with weeks + 2 entries (left in Draft)"
 
 # --- 7. Pegboard: an open club night at Riverside with a finished game ------------------
 SESSION_ID=$(post "/api/clubs/$riv/pegboard/sessions" "{\"name\":\"Tuesday Club Night\"}" | jget id)
