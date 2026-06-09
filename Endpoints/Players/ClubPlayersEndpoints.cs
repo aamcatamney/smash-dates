@@ -25,6 +25,7 @@ public static class ClubPlayersEndpoints
         group.MapPatch("/{playerId:guid}", UpdateLink);
         group.MapDelete("/{playerId:guid}", Unlink);
         group.MapSetPlayerGradeEndpoint();
+        group.MapUpdateClubPlayerDetailsEndpoint();
         return app;
     }
 

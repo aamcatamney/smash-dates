@@ -20,6 +20,7 @@ export interface PlayerLink {
   fullName: string;
   gender: Gender;
   type: PlayerClubType;
+  grade: number | null;
 }
 
 export interface Registration {
@@ -92,6 +93,19 @@ export class PlayersApi {
 
   updateLinkType(clubId: string, playerId: string, type: PlayerClubType): Observable<void> {
     return this.http.patch<void>(`/api/clubs/${clubId}/players/${playerId}`, { type });
+  }
+
+  // Edit name + stored grade (gender immutable). Player is global: a rename shows everywhere.
+  updatePlayerDetails(
+    clubId: string,
+    playerId: string,
+    fullName: string,
+    grade: number | null,
+  ): Observable<void> {
+    return this.http.patch<void>(`/api/clubs/${clubId}/players/${playerId}/details`, {
+      fullName,
+      grade,
+    });
   }
 
   unlinkPlayer(clubId: string, playerId: string): Observable<void> {

@@ -398,14 +398,24 @@ import { AuthStore } from '../../core/auth/auth.store';
                       }
                     </span>
                     @if (canManage()) {
-                      <button
-                        type="button"
-                        [attr.aria-label]="'Delete venue ' + v.name"
-                        (click)="askDeleteVenue(v)"
-                        class="rounded-md border border-red-300 dark:border-red-800 px-3 py-1 text-xs text-red-700 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950"
-                      >
-                        Delete
-                      </button>
+                      <span class="flex gap-2">
+                        <button
+                          type="button"
+                          [attr.aria-label]="'Edit venue ' + v.name"
+                          (click)="openEditVenue(v)"
+                          class="rounded-md border border-slate-300 dark:border-slate-700 px-3 py-1 text-xs text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800"
+                        >
+                          Edit
+                        </button>
+                        <button
+                          type="button"
+                          [attr.aria-label]="'Delete venue ' + v.name"
+                          (click)="askDeleteVenue(v)"
+                          class="rounded-md border border-red-300 dark:border-red-800 px-3 py-1 text-xs text-red-700 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950"
+                        >
+                          Delete
+                        </button>
+                      </span>
                     }
                   </li>
                 } @empty {
@@ -417,10 +427,10 @@ import { AuthStore } from '../../core/auth/auth.store';
 
               <app-modal
                 [open]="venueDialogOpen()"
-                title="Add venue"
-                (closed)="venueDialogOpen.set(false)"
+                [title]="editingVenueId() ? 'Edit venue' : 'Add venue'"
+                (closed)="closeVenueDialog()"
               >
-                <form [formGroup]="venueForm" (ngSubmit)="onCreateVenue()" class="grid gap-3">
+                <form [formGroup]="venueForm" (ngSubmit)="onSaveVenue()" class="grid gap-3">
                   <label class="grid gap-1">
                     <span
                       class="font-mono text-xs uppercase tracking-wider text-slate-600 dark:text-slate-400"
@@ -475,7 +485,7 @@ import { AuthStore } from '../../core/auth/auth.store';
                     [disabled]="venueBusy() || venueForm.invalid"
                     class="rounded-md bg-slate-900 dark:bg-amber-400 px-4 py-2 font-mono text-sm font-medium text-amber-300 dark:text-slate-900 disabled:opacity-50"
                   >
-                    {{ venueBusy() ? 'Adding…' : 'Add venue' }}
+                    {{ venueBusy() ? 'Saving…' : editingVenueId() ? 'Save changes' : 'Add venue' }}
                   </button>
                   @if (venueError()) {
                     <p class="font-mono text-sm text-red-600 dark:text-red-400" role="alert">
@@ -903,6 +913,7 @@ export default class ClubDetailPage {
   protected readonly teamImportColumns = ['name', 'gender'];
   protected readonly venueImportColumns = ['name', 'courts', 'maxConcurrentMatches', 'address'];
   protected readonly venueDialogOpen = signal(false);
+  protected readonly editingVenueId = signal<string | null>(null);
   protected readonly blockDialogOpen = signal(false);
   protected readonly pending = signal<{ message: string; action: () => void } | null>(null);
 
@@ -1169,33 +1180,63 @@ export default class ClubDetailPage {
     this.api.deleteTeam(this.clubId(), t.id).subscribe({ next: () => this.refreshTeams() });
   }
 
-  protected onCreateVenue(): void {
+  protected openEditVenue(v: VenueSummary): void {
+    this.venueError.set(null);
+    this.editingVenueId.set(v.id);
+    this.venueForm.reset({
+      name: v.name,
+      courts: v.courts,
+      maxConcurrentMatches: v.maxConcurrentMatches,
+      address: v.address ?? '',
+    });
+    this.venueDialogOpen.set(true);
+  }
+
+  protected closeVenueDialog(): void {
+    this.venueDialogOpen.set(false);
+    this.editingVenueId.set(null);
+    this.venueForm.reset({ name: '', courts: 2, maxConcurrentMatches: 1, address: '' });
+  }
+
+  protected onSaveVenue(): void {
     const { name, courts, maxConcurrentMatches, address } = this.venueForm.getRawValue();
     const trimmed = name.trim();
     if (!trimmed) return;
     this.venueBusy.set(true);
     this.venueError.set(null);
-    this.api
-      .createVenue(
-        this.clubId(),
-        trimmed,
-        Number(courts),
-        Number(maxConcurrentMatches),
-        address.trim() || null,
-      )
-      .subscribe({
-        next: () => {
-          this.venueBusy.set(false);
-          this.venueForm.reset({ name: '', courts: 2, maxConcurrentMatches: 1, address: '' });
-          this.venueDialogOpen.set(false);
-          this.toast.success(`Venue “${trimmed}” added.`);
-          this.refreshVenues();
-        },
-        error: (err: { error?: { title?: string } }) => {
-          this.venueBusy.set(false);
-          this.venueError.set(err?.error?.title ?? 'Could not add venue.');
-        },
-      });
+    const editingId = this.editingVenueId();
+    const done = (msg: string) => {
+      this.venueBusy.set(false);
+      this.closeVenueDialog();
+      this.toast.success(msg);
+      this.refreshVenues();
+    };
+    const fail = (err: { error?: { title?: string } }) => {
+      this.venueBusy.set(false);
+      this.venueError.set(err?.error?.title ?? 'Could not save venue.');
+    };
+    if (editingId) {
+      this.api
+        .updateVenue(
+          this.clubId(),
+          editingId,
+          trimmed,
+          Number(courts),
+          Number(maxConcurrentMatches),
+          address.trim() || null,
+        )
+        .subscribe({ next: () => done(`Venue “${trimmed}” updated.`), error: fail });
+    } else {
+      this.api
+        .createVenue(
+          this.clubId(),
+          trimmed,
+          Number(courts),
+          Number(maxConcurrentMatches),
+          address.trim() || null,
+        )
+        .subscribe({ next: () => done(`Venue “${trimmed}” added.`), error: fail });
+    }
   }
 
   protected onDeleteVenue(v: VenueSummary): void {
