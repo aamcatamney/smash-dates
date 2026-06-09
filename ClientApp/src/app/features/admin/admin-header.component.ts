@@ -1,11 +1,12 @@
 import { ChangeDetectionStrategy, Component, inject } from '@angular/core';
+import { NgOptimizedImage } from '@angular/common';
 import { Router, RouterLink, RouterLinkActive } from '@angular/router';
 import { AuthStore } from '../../core/auth/auth.store';
 import { ThemeToggleComponent } from '../../shared/theme-toggle.component';
 
 @Component({
   selector: 'app-admin-header',
-  imports: [RouterLink, RouterLinkActive, ThemeToggleComponent],
+  imports: [RouterLink, RouterLinkActive, ThemeToggleComponent, NgOptimizedImage],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <header class="border-b border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900">
@@ -14,9 +15,11 @@ import { ThemeToggleComponent } from '../../shared/theme-toggle.component';
       >
         <a
           [routerLink]="['/']"
-          class="font-mono text-sm font-semibold tracking-wide text-slate-900 hover:underline focus-visible:outline-2 focus-visible:outline-slate-900 dark:text-slate-100 dark:focus-visible:outline-slate-100"
-          >smash-dates</a
+          class="flex items-center gap-2 font-mono text-sm font-semibold tracking-wide text-slate-900 hover:underline focus-visible:outline-2 focus-visible:outline-slate-900 dark:text-slate-100 dark:focus-visible:outline-slate-100"
         >
+          <img ngSrc="favicon.svg" width="20" height="20" priority alt="" />
+          smash-dates
+        </a>
         <nav class="flex flex-wrap items-center gap-3 sm:gap-4">
           <a
             [routerLink]="['/leagues']"
