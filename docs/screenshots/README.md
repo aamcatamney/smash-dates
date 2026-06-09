@@ -27,8 +27,9 @@ Suggested width ~1400px, PNG.
 
 [`scripts/seed-demo.sh`](../../scripts/seed-demo.sh) populates a fresh instance with the demo
 league these screenshots are taken from — a league with two divisions, four clubs (each with a
-venue, a team and an accepted membership), players + discipline registrations, a fully generated
-and partly-played season (so standings and fixtures have content), and an open pegboard club
+venue, a team and an accepted membership), players + discipline registrations (some confirmed
+into a team squad), a fully generated and partly-played season (so standings and fixtures have
+content), a second season left in Draft (the weeks/entries setup view), and an open pegboard club
 night with a finished game. It drives the real HTTP API as the bootstrap SystemAdmin.
 
 ```bash
