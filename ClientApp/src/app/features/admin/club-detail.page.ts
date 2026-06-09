@@ -373,15 +373,29 @@ import { AuthStore } from '../../core/auth/auth.store';
               >
                 @for (v of venues(); track v.id) {
                   <li class="flex items-center justify-between px-4 py-3 font-mono text-sm">
-                    <span>
-                      {{ v.name }}
-                      <span
-                        class="ml-2 inline-block rounded bg-slate-200 dark:bg-slate-700 px-2 py-0.5 text-xs"
-                      >
-                        {{ v.courts }} {{ v.courts === 1 ? 'court' : 'courts' }} · up to
-                        {{ v.maxConcurrentMatches }}
-                        {{ v.maxConcurrentMatches === 1 ? 'match' : 'matches' }} at once
+                    <span class="flex flex-col gap-0.5">
+                      <span>
+                        {{ v.name }}
+                        <span
+                          class="ml-2 inline-block rounded bg-slate-200 dark:bg-slate-700 px-2 py-0.5 text-xs"
+                        >
+                          {{ v.courts }} {{ v.courts === 1 ? 'court' : 'courts' }} · up to
+                          {{ v.maxConcurrentMatches }}
+                          {{ v.maxConcurrentMatches === 1 ? 'match' : 'matches' }} at once
+                        </span>
                       </span>
+                      @if (v.address) {
+                        <span class="text-xs text-slate-500 dark:text-slate-400">
+                          {{ v.address }} ·
+                          <a
+                            [href]="mapUrl(v.address)"
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            class="underline hover:text-slate-900 dark:hover:text-slate-100"
+                            >Map ↗</a
+                          >
+                        </span>
+                      }
                     </span>
                     @if (canManage()) {
                       <button
@@ -443,6 +457,18 @@ import { AuthStore } from '../../core/auth/auth.store';
                       <option [value]="1">1</option>
                       <option [value]="2">2</option>
                     </select>
+                  </label>
+                  <label class="grid gap-1">
+                    <span
+                      class="font-mono text-xs uppercase tracking-wider text-slate-600 dark:text-slate-400"
+                      >Address (optional)</span
+                    >
+                    <input
+                      type="text"
+                      formControlName="address"
+                      placeholder="e.g. 12 High St, Belfast BT1 1AA"
+                      class="rounded-md border border-slate-300 dark:border-slate-700 px-3 py-2 font-mono text-sm focus:outline-none focus:ring-2 focus:ring-slate-900 dark:focus:ring-slate-100 dark:bg-slate-800 dark:text-slate-100"
+                    />
                   </label>
                   <button
                     type="submit"
@@ -798,7 +824,7 @@ import { AuthStore } from '../../core/auth/auth.store';
           [open]="importKind() !== null"
           [title]="importKind() === 'venues' ? 'Import venues' : 'Import teams'"
           [columns]="importKind() === 'venues' ? venueImportColumns : teamImportColumns"
-          [sample]="importKind() === 'venues' ? 'Main Hall,4,2' : 'Acme 1st,Mens'"
+          [sample]="importKind() === 'venues' ? 'Main Hall,4,2,12 High St' : 'Acme 1st,Mens'"
           [result]="importResult()"
           [busy]="importBusy()"
           (submit)="onImport($event)"
@@ -875,7 +901,7 @@ export default class ClubDetailPage {
   protected readonly importBusy = signal(false);
   protected readonly importResult = signal<ImportResult | null>(null);
   protected readonly teamImportColumns = ['name', 'gender'];
-  protected readonly venueImportColumns = ['name', 'courts', 'maxConcurrentMatches'];
+  protected readonly venueImportColumns = ['name', 'courts', 'maxConcurrentMatches', 'address'];
   protected readonly venueDialogOpen = signal(false);
   protected readonly blockDialogOpen = signal(false);
   protected readonly pending = signal<{ message: string; action: () => void } | null>(null);
@@ -933,7 +959,13 @@ export default class ClubDetailPage {
       nonNullable: true,
       validators: [Validators.required],
     }),
+    address: new FormControl('', { nonNullable: true }),
   });
+
+  // Google Maps search link for a venue's free-text address.
+  protected mapUrl(address: string): string {
+    return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(address)}`;
+  }
 
   protected readonly blockForm = new FormGroup({
     scope: new FormControl<BlockedDateScope>('Club', {
@@ -1138,17 +1170,23 @@ export default class ClubDetailPage {
   }
 
   protected onCreateVenue(): void {
-    const { name, courts, maxConcurrentMatches } = this.venueForm.getRawValue();
+    const { name, courts, maxConcurrentMatches, address } = this.venueForm.getRawValue();
     const trimmed = name.trim();
     if (!trimmed) return;
     this.venueBusy.set(true);
     this.venueError.set(null);
     this.api
-      .createVenue(this.clubId(), trimmed, Number(courts), Number(maxConcurrentMatches))
+      .createVenue(
+        this.clubId(),
+        trimmed,
+        Number(courts),
+        Number(maxConcurrentMatches),
+        address.trim() || null,
+      )
       .subscribe({
         next: () => {
           this.venueBusy.set(false);
-          this.venueForm.reset({ name: '', courts: 2, maxConcurrentMatches: 1 });
+          this.venueForm.reset({ name: '', courts: 2, maxConcurrentMatches: 1, address: '' });
           this.venueDialogOpen.set(false);
           this.toast.success(`Venue “${trimmed}” added.`);
           this.refreshVenues();

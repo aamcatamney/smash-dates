@@ -37,7 +37,7 @@ public sealed class PegboardRepository : IPegboardRepository
         var rows = await conn.QueryAsync<SessionListRow>(new CommandDefinition(
             @"SELECT s.id, s.name, s.status,
                      s.scheduled_date, s.start_time, s.duration_minutes,
-                     s.venue_id, v.name AS venue_name,
+                     s.venue_id, v.name AS venue_name, v.address AS venue_address,
                      s.opened_at, s.closed_at
               FROM pegboard_sessions s
               LEFT JOIN venues v ON v.id = s.venue_id

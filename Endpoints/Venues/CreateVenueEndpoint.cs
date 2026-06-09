@@ -8,11 +8,12 @@ namespace smash_dates.Endpoints.Venues;
 public static class CreateVenueEndpoint
 {
     private const int MaxNameLength = 200;
+    private const int MaxAddressLength = 300;
     private const string DuplicateSqlState = "23505";
 
-    public sealed record CreateVenueRequest(string Name, int? Courts, int? MaxConcurrentMatches);
+    public sealed record CreateVenueRequest(string Name, int? Courts, int? MaxConcurrentMatches, string? Address);
 
-    public sealed record VenueResponse(Guid Id, Guid ClubId, string Name, int Courts, int MaxConcurrentMatches);
+    public sealed record VenueResponse(Guid Id, Guid ClubId, string Name, int Courts, int MaxConcurrentMatches, string? Address);
 
     public static IEndpointRouteBuilder MapCreateVenueEndpoint(this IEndpointRouteBuilder app)
     {
@@ -46,14 +47,25 @@ public static class CreateVenueEndpoint
         if (maxConcurrent is not (1 or 2))
             return Results.Problem(statusCode: StatusCodes.Status400BadRequest, title: "Max concurrent matches must be 1 or 2");
 
+        // Blank collapses to null (no address); the UI links it to a map provider when set.
+        var address = NormalizeAddress(request.Address);
+        if (address?.Length > MaxAddressLength)
+            return Results.Problem(statusCode: StatusCodes.Status400BadRequest, title: "Address too long");
+
         try
         {
-            var id = await venues.CreateAsync(clubId, name, courts, maxConcurrent, ct);
-            return Results.Created($"/api/clubs/{clubId}/venues", new VenueResponse(id, clubId, name, courts, maxConcurrent));
+            var id = await venues.CreateAsync(clubId, name, courts, maxConcurrent, address, ct);
+            return Results.Created($"/api/clubs/{clubId}/venues", new VenueResponse(id, clubId, name, courts, maxConcurrent, address));
         }
         catch (PostgresException ex) when (ex.SqlState == DuplicateSqlState)
         {
             return Results.Problem(statusCode: StatusCodes.Status409Conflict, title: "Venue name already in use in this club");
         }
+    }
+
+    internal static string? NormalizeAddress(string? raw)
+    {
+        var trimmed = raw?.Trim();
+        return string.IsNullOrEmpty(trimmed) ? null : trimmed;
     }
 }

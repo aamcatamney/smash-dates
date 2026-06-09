@@ -7,7 +7,7 @@ namespace smash_dates.Repositories;
 public sealed class VenueRepository : IVenueRepository
 {
     private const string SelectColumns =
-        "id, club_id, name, courts, max_concurrent_matches, created_at, updated_at";
+        "id, club_id, name, courts, max_concurrent_matches, address, created_at, updated_at";
 
     private readonly IDbConnectionFactory _factory;
 
@@ -39,27 +39,27 @@ public sealed class VenueRepository : IVenueRepository
         return rows.AsList();
     }
 
-    public async Task<Guid> CreateAsync(Guid clubId, string name, int courts, int maxConcurrentMatches, CancellationToken ct = default)
+    public async Task<Guid> CreateAsync(Guid clubId, string name, int courts, int maxConcurrentMatches, string? address, CancellationToken ct = default)
     {
         using var conn = _factory.Create();
         return await conn.ExecuteScalarAsync<Guid>(
             new CommandDefinition(
-                @"INSERT INTO venues (club_id, name, courts, max_concurrent_matches)
-                  VALUES (@clubId, @name, @courts, @maxConcurrentMatches)
+                @"INSERT INTO venues (club_id, name, courts, max_concurrent_matches, address)
+                  VALUES (@clubId, @name, @courts, @maxConcurrentMatches, @address)
                   RETURNING id",
-                new { clubId, name, courts, maxConcurrentMatches },
+                new { clubId, name, courts, maxConcurrentMatches, address },
                 cancellationToken: ct));
     }
 
-    public async Task<bool> UpdateAsync(Guid id, string name, int courts, int maxConcurrentMatches, CancellationToken ct = default)
+    public async Task<bool> UpdateAsync(Guid id, string name, int courts, int maxConcurrentMatches, string? address, CancellationToken ct = default)
     {
         using var conn = _factory.Create();
         var rows = await conn.ExecuteAsync(
             new CommandDefinition(
                 @"UPDATE venues
-                  SET name = @name, courts = @courts, max_concurrent_matches = @maxConcurrentMatches, updated_at = now()
+                  SET name = @name, courts = @courts, max_concurrent_matches = @maxConcurrentMatches, address = @address, updated_at = now()
                   WHERE id = @id",
-                new { id, name, courts, maxConcurrentMatches },
+                new { id, name, courts, maxConcurrentMatches, address },
                 cancellationToken: ct));
         return rows > 0;
     }

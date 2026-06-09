@@ -8,9 +8,10 @@ namespace smash_dates.Endpoints.Venues;
 public static class UpdateVenueEndpoint
 {
     private const int MaxNameLength = 200;
+    private const int MaxAddressLength = 300;
     private const string DuplicateSqlState = "23505";
 
-    public sealed record UpdateVenueRequest(string Name, int Courts, int MaxConcurrentMatches);
+    public sealed record UpdateVenueRequest(string Name, int Courts, int MaxConcurrentMatches, string? Address);
 
     public static IEndpointRouteBuilder MapUpdateVenueEndpoint(this IEndpointRouteBuilder app)
     {
@@ -43,9 +44,13 @@ public static class UpdateVenueEndpoint
         if (request.MaxConcurrentMatches is not (1 or 2))
             return Results.Problem(statusCode: StatusCodes.Status400BadRequest, title: "Max concurrent matches must be 1 or 2");
 
+        var address = CreateVenueEndpoint.NormalizeAddress(request.Address);
+        if (address?.Length > MaxAddressLength)
+            return Results.Problem(statusCode: StatusCodes.Status400BadRequest, title: "Address too long");
+
         try
         {
-            await venues.UpdateAsync(id, name, request.Courts, request.MaxConcurrentMatches, ct);
+            await venues.UpdateAsync(id, name, request.Courts, request.MaxConcurrentMatches, address, ct);
             return Results.NoContent();
         }
         catch (PostgresException ex) when (ex.SqlState == DuplicateSqlState)

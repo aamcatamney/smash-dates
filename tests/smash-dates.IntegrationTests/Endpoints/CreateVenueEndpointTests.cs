@@ -23,6 +23,36 @@ public sealed class CreateVenueEndpointTests : IntegrationTestBase
     }
 
     [Fact]
+    public async Task Post_WithAddress_RoundTripsThroughList()
+    {
+        var clubId = await Seeder.CreateClubAsync("Acme", "ACME");
+        await Client.LoginAsSystemAdminAsync("sys@example.com", "correct-horse-battery", Seeder);
+
+        var response = await Client.PostAsJsonAsync($"/api/clubs/{clubId}/venues",
+            new { name = "Main Hall", courts = 4, maxConcurrentMatches = 2, address = "12 High St, Belfast BT1 1AA" });
+        response.StatusCode.Should().Be(HttpStatusCode.Created);
+
+        var list = await Client.GetFromJsonAsync<List<VenueRow>>($"/api/clubs/{clubId}/venues");
+        list!.Single().Address.Should().Be("12 High St, Belfast BT1 1AA");
+    }
+
+    [Fact]
+    public async Task Post_BlankAddress_StoredAsNull()
+    {
+        var clubId = await Seeder.CreateClubAsync("Acme", "ACME");
+        await Client.LoginAsSystemAdminAsync("sys@example.com", "correct-horse-battery", Seeder);
+
+        var response = await Client.PostAsJsonAsync($"/api/clubs/{clubId}/venues",
+            new { name = "Annex", address = "   " });
+        response.StatusCode.Should().Be(HttpStatusCode.Created);
+
+        var list = await Client.GetFromJsonAsync<List<VenueRow>>($"/api/clubs/{clubId}/venues");
+        list!.Single().Address.Should().BeNull();
+    }
+
+    private sealed record VenueRow(Guid Id, Guid ClubId, string Name, int Courts, int MaxConcurrentMatches, string? Address);
+
+    [Fact]
     public async Task Post_DefaultsCourtsAndMaxConcurrent_Returns201()
     {
         var clubId = await Seeder.CreateClubAsync("Acme", "ACME");

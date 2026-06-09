@@ -5,11 +5,12 @@ using smash_dates.Services.Import;
 
 namespace smash_dates.Endpoints.Venues;
 
-// Bulk-import a club's venues from CSV (columns: name, courts, maxConcurrentMatches). Partial
+// Bulk-import a club's venues from CSV (columns: name, courts, maxConcurrentMatches, optional address). Partial
 // import + upsert: an existing venue (matched by name) is updated; a new one is created.
 public static class ImportVenuesEndpoint
 {
     private const int MaxNameLength = 200;
+    private const int MaxAddressLength = 300;
 
     public static IEndpointRouteBuilder MapImportVenuesEndpoint(this IEndpointRouteBuilder app)
     {
@@ -74,14 +75,22 @@ public static class ImportVenuesEndpoint
                 continue;
             }
 
+            // Optional column; a missing header or blank cell means no address.
+            var address = CreateVenueEndpoint.NormalizeAddress(row.Get("address"));
+            if (address?.Length > MaxAddressLength)
+            {
+                result.Error(row.LineNumber, "Address too long");
+                continue;
+            }
+
             if (existing.TryGetValue(name.ToLowerInvariant(), out var venue))
             {
-                await venues.UpdateAsync(venue.Id, name, courts, maxConcurrent, ct);
+                await venues.UpdateAsync(venue.Id, name, courts, maxConcurrent, address, ct);
                 result.Updated++;
                 continue;
             }
 
-            await venues.CreateAsync(clubId, name, courts, maxConcurrent, ct);
+            await venues.CreateAsync(clubId, name, courts, maxConcurrent, address, ct);
             result.Created++;
         }
 
