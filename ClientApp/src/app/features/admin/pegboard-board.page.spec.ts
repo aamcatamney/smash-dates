@@ -4,6 +4,7 @@ import { of } from 'rxjs';
 import { describe, beforeEach, expect, it, vi } from 'vitest';
 import PegboardBoardPage from './pegboard-board.page';
 import { BoardView, PegboardApi } from './pegboard.api';
+import { PlayersApi } from './players.api';
 
 const board: BoardView = {
   session: { id: 'session-1', clubId: 'club-1', name: 'Tuesday Club Night', status: 'Open' },
@@ -58,6 +59,8 @@ function apiMock(overrides: Partial<PegboardApi> = {}): PegboardApi {
     addCourt: vi.fn(() => of({})),
     removeCourt: vi.fn(() => of(void 0)),
     addGuest: vi.fn(() => of({})),
+    addPlayer: vi.fn(() => of({})),
+    addVisitor: vi.fn(() => of({})),
     setAttendanceStatus: vi.fn(() => of(void 0)),
     removeAttendance: vi.fn(() => of(void 0)),
     suggest: vi.fn(() => of({ sideA: [], sideB: [] })),
@@ -74,6 +77,14 @@ function create(api: PegboardApi) {
   TestBed.configureTestingModule({
     providers: [
       { provide: PegboardApi, useValue: api },
+      {
+        provide: PlayersApi,
+        useValue: {
+          listClubPlayers: vi.fn(() =>
+            of([{ playerId: 'p1', fullName: 'Dana Existing', gender: 'Female', type: 'Member' }]),
+          ),
+        } as unknown as PlayersApi,
+      },
       {
         provide: ActivatedRoute,
         useValue: {
@@ -136,6 +147,27 @@ describe('PegboardBoardPage', () => {
     c['onFinish']();
 
     expect(api.finishGame).toHaveBeenCalledWith('club-1', 'session-1', 'game-1', 'A', '21-15');
+  });
+
+  it('adding an existing club player calls addPlayer', () => {
+    const api = apiMock();
+    const fixture = create(api);
+    const c = fixture.componentInstance as unknown as Record<string, any>;
+
+    c['onAddExisting']({ playerId: 'p1', fullName: 'Dana', gender: 'Female', type: 'Member' });
+
+    expect(api.addPlayer).toHaveBeenCalledWith('club-1', 'session-1', 'p1', null);
+  });
+
+  it('adding a new visitor calls addVisitor with the form values', () => {
+    const api = apiMock();
+    const fixture = create(api);
+    const c = fixture.componentInstance as unknown as Record<string, any>;
+
+    c['visitorForm'].setValue({ name: 'Walk In', gender: 'Male', grade: '3' });
+    c['onAddVisitor']();
+
+    expect(api.addVisitor).toHaveBeenCalledWith('club-1', 'session-1', 'Walk In', 'Male', 3);
   });
 
   // Court controls live inside <app-court-card>; counting its buttons isolates host chrome from

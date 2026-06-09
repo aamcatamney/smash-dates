@@ -195,6 +195,8 @@ A playing court within a [Pegboard Session](#pegboard-session). The host **adds*
 ### Attendance
 One person's presence at a [Pegboard Session](#pegboard-session) — the digital "peg". Each Attendance is **either** a roster [Player](#player) (a Player affiliated to the Club, `Member` or `Visitor`) **or** an ad-hoc **guest** (free-text `Name` + `Gender` + optional `Grade`), never both. A guest is not persisted as a Player. An Attendance carries an optional **Grade** (`1`–`5`): copied from the Player's [Grade](#player) on add but editable for the night without changing the Player record.
 
+The host adds an attendee in one of two ways: **pick an existing roster Player** (the common case), or **register a walk-in** — which creates a real Player with a `Visitor` affiliation to the Club and adds them, so they are remembered for next time. Registering a walk-in this way is authorized for the session runner (host or admin), not only ClubAdmin — see [ADR-0010](docs/adr/0010-session-host-registers-walk-in-visitors.md). (The ephemeral guest path remains in the model but is no longer the primary flow.)
+
 Status: `Waiting | Playing | Resting | Left`.
 - **Waiting** — in the queue, available to be picked. The queue is ordered by time entered `Waiting` (longest-waiting first).
 - **Playing** — currently on a Court in an active Game.

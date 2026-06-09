@@ -12,7 +12,7 @@ import {
   GameType,
   PegboardApi,
 } from './pegboard.api';
-import { Gender } from './players.api';
+import { Gender, PlayerLink, PlayersApi } from './players.api';
 import { ModalComponent } from '../../shared/modal.component';
 import { ConfirmComponent } from '../../shared/confirm.component';
 import { AdminHeaderComponent } from './admin-header.component';
@@ -187,7 +187,7 @@ import { FillDialogComponent, StartGamePayload } from './pegboard/fill-dialog.co
                 [attendees]="b.attendees"
                 [live]="isLive()"
                 [now]="now()"
-                (addPlayer)="attendeeDialogOpen.set(true)"
+                (addPlayer)="openAttendeeDialog()"
                 (rest)="rest($event)"
                 (leave)="leave($event)"
                 (unrest)="unrest($event)"
@@ -228,63 +228,128 @@ import { FillDialogComponent, StartGamePayload } from './pegboard/fill-dialog.co
       </form>
     </app-modal>
 
-    <!-- Add attendee (guest) -->
+    <!-- Add attendee: pick an existing club player (common) or register a walk-in visitor -->
     <app-modal
       [open]="attendeeDialogOpen()"
       title="Add player"
       (closed)="attendeeDialogOpen.set(false)"
     >
-      <form [formGroup]="attendeeForm" (ngSubmit)="onAddAttendee()" class="grid gap-3">
-        <label class="grid gap-1">
-          <span
-            class="font-mono text-xs uppercase tracking-wider text-slate-600 dark:text-slate-400"
-            >Name</span
+      <div class="grid gap-3">
+        <div class="flex gap-2">
+          <button
+            type="button"
+            (click)="attendeeMode.set('existing')"
+            [class]="
+              attendeeMode() === 'existing'
+                ? 'rounded-md bg-slate-900 px-3 py-1.5 font-mono text-xs font-medium text-amber-300 dark:bg-amber-400 dark:text-slate-900'
+                : 'rounded-md border border-slate-300 px-3 py-1.5 font-mono text-xs text-slate-700 dark:border-slate-700 dark:text-slate-300'
+            "
           >
+            Club player
+          </button>
+          <button
+            type="button"
+            (click)="attendeeMode.set('visitor')"
+            [class]="
+              attendeeMode() === 'visitor'
+                ? 'rounded-md bg-slate-900 px-3 py-1.5 font-mono text-xs font-medium text-amber-300 dark:bg-amber-400 dark:text-slate-900'
+                : 'rounded-md border border-slate-300 px-3 py-1.5 font-mono text-xs text-slate-700 dark:border-slate-700 dark:text-slate-300'
+            "
+          >
+            New visitor
+          </button>
+        </div>
+
+        @if (attendeeMode() === 'existing') {
           <input
-            type="text"
-            formControlName="name"
+            #search
+            type="search"
+            (input)="playerSearch.set(search.value)"
+            placeholder="Search club players…"
             class="rounded-md border border-slate-300 px-3 py-2 font-mono text-sm focus:outline-none focus:ring-2 focus:ring-slate-900 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 dark:focus:ring-slate-100"
-            required
           />
-        </label>
-        <label class="grid gap-1">
-          <span
-            class="font-mono text-xs uppercase tracking-wider text-slate-600 dark:text-slate-400"
-            >Gender</span
+          <ul
+            class="max-h-72 divide-y divide-slate-200 overflow-auto rounded-md border border-slate-200 dark:divide-slate-800 dark:border-slate-800"
           >
-          <select
-            formControlName="gender"
-            class="rounded-md border border-slate-300 px-3 py-2 font-mono text-sm focus:outline-none focus:ring-2 focus:ring-slate-900 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 dark:focus:ring-slate-100"
-          >
-            <option value="Male">Male</option>
-            <option value="Female">Female</option>
-          </select>
-        </label>
-        <label class="grid gap-1">
-          <span
-            class="font-mono text-xs uppercase tracking-wider text-slate-600 dark:text-slate-400"
-            >Grade (optional)</span
-          >
-          <select
-            formControlName="grade"
-            class="rounded-md border border-slate-300 px-3 py-2 font-mono text-sm focus:outline-none focus:ring-2 focus:ring-slate-900 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 dark:focus:ring-slate-100"
-          >
-            <option value="">—</option>
-            <option value="1">1</option>
-            <option value="2">2</option>
-            <option value="3">3</option>
-            <option value="4">4</option>
-            <option value="5">5</option>
-          </select>
-        </label>
-        <button
-          type="submit"
-          [disabled]="attendeeForm.invalid"
-          class="min-h-11 justify-self-start rounded-md bg-slate-900 px-4 py-2 font-mono text-sm font-medium text-amber-300 disabled:opacity-50 dark:bg-amber-400 dark:text-slate-900"
-        >
-          Add player
-        </button>
-      </form>
+            @for (p of availablePlayers(); track p.playerId) {
+              <li class="flex items-center justify-between gap-2 px-3 py-2 font-mono text-sm">
+                <span class="text-slate-900 dark:text-slate-100"
+                  >{{ p.fullName }}
+                  <span class="text-xs text-slate-500 dark:text-slate-400"
+                    >· {{ p.gender }} · {{ p.type }}</span
+                  ></span
+                >
+                <button
+                  type="button"
+                  (click)="onAddExisting(p)"
+                  class="rounded bg-slate-900 px-2 py-0.5 font-mono text-xs font-medium text-amber-300 dark:bg-amber-400 dark:text-slate-900"
+                >
+                  Add
+                </button>
+              </li>
+            } @empty {
+              <li class="px-3 py-2 font-mono text-sm text-slate-500 dark:text-slate-400">
+                No matching club players. Use “New visitor” for a walk-in.
+              </li>
+            }
+          </ul>
+        } @else {
+          <form [formGroup]="visitorForm" (ngSubmit)="onAddVisitor()" class="grid gap-3">
+            <label class="grid gap-1">
+              <span
+                class="font-mono text-xs uppercase tracking-wider text-slate-600 dark:text-slate-400"
+                >Name</span
+              >
+              <input
+                type="text"
+                formControlName="name"
+                class="rounded-md border border-slate-300 px-3 py-2 font-mono text-sm focus:outline-none focus:ring-2 focus:ring-slate-900 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 dark:focus:ring-slate-100"
+                required
+              />
+            </label>
+            <label class="grid gap-1">
+              <span
+                class="font-mono text-xs uppercase tracking-wider text-slate-600 dark:text-slate-400"
+                >Gender</span
+              >
+              <select
+                formControlName="gender"
+                class="rounded-md border border-slate-300 px-3 py-2 font-mono text-sm focus:outline-none focus:ring-2 focus:ring-slate-900 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 dark:focus:ring-slate-100"
+              >
+                <option value="Male">Male</option>
+                <option value="Female">Female</option>
+              </select>
+            </label>
+            <label class="grid gap-1">
+              <span
+                class="font-mono text-xs uppercase tracking-wider text-slate-600 dark:text-slate-400"
+                >Grade (optional)</span
+              >
+              <select
+                formControlName="grade"
+                class="rounded-md border border-slate-300 px-3 py-2 font-mono text-sm focus:outline-none focus:ring-2 focus:ring-slate-900 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 dark:focus:ring-slate-100"
+              >
+                <option value="">—</option>
+                <option value="1">1</option>
+                <option value="2">2</option>
+                <option value="3">3</option>
+                <option value="4">4</option>
+                <option value="5">5</option>
+              </select>
+            </label>
+            <p class="font-mono text-xs text-slate-500 dark:text-slate-400">
+              Saved as a Visitor on this club, so they're selectable next time.
+            </p>
+            <button
+              type="submit"
+              [disabled]="visitorForm.invalid"
+              class="min-h-11 justify-self-start rounded-md bg-slate-900 px-4 py-2 font-mono text-sm font-medium text-amber-300 disabled:opacity-50 dark:bg-amber-400 dark:text-slate-900"
+            >
+              Add visitor
+            </button>
+          </form>
+        }
+      </div>
     </app-modal>
 
     <!-- Fill court -->
@@ -354,6 +419,7 @@ export default class PegboardBoardPage {
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
   private readonly api = inject(PegboardApi);
+  private readonly playersApi = inject(PlayersApi);
 
   protected readonly clubId = signal('');
   protected readonly sessionId = signal('');
@@ -364,6 +430,10 @@ export default class PegboardBoardPage {
 
   protected readonly courtDialogOpen = signal(false);
   protected readonly attendeeDialogOpen = signal(false);
+  // Add-player dialog: pick an existing club player (default) or register a walk-in visitor.
+  protected readonly attendeeMode = signal<'existing' | 'visitor'>('existing');
+  protected readonly clubPlayers = signal<PlayerLink[]>([]);
+  protected readonly playerSearch = signal('');
 
   // Phone/narrow layout: which pane the tabs show. Ignored at lg+ (both panes render).
   protected readonly tab = signal<'courts' | 'waiting'>('courts');
@@ -404,7 +474,20 @@ export default class PegboardBoardPage {
     label: new FormControl('', { nonNullable: true, validators: [Validators.required] }),
   });
 
-  protected readonly attendeeForm = new FormGroup({
+  // Club players not already on the board, filtered by the search box.
+  protected readonly availablePlayers = computed(() => {
+    const onBoard = new Set(
+      this.attendees()
+        .map((a) => a.playerId)
+        .filter((id): id is string => id !== null),
+    );
+    const q = this.playerSearch().trim().toLowerCase();
+    return this.clubPlayers()
+      .filter((p) => !onBoard.has(p.playerId))
+      .filter((p) => !q || p.fullName.toLowerCase().includes(q));
+  });
+
+  protected readonly visitorForm = new FormGroup({
     name: new FormControl('', { nonNullable: true, validators: [Validators.required] }),
     gender: new FormControl<Gender>('Male', {
       nonNullable: true,
@@ -493,16 +576,43 @@ export default class PegboardBoardPage {
   }
 
   // ---- Attendees ----
-  protected onAddAttendee(): void {
-    const { name, gender, grade } = this.attendeeForm.getRawValue();
+  // Open the add dialog defaulting to the existing-player picker, and (re)load the club roster.
+  protected openAttendeeDialog(): void {
+    this.notice.set(null);
+    this.attendeeMode.set('existing');
+    this.playerSearch.set('');
+    this.visitorForm.reset({ name: '', gender: 'Male', grade: '' });
+    this.playersApi.listClubPlayers(this.clubId()).subscribe({
+      next: (rows) => this.clubPlayers.set(rows),
+    });
+    this.attendeeDialogOpen.set(true);
+  }
+
+  // Add an existing club player. The dialog stays open for quick bulk add; the picker drops them
+  // once the board refresh confirms they're on.
+  protected onAddExisting(player: PlayerLink): void {
+    this.notice.set(null);
+    this.api.addPlayer(this.clubId(), this.sessionId(), player.playerId, null).subscribe({
+      next: () => this.refresh(),
+      error: (e) => this.onMutationError(e),
+    });
+  }
+
+  // Register a walk-in as a real Visitor on the club, then add them to the board.
+  protected onAddVisitor(): void {
+    const { name, gender, grade } = this.visitorForm.getRawValue();
     const trimmed = name.trim();
     if (!trimmed) return;
     const gradeValue = grade ? Number(grade) : null;
     this.notice.set(null);
-    this.api.addGuest(this.clubId(), this.sessionId(), trimmed, gender, gradeValue).subscribe({
+    this.api.addVisitor(this.clubId(), this.sessionId(), trimmed, gender, gradeValue).subscribe({
       next: () => {
-        this.attendeeForm.reset({ name: '', gender: 'Male', grade: '' });
-        this.attendeeDialogOpen.set(false);
+        this.visitorForm.reset({ name: '', gender: 'Male', grade: '' });
+        // Reflect the new visitor in the picker and switch back to it.
+        this.playersApi.listClubPlayers(this.clubId()).subscribe({
+          next: (rows) => this.clubPlayers.set(rows),
+        });
+        this.attendeeMode.set('existing');
         this.refresh();
       },
       error: (e) => this.onMutationError(e),

@@ -9,7 +9,13 @@ namespace smash_dates.Endpoints.Pegboard;
 public static class AddAttendanceEndpoint
 {
     private const int MaxName = 100;
-    public sealed record AddRequest(Guid? PlayerId, string? GuestName, string? Gender, int? Grade);
+    // Three ways to add an attendee, in precedence order:
+    //   PlayerId    — an existing club roster player (the common case);
+    //   NewVisitor  — register a walk-in as a real Visitor player on this club, then add them;
+    //   GuestName   — a legacy ad-hoc guest (kept for back-compat; not surfaced in the UI).
+    public sealed record NewVisitorDto(string? FullName, string? Gender, int? Grade);
+    public sealed record AddRequest(
+        Guid? PlayerId, string? GuestName, string? Gender, int? Grade, NewVisitorDto? NewVisitor);
     public sealed record AttendanceDto(Guid Id);
 
     public static IEndpointRouteBuilder MapAddAttendanceEndpoint(this IEndpointRouteBuilder app)
@@ -47,6 +53,24 @@ public static class AddAttendanceEndpoint
             {
                 return Results.Problem(statusCode: StatusCodes.Status409Conflict, title: "Player is already on the board");
             }
+        }
+        else if (request.NewVisitor is { } visitor)
+        {
+            // Register a walk-in as a real Visitor player on this club, then add them. The session
+            // runner (host/admin) is trusted to do this on the night, hence it lives here rather
+            // than behind the ClubAdmin-only player endpoints. See PR for the authz note.
+            var name = (visitor.FullName ?? string.Empty).Trim();
+            if (name.Length == 0 || name.Length > MaxName)
+                return Results.Problem(statusCode: StatusCodes.Status400BadRequest, title: "Visitor name required");
+            if (!Enum.TryParse<Gender>(visitor.Gender, out var gender))
+                return Results.Problem(statusCode: StatusCodes.Status400BadRequest, title: "Visitor gender required (Male/Female)");
+            if (visitor.Grade is < 1 or > 5)
+                return Results.Problem(statusCode: StatusCodes.Status400BadRequest, title: "Grade must be 1-5");
+
+            var newId = await players.CreateAsync(name, gender, ct);
+            if (visitor.Grade is { } vg) await players.SetGradeAsync(newId, vg, ct);
+            await players.LinkAsync(newId, clubId, PlayerClubType.Visitor, ct);
+            id = await pegboard.AddPlayerAttendanceAsync(sessionId, newId, gender, visitor.Grade, ct);
         }
         else
         {
