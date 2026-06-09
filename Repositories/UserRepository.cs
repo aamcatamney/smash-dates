@@ -104,6 +104,18 @@ public sealed class UserRepository : IUserRepository
         return rows > 0;
     }
 
+    public async Task<bool> UpdateDisplayNameAsync(Guid id, string? displayName, CancellationToken ct = default)
+    {
+        using var conn = _factory.Create();
+        var rows = await conn.ExecuteAsync(
+            new CommandDefinition(
+                @"UPDATE users SET display_name = @displayName, updated_at = now()
+                  WHERE id = @id",
+                new { id, displayName },
+                cancellationToken: ct));
+        return rows > 0;
+    }
+
     public async Task<bool> SetActiveAsync(Guid id, bool isActive, CancellationToken ct = default)
     {
         using var conn = _factory.Create();

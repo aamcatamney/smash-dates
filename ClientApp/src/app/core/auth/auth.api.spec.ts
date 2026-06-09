@@ -37,4 +37,13 @@ describe('AuthApi', () => {
     expect(req.request.method).toBe('GET');
     req.flush({ systemAdmin: false, leagueAdmin: [], clubAdmin: [], sessionHost: [] });
   });
+
+  it('updateDisplayName PATCHes the new display name', () => {
+    api.updateDisplayName('New Name').subscribe();
+
+    const req = httpMock.expectOne('/api/auth/me');
+    expect(req.request.method).toBe('PATCH');
+    expect(req.request.body).toEqual({ displayName: 'New Name' });
+    req.flush({ id: 'u1', email: 'u@example.com', displayName: 'New Name', isSystemAdmin: false });
+  });
 });

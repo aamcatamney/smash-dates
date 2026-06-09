@@ -20,7 +20,7 @@ The whole thing ships as a single container: a .NET 10 API that also serves the 
 **Access & roles**
 - Email/password accounts with cookie authentication; the first registered user becomes the **SystemAdmin**.
 - **Email verification** gates login — new sign-ups confirm their address via a one-time link before they can sign in (the bootstrap SystemAdmin is auto-verified). Self-service **password reset** and **resend verification** round out the flow; tokens are single-use, hashed at rest and expire — re-issuing a link invalidates the previous one, and spent tokens are pruned by a background job. Links ride the notification outbox (logging sender by default).
-- **Profile page** (`/profile`) — a signed-in user can change their own password (verifies the current password, BCrypt-hashes the new one) and review a read-only list of the role grants they hold (SystemAdmin, LeagueAdmin, ClubAdmin, SessionHost, each naming its league/club). The password change is the authenticated self-service path; the logged-out email-link reset is separate and untouched.
+- **Profile page** (`/profile`) — a signed-in user can edit their **display name** (the name shown around the app; blank falls back to their email), change their own password (verifies the current password, BCrypt-hashes the new one) and review a read-only list of the role grants they hold (SystemAdmin, LeagueAdmin, ClubAdmin, SessionHost, each naming its league/club). The password change is the authenticated self-service path; the logged-out email-link reset is separate and untouched.
 - Three role scopes: **SystemAdmin** (bootstrap), **LeagueAdmin@League** and **ClubAdmin@Club** — granted per league/club, with last-admin protection.
 - **Public view** — a logged-out **read-only** view of a league's standings and fixtures (`/public`), PII-free (team/division/venue names, dates and scores only).
 
@@ -115,9 +115,9 @@ The league confirms discipline registrations and adjudicates transfers between c
 ![Player registrations & transfers awaiting league approval](docs/screenshots/players.png)
 
 ### Profile & access
-A signed-in user changes their own password and reviews the read-only list of role grants they hold.
+A signed-in user edits their display name, changes their own password and reviews the read-only list of role grants they hold.
 
-![Profile page — change password and role grants](docs/screenshots/profile.png)
+![Profile page — display name, change password and role grants](docs/screenshots/profile.png)
 
 ### Public view (no login)
 A logged-out, read-only view of a league's standings and fixtures at `/public` — PII-free.

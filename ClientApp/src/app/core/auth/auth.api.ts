@@ -38,6 +38,10 @@ export class AuthApi {
     return this.http.get<MyGrants>(`${this.base}/me/grants`);
   }
 
+  updateDisplayName(displayName: string | null): Observable<AuthenticatedUser> {
+    return this.http.patch<AuthenticatedUser>(`${this.base}/me`, { displayName });
+  }
+
   login(payload: LoginPayload): Observable<AuthenticatedUser> {
     return this.http.post<AuthenticatedUser>(`${this.base}/login`, payload);
   }

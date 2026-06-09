@@ -26,6 +26,71 @@ import { AdminHeaderComponent } from '../admin/admin-header.component';
 
         <section
           class="mt-8 rounded-xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-900"
+          aria-labelledby="display-name-title"
+        >
+          <h2
+            id="display-name-title"
+            class="text-lg font-semibold text-slate-900 dark:text-slate-100"
+          >
+            Display name
+          </h2>
+          <p class="mt-1 text-sm text-slate-600 dark:text-slate-400">
+            The name shown around the app. Leave it blank to fall back to your email.
+          </p>
+
+          @if (nameDone()) {
+            <div
+              role="status"
+              class="mt-4 rounded-md border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800 dark:border-emerald-900 dark:bg-emerald-950 dark:text-emerald-300"
+            >
+              Display name updated.
+            </div>
+          }
+
+          @if (nameError(); as msg) {
+            <div
+              role="alert"
+              class="mt-4 rounded-md border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800 dark:border-red-900 dark:bg-red-950 dark:text-red-300"
+            >
+              {{ msg }}
+            </div>
+          }
+
+          <form [formGroup]="nameForm" (ngSubmit)="saveName()" novalidate class="mt-6">
+            <fieldset [disabled]="nameSaving()" class="space-y-4">
+              <div>
+                <label
+                  for="displayName"
+                  class="mb-1 block text-sm font-medium text-slate-700 dark:text-slate-300"
+                  >Display name</label
+                >
+                <input
+                  id="displayName"
+                  type="text"
+                  autocomplete="name"
+                  formControlName="displayName"
+                  [attr.aria-invalid]="showNameError() ? 'true' : null"
+                  [attr.aria-describedby]="showNameError() ? 'displayName-error' : null"
+                  class="block w-full rounded-md border border-slate-300 px-3 py-2 text-slate-900 shadow-sm focus:border-slate-900 focus:outline-none focus:ring-2 focus:ring-slate-900 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 dark:focus:border-slate-100 dark:focus:ring-slate-100"
+                />
+                @if (showNameError()) {
+                  <p id="displayName-error" class="mt-1 text-sm text-red-700 dark:text-red-400">
+                    Display name must be 80 characters or fewer.
+                  </p>
+                }
+              </div>
+              <button
+                type="submit"
+                class="rounded-md bg-slate-900 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-slate-900 focus:ring-offset-2 disabled:bg-slate-400 dark:bg-amber-400 dark:text-slate-900 dark:hover:bg-amber-300 dark:focus:ring-slate-100 dark:focus:ring-offset-slate-950 dark:disabled:bg-slate-700"
+              >
+                {{ nameSaving() ? 'Saving…' : 'Save' }}
+              </button>
+            </fieldset>
+          </form>
+        </section>
+
+        <section
+          class="mt-8 rounded-xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-900"
           aria-labelledby="change-password-title"
         >
           <h2
@@ -205,6 +270,13 @@ export default class ProfilePage {
     newPassword: ['', [Validators.required, Validators.minLength(12)]],
   });
 
+  protected readonly nameForm = this.fb.nonNullable.group({
+    displayName: [this.store.user()?.displayName ?? '', [Validators.maxLength(80)]],
+  });
+  protected readonly nameSaving = signal(false);
+  protected readonly nameDone = signal(false);
+  protected readonly nameError = signal<string | null>(null);
+
   protected readonly grants = toSignal(this.api.myGrants());
   protected readonly hasAnyGrant = computed(() => {
     const g = this.grants();
@@ -228,6 +300,29 @@ export default class ProfilePage {
   protected showNewError(): boolean {
     const c = this.form.controls.newPassword;
     return c.invalid && (c.dirty || c.touched);
+  }
+
+  protected showNameError(): boolean {
+    const c = this.nameForm.controls.displayName;
+    return c.invalid && (c.dirty || c.touched);
+  }
+
+  protected async saveName(): Promise<void> {
+    if (this.nameForm.invalid) {
+      this.nameForm.markAllAsTouched();
+      return;
+    }
+    this.nameSaving.set(true);
+    this.nameError.set(null);
+    this.nameDone.set(false);
+    const raw = this.nameForm.controls.displayName.value.trim();
+    const ok = await this.store.updateDisplayName(raw.length ? raw : null);
+    this.nameSaving.set(false);
+    if (ok) {
+      this.nameDone.set(true);
+    } else {
+      this.nameError.set(this.store.error()?.message ?? 'Could not update your display name.');
+    }
   }
 
   protected async submit(): Promise<void> {
