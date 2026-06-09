@@ -61,6 +61,8 @@ export interface VenueSummary {
   name: string;
   courts: number;
   maxConcurrentMatches: number;
+  // Optional free-text address, linked to Google Maps in the UI.
+  address: string | null;
 }
 
 export type MatchStatus = 'Proposed' | 'Confirmed' | 'Played' | 'Postponed' | 'Rejected';
@@ -192,11 +194,13 @@ export class ClubsApi {
     name: string,
     courts: number,
     maxConcurrentMatches: number,
+    address: string | null,
   ): Observable<VenueSummary> {
     return this.http.post<VenueSummary>(`/api/clubs/${clubId}/venues`, {
       name,
       courts,
       maxConcurrentMatches,
+      address,
     });
   }
 
@@ -206,11 +210,13 @@ export class ClubsApi {
     name: string,
     courts: number,
     maxConcurrentMatches: number,
+    address: string | null,
   ): Observable<void> {
     return this.http.patch<void>(`/api/clubs/${clubId}/venues/${venueId}`, {
       name,
       courts,
       maxConcurrentMatches,
+      address,
     });
   }
 

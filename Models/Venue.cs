@@ -11,6 +11,8 @@ public sealed class Venue
     public string Name { get; init; } = string.Empty;
     public int Courts { get; init; }
     public int MaxConcurrentMatches { get; init; }
+    // Optional free-text address, linked to a map provider in the UI. Scheduler ignores it.
+    public string? Address { get; init; }
     public DateTime CreatedAt { get; init; }
     public DateTime UpdatedAt { get; init; }
 }

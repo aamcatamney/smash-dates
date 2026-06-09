@@ -12,6 +12,7 @@ const base = {
   durationMinutes: null,
   venueId: null,
   venueName: null,
+  venueAddress: null,
   closedAt: null,
 };
 
@@ -40,6 +41,7 @@ const sessions: SessionSummary[] = [
     scheduledDate: '2026-06-16',
     startTime: '19:30:00',
     venueName: 'Main Hall',
+    venueAddress: '12 High St, Belfast',
   },
 ];
 

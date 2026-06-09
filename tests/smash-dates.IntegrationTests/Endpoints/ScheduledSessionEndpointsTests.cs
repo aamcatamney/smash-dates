@@ -13,7 +13,7 @@ public sealed class ScheduledSessionEndpointsTests : IntegrationTestBase
     private sealed record SessionRow(Guid Id, Guid ClubId, string Name, string Status);
     private sealed record ListRow(
         Guid Id, string Name, string Status, string? ScheduledDate, string? StartTime,
-        int? DurationMinutes, Guid? VenueId, string? VenueName, string? OpenedAt, string? ClosedAt);
+        int? DurationMinutes, Guid? VenueId, string? VenueName, string? VenueAddress, string? OpenedAt, string? ClosedAt);
     private sealed record BoardRow(BoardSession Session, bool CanManage, string ClubName, string ClubShortCode);
     private sealed record BoardSession(Guid Id, Guid ClubId, string Name, string Status);
 

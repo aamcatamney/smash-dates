@@ -7,7 +7,7 @@ public static class ListSessionsEndpoint
     public sealed record SessionDto(
         Guid Id, string Name, string Status,
         DateOnly? ScheduledDate, TimeOnly? StartTime, int? DurationMinutes,
-        Guid? VenueId, string? VenueName,
+        Guid? VenueId, string? VenueName, string? VenueAddress,
         System.DateTime? OpenedAt, System.DateTime? ClosedAt);
 
     public static IEndpointRouteBuilder MapListSessionsEndpoint(this IEndpointRouteBuilder app)
@@ -22,6 +22,6 @@ public static class ListSessionsEndpoint
         return Results.Ok(rows.Select(s => new SessionDto(
             s.Id, s.Name, s.Status.ToString(),
             s.ScheduledDate, s.StartTime, s.DurationMinutes,
-            s.VenueId, s.VenueName, s.OpenedAt, s.ClosedAt)));
+            s.VenueId, s.VenueName, s.VenueAddress, s.OpenedAt, s.ClosedAt)));
     }
 }

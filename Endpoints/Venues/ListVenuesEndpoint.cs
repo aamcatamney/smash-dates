@@ -4,7 +4,7 @@ namespace smash_dates.Endpoints.Venues;
 
 public static class ListVenuesEndpoint
 {
-    public sealed record VenueSummary(Guid Id, Guid ClubId, string Name, int Courts, int MaxConcurrentMatches);
+    public sealed record VenueSummary(Guid Id, Guid ClubId, string Name, int Courts, int MaxConcurrentMatches, string? Address);
 
     public static IEndpointRouteBuilder MapListVenuesEndpoint(this IEndpointRouteBuilder app)
     {
@@ -15,6 +15,6 @@ public static class ListVenuesEndpoint
     private static async Task<IResult> Handle(Guid clubId, IVenueRepository venues, CancellationToken ct)
     {
         var rows = await venues.ListByClubAsync(clubId, ct);
-        return Results.Ok(rows.Select(v => new VenueSummary(v.Id, v.ClubId, v.Name, v.Courts, v.MaxConcurrentMatches)).ToArray());
+        return Results.Ok(rows.Select(v => new VenueSummary(v.Id, v.ClubId, v.Name, v.Courts, v.MaxConcurrentMatches, v.Address)).ToArray());
     }
 }

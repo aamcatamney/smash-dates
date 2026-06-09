@@ -18,6 +18,7 @@ export interface SessionSummary {
   durationMinutes: number | null;
   venueId: string | null;
   venueName: string | null;
+  venueAddress: string | null;
   openedAt: string | null;
   closedAt: string | null;
 }

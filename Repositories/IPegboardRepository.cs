@@ -27,7 +27,7 @@ public sealed record BoardView(
 public sealed record SessionListRow(
     Guid Id, string Name, PegboardSessionStatus Status,
     DateOnly? ScheduledDate, TimeOnly? StartTime, int? DurationMinutes,
-    Guid? VenueId, string? VenueName,
+    Guid? VenueId, string? VenueName, string? VenueAddress,
     DateTime? OpenedAt, DateTime? ClosedAt);
 
 // One attendee's makeup-relevant facts, used by the fill engine.

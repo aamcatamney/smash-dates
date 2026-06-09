@@ -27,6 +27,7 @@ Three scopes, all owned by the relevant Club admin:
 A physical hall belonging to a Club. A Club has 1..N Venues, all interchangeable from the scheduler's perspective. Each Venue has:
 - **Courts** — the number of physical badminton courts in the hall (1..N).
 - **MaxConcurrentMatches** — the Venue's own ceiling (`1` or `2`) on how many Matches may run at once, regardless of how many courts it has.
+- an optional **Address** — free text, shown with an external map link (display/navigation aid only; the scheduler ignores it).
 - a list of **unavailable dates** (the [VenueBlocked](#blocked-date) scope — not a separate concept).
 
 The number of Matches a Venue can actually host simultaneously in one `(Venue, Date)` slot is **derived**, not stored: `min(MaxConcurrentMatches, ⌊Courts ÷ CourtsPerMatch⌋)`, where [CourtsPerMatch](#scheduling-constraints) is a per-League rule. A Match occupies more than one court (its rubbers run in parallel), so a hall needs enough courts *and* a high enough concurrency ceiling to run two Matches at once.

@@ -74,7 +74,7 @@ for i in "${!CLUB_NAMES[@]}"; do
   cid=$(post /api/clubs \
     "{\"name\":\"$name\",\"shortCode\":\"$code\",\"contactEmail\":\"${code,,}@example.com\",\"firstClubAdminUserId\":\"$ADMIN_ID\"}" | jget id)
   CLUB_IDS[$i]="$cid"
-  post "/api/clubs/$cid/venues" "{\"name\":\"$name Hall\",\"courts\":4,\"maxConcurrentMatches\":2}" >/dev/null
+  post "/api/clubs/$cid/venues" "{\"name\":\"$name Hall\",\"courts\":4,\"maxConcurrentMatches\":2,\"address\":\"$name Leisure Centre, 12 High St\"}" >/dev/null
   tid=$(post "/api/clubs/$cid/teams" "{\"name\":\"$name I\",\"gender\":\"Mens\"}" | jget id)
   TEAM_IDS[$i]="$tid"
   # invite to league (league admin) then accept (club admin) — same admin does both

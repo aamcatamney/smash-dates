@@ -98,8 +98,21 @@ import { AuthStore } from '../../core/auth/auth.store';
             <span class="text-slate-500 dark:text-slate-400">
               {{ s.scheduledDate | date: 'fullDate'
               }}{{ s.startTime ? ' · ' + clock(s.startTime) : ''
-              }}{{ s.durationMinutes ? ' · ' + s.durationMinutes + ' min' : ''
-              }}{{ s.venueName ? ' · ' + s.venueName : '' }}
+              }}{{ s.durationMinutes ? ' · ' + s.durationMinutes + ' min' : '' }}
+              @if (s.venueName) {
+                ·
+                @if (s.venueAddress) {
+                  <a
+                    [href]="mapUrl(s.venueAddress)"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    class="underline hover:text-slate-900 dark:hover:text-slate-100"
+                    >{{ s.venueName }} ↗</a
+                  >
+                } @else {
+                  {{ s.venueName }}
+                }
+              }
             </span>
           </div>
           @if (canRun()) {
@@ -363,6 +376,11 @@ export class PegboardSessionsComponent {
   // "HH:mm:ss" (or "HH:mm") -> "HH:mm" for display.
   protected clock(time: string): string {
     return time.slice(0, 5);
+  }
+
+  // Google Maps search link for the venue's free-text address.
+  protected mapUrl(address: string): string {
+    return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(address)}`;
   }
 
   private refresh(): void {
