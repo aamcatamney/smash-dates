@@ -67,6 +67,19 @@ interface LeagueOption {
       }
     </div>
 
+    @if (visitorCount() > 0) {
+      <label
+        class="mt-3 inline-flex cursor-pointer items-center gap-2 font-mono text-xs text-slate-600 dark:text-slate-400"
+      >
+        <input
+          type="checkbox"
+          [checked]="showVisitors()"
+          (change)="showVisitors.set(!showVisitors())"
+        />
+        Show visitors ({{ visitorCount() }})
+      </label>
+    }
+
     <app-csv-import
       [open]="importOpen()"
       title="Import players"
@@ -80,7 +93,7 @@ interface LeagueOption {
     <ul
       class="mt-3 divide-y divide-slate-200 rounded-md border border-slate-200 bg-white dark:divide-slate-800 dark:border-slate-800 dark:bg-slate-900"
     >
-      @for (p of players(); track p.playerId) {
+      @for (p of visiblePlayers(); track p.playerId) {
         <li class="flex flex-wrap items-center gap-x-3 gap-y-1 px-4 py-3 font-mono text-sm">
           <span class="font-medium text-slate-900 dark:text-slate-100">{{ p.fullName }}</span>
           <span class="text-slate-500 dark:text-slate-400"
@@ -136,7 +149,17 @@ interface LeagueOption {
           }
         </li>
       } @empty {
-        <li class="px-4 py-3 font-mono text-sm text-slate-500 dark:text-slate-400">No players.</li>
+        <li class="px-4 py-3 font-mono text-sm text-slate-500 dark:text-slate-400">
+          {{
+            visitorCount() > 0
+              ? 'No members. ' +
+                visitorCount() +
+                ' hidden visitor' +
+                (visitorCount() === 1 ? '' : 's') +
+                '.'
+              : 'No players.'
+          }}
+        </li>
       }
     </ul>
     @if (error()) {
@@ -393,6 +416,14 @@ export class ClubPlayersComponent {
   readonly playerCount = output<number>();
 
   protected readonly players = signal<PlayerLink[]>([]);
+  // Visitors are hidden by default; the toggle reveals them.
+  protected readonly showVisitors = signal(false);
+  protected readonly visitorCount = computed(
+    () => this.players().filter((p) => p.type === 'Visitor').length,
+  );
+  protected readonly visiblePlayers = computed(() =>
+    this.showVisitors() ? this.players() : this.players().filter((p) => p.type !== 'Visitor'),
+  );
   protected readonly registrations = signal<Registration[]>([]);
   protected readonly transfers = signal<Transfer[]>([]);
   protected readonly error = signal<string | null>(null);
