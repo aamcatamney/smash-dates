@@ -16,4 +16,6 @@ public interface IPlayerRepository
     Task<IReadOnlyList<PlayerClubView>> ListByClubAsync(Guid clubId, CancellationToken ct = default);
     Task<bool> UnlinkAsync(Guid playerId, Guid clubId, CancellationToken ct = default);
     Task<bool> SetGradeAsync(Guid playerId, int? grade, CancellationToken ct = default);
+    // Rename the global player record (gender is immutable; grade has its own setter).
+    Task<bool> UpdateNameAsync(Guid playerId, string fullName, CancellationToken ct = default);
 }

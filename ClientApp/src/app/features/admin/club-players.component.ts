@@ -83,7 +83,9 @@ interface LeagueOption {
       @for (p of players(); track p.playerId) {
         <li class="flex flex-wrap items-center gap-x-3 gap-y-1 px-4 py-3 font-mono text-sm">
           <span class="font-medium text-slate-900 dark:text-slate-100">{{ p.fullName }}</span>
-          <span class="text-slate-500 dark:text-slate-400">{{ p.gender }}</span>
+          <span class="text-slate-500 dark:text-slate-400"
+            >{{ p.gender }}{{ p.grade ? ' · grade ' + p.grade : '' }}</span
+          >
           <span
             class="inline-block rounded px-2 py-0.5 text-xs "
             [class]="
@@ -111,6 +113,13 @@ interface LeagueOption {
               }
               <button
                 type="button"
+                (click)="openEdit(p)"
+                class="rounded-md border border-slate-300 px-2 py-0.5 text-xs text-slate-700 hover:bg-slate-50 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800"
+              >
+                Edit
+              </button>
+              <button
+                type="button"
                 (click)="toggleType(p)"
                 class="rounded-md border border-slate-300 px-2 py-0.5 text-xs text-slate-700 hover:bg-slate-50 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800"
               >
@@ -135,6 +144,49 @@ interface LeagueOption {
         {{ error() }}
       </p>
     }
+
+    <!-- Edit player (name + grade; gender immutable) -->
+    <app-modal [open]="editOpen()" title="Edit player" (closed)="editOpen.set(false)">
+      <form [formGroup]="editForm" (ngSubmit)="saveEdit()" class="grid gap-3 font-mono text-sm">
+        <label class="grid gap-1">
+          <span class="text-xs uppercase tracking-wider text-slate-600 dark:text-slate-400"
+            >Full name</span
+          >
+          <input
+            type="text"
+            formControlName="fullName"
+            class="rounded-md border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-slate-900 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 dark:focus:ring-slate-100"
+            required
+          />
+        </label>
+        <label class="grid gap-1">
+          <span class="text-xs uppercase tracking-wider text-slate-600 dark:text-slate-400"
+            >Grade (optional)</span
+          >
+          <select
+            formControlName="grade"
+            class="rounded-md border border-slate-300 px-3 py-2 text-sm dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
+          >
+            <option value="">—</option>
+            <option value="1">1</option>
+            <option value="2">2</option>
+            <option value="3">3</option>
+            <option value="4">4</option>
+            <option value="5">5</option>
+          </select>
+        </label>
+        <p class="text-xs text-slate-500 dark:text-slate-400">
+          Gender can't be changed. Renames apply everywhere this player appears.
+        </p>
+        <button
+          type="submit"
+          [disabled]="editForm.invalid"
+          class="justify-self-start rounded-md bg-slate-900 px-4 py-2 text-sm font-medium text-amber-300 disabled:opacity-50 dark:bg-amber-400 dark:text-slate-900"
+        >
+          Save
+        </button>
+      </form>
+    </app-modal>
 
     <!-- Add player -->
     <app-modal [open]="addOpen()" title="Add player" (closed)="addOpen.set(false)">
@@ -358,6 +410,13 @@ export class ClubPlayersComponent {
 
   protected readonly transferSearchControl = new FormControl('', { nonNullable: true });
 
+  protected readonly editOpen = signal(false);
+  protected readonly editingPlayerId = signal<string | null>(null);
+  protected readonly editForm = new FormGroup({
+    fullName: new FormControl('', { nonNullable: true, validators: [Validators.required] }),
+    grade: new FormControl('', { nonNullable: true }),
+  });
+
   protected readonly createForm = new FormGroup({
     fullName: new FormControl('', { nonNullable: true, validators: [Validators.required] }),
     gender: new FormControl<'Male' | 'Female'>('Male', { nonNullable: true }),
@@ -367,6 +426,30 @@ export class ClubPlayersComponent {
     leagueId: new FormControl('', { nonNullable: true, validators: [Validators.required] }),
     discipline: new FormControl<Discipline>('Level', { nonNullable: true }),
   });
+
+  protected openEdit(p: PlayerLink): void {
+    this.error.set(null);
+    this.editingPlayerId.set(p.playerId);
+    this.editForm.reset({ fullName: p.fullName, grade: p.grade ? String(p.grade) : '' });
+    this.editOpen.set(true);
+  }
+
+  protected saveEdit(): void {
+    const id = this.editingPlayerId();
+    const { fullName, grade } = this.editForm.getRawValue();
+    const trimmed = fullName.trim();
+    if (!id || !trimmed) return;
+    this.api
+      .updatePlayerDetails(this.clubId(), id, trimmed, grade ? Number(grade) : null)
+      .subscribe({
+        next: () => {
+          this.editOpen.set(false);
+          this.refresh();
+        },
+        error: (err: { error?: { title?: string } }) =>
+          this.error.set(err?.error?.title ?? 'Could not update player.'),
+      });
+  }
 
   protected regsFor(playerId: string): Registration[] {
     return this.registrations().filter((r) => r.playerId === playerId && r.status !== 'Rejected');

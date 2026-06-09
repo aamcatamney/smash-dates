@@ -92,4 +92,15 @@ public sealed class PlayerRepository : IPlayerRepository
                 cancellationToken: ct));
         return rows > 0;
     }
+
+    public async Task<bool> UpdateNameAsync(Guid playerId, string fullName, CancellationToken ct = default)
+    {
+        using var conn = _factory.Create();
+        var rows = await conn.ExecuteAsync(
+            new CommandDefinition(
+                "UPDATE players SET full_name = @fullName, updated_at = now() WHERE id = @playerId",
+                new { playerId, fullName },
+                cancellationToken: ct));
+        return rows > 0;
+    }
 }
