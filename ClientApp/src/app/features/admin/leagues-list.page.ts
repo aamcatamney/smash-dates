@@ -112,7 +112,7 @@ import { ToastService } from '../../shared/toast.service';
             @for (league of leagues(); track league.id) {
               <li class="px-4 py-3">
                 <a
-                  [routerLink]="['/admin/leagues', league.id]"
+                  [routerLink]="['/leagues', league.id]"
                   class="font-mono text-sm font-medium text-slate-900 hover:underline dark:text-slate-100"
                   >{{ league.name }}</a
                 >

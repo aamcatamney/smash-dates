@@ -52,7 +52,7 @@ import { PlayersApi } from './players.api';
 
       <main class="mx-auto w-full max-w-5xl px-4 py-10">
         <a
-          [routerLink]="['/admin/clubs']"
+          [routerLink]="['/clubs']"
           class="font-mono text-xs uppercase tracking-wider text-slate-500 dark:text-slate-400 hover:underline"
           >← back to clubs</a
         >

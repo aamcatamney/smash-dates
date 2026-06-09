@@ -668,7 +668,7 @@ export default class PegboardBoardPage {
     this.notice.set(null);
     this.api.closeSession(this.clubId(), this.sessionId()).subscribe({
       next: () =>
-        this.router.navigate(['/admin/clubs', this.clubId()], { queryParams: { tab: 'sessions' } }),
+        this.router.navigate(['/clubs', this.clubId()], { queryParams: { tab: 'sessions' } }),
       error: (e) => this.onMutationError(e),
     });
   }
