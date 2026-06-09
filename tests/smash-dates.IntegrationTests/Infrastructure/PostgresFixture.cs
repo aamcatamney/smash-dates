@@ -12,8 +12,8 @@ public sealed class PostgresFixture : IAsyncLifetime
         .WithDatabase("smash_dates")
         .WithUsername("postgres")
         .WithPassword("postgres")
-        // Each test spins up its own WebApplicationFactory (and Npgsql pool); the default
-        // server cap of 100 is exhausted once the whole suite runs back-to-back.
+        // One shared WebApplicationFactory (and Npgsql pool) serves the whole suite, but
+        // headroom above the default 100 cap keeps back-to-back tests off connection limits.
         .WithCommand("-c", "max_connections=500")
         .Build();
 
@@ -21,11 +21,18 @@ public sealed class PostgresFixture : IAsyncLifetime
 
     public string ConnectionString => _container.GetConnectionString();
 
+    // One factory for the whole collection: building the host (DI graph + startup migration)
+    // is the dominant per-test cost, so we pay it once instead of ~once per test. The app is
+    // stateless between requests (state lives in Postgres, reset by Respawn), so sharing is safe.
+    public TestWebApplicationFactory Factory { get; private set; } = null!;
+
     public async ValueTask InitializeAsync()
     {
         await _container.StartAsync();
 
         DbMigrator.Apply(ConnectionString);
+
+        Factory = new TestWebApplicationFactory(ConnectionString);
 
         await using var conn = new NpgsqlConnection(ConnectionString);
         await conn.OpenAsync();
@@ -50,6 +57,11 @@ public sealed class PostgresFixture : IAsyncLifetime
 
     public async ValueTask DisposeAsync()
     {
+        if (Factory is not null)
+        {
+            await Factory.DisposeAsync();
+        }
+
         await _container.DisposeAsync();
     }
 }
