@@ -934,13 +934,15 @@ import { AuthStore } from '../../core/auth/auth.store';
                   <h2 class="font-mono text-lg font-semibold text-slate-900 dark:text-slate-100">
                     Scheduler tuning
                   </h2>
-                  <button
-                    type="button"
-                    (click)="onEditConfig()"
-                    class="rounded-md border border-slate-300 dark:border-slate-700 px-3 py-1 font-mono text-xs text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800"
-                  >
-                    Edit
-                  </button>
+                  @if (canManage()) {
+                    <button
+                      type="button"
+                      (click)="onEditConfig()"
+                      class="rounded-md border border-slate-300 dark:border-slate-700 px-3 py-1 font-mono text-xs text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800"
+                    >
+                      Edit
+                    </button>
+                  }
                 </div>
                 <div
                   class="mt-3 rounded-md border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 px-4 py-3 font-mono text-sm text-slate-700 dark:text-slate-300"
