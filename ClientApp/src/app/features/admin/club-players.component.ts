@@ -38,10 +38,36 @@ interface LeagueOption {
   imports: [ReactiveFormsModule, ModalComponent, StatusColorPipe, CsvImportComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
-    <div class="mt-10 flex items-center justify-between">
-      <h2 class="font-mono text-lg font-semibold text-slate-900 dark:text-slate-100">Players</h2>
+    <div class="mt-10 flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
+      <div class="flex flex-wrap items-center gap-x-3 gap-y-1">
+        <h2 class="font-mono text-lg font-semibold text-slate-900 dark:text-slate-100">Players</h2>
+        @if (visitorCount() > 0) {
+          <button
+            type="button"
+            role="switch"
+            [attr.aria-checked]="showVisitors()"
+            (click)="showVisitors.set(!showVisitors())"
+            class="inline-flex items-center gap-2 rounded-md font-mono text-xs text-slate-600 focus:outline-none focus-visible:ring-2 focus-visible:ring-slate-900 focus-visible:ring-offset-2 dark:text-slate-400 dark:focus-visible:ring-slate-100 dark:focus-visible:ring-offset-slate-950"
+          >
+            <span
+              class="relative inline-block h-4 w-7 rounded-full transition-colors"
+              [class]="
+                showVisitors()
+                  ? 'bg-slate-900 dark:bg-amber-400'
+                  : 'bg-slate-300 dark:bg-slate-700'
+              "
+            >
+              <span
+                class="absolute left-0.5 top-0.5 h-3 w-3 rounded-full bg-white transition-transform dark:bg-slate-950"
+                [class]="showVisitors() ? 'translate-x-3' : 'translate-x-0'"
+              ></span>
+            </span>
+            Visitors ({{ visitorCount() }})
+          </button>
+        }
+      </div>
       @if (canManage()) {
-        <div class="flex gap-2">
+        <div class="flex flex-wrap gap-2">
           <button
             type="button"
             (click)="openImport()"
@@ -66,19 +92,6 @@ interface LeagueOption {
         </div>
       }
     </div>
-
-    @if (visitorCount() > 0) {
-      <label
-        class="mt-3 inline-flex cursor-pointer items-center gap-2 font-mono text-xs text-slate-600 dark:text-slate-400"
-      >
-        <input
-          type="checkbox"
-          [checked]="showVisitors()"
-          (change)="showVisitors.set(!showVisitors())"
-        />
-        Show visitors ({{ visitorCount() }})
-      </label>
-    }
 
     <app-csv-import
       [open]="importOpen()"
@@ -497,7 +510,8 @@ export class ClubPlayersComponent {
     this.api.listClubPlayers(id).subscribe({
       next: (p) => {
         this.players.set(p);
-        this.playerCount.emit(p.length);
+        // Tab badge counts Members only; visitors are revealed via the toggle.
+        this.playerCount.emit(p.filter((x) => x.type === 'Member').length);
       },
     });
     this.api.listClubRegistrations(id).subscribe({ next: (r) => this.registrations.set(r) });
