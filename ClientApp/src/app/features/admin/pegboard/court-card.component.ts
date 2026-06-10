@@ -20,11 +20,18 @@ import { BoardCourt, BoardGamePlayer } from '../pegboard.api';
           {{ court().label }}
         </h3>
         @if (court().activeGame; as g) {
-          <span
-            class="rounded bg-amber-200 px-2 py-0.5 font-mono text-xs uppercase tracking-wider text-amber-900 dark:bg-amber-400 dark:text-slate-900"
-          >
-            {{ g.type }}
-          </span>
+          <div class="flex items-center gap-2">
+            <span
+              class="font-mono text-xs tabular-nums text-slate-500 dark:text-slate-400"
+              aria-label="Game time"
+              >⏱ {{ elapsed() }}</span
+            >
+            <span
+              class="rounded bg-amber-200 px-2 py-0.5 font-mono text-xs uppercase tracking-wider text-amber-900 dark:bg-amber-400 dark:text-slate-900"
+            >
+              {{ g.type }}
+            </span>
+          </div>
         } @else if (live()) {
           <button
             type="button"
@@ -115,6 +122,8 @@ import { BoardCourt, BoardGamePlayer } from '../pegboard.api';
 export class CourtCardComponent {
   readonly court = input.required<BoardCourt>();
   readonly live = input(false);
+  // Reference clock (ms) ticked by the parent each second, so the timer advances live.
+  readonly now = input(0);
 
   readonly fill = output<void>();
   readonly finish = output<void>();
@@ -126,4 +135,15 @@ export class CourtCardComponent {
   );
   protected readonly sideA = computed(() => this.players().filter((p) => p.side === 'A'));
   protected readonly sideB = computed(() => this.players().filter((p) => p.side === 'B'));
+
+  // mm:ss the active game has been running, from its startedAt against the ticking clock.
+  protected readonly elapsed = computed(() => {
+    const game = this.court().activeGame;
+    if (!game) return '0:00';
+    const ms = this.now() - Date.parse(game.startedAt);
+    const total = Number.isFinite(ms) && ms > 0 ? Math.floor(ms / 1000) : 0;
+    const minutes = Math.floor(total / 60);
+    const seconds = total % 60;
+    return `${minutes}:${seconds.toString().padStart(2, '0')}`;
+  });
 }

@@ -1,8 +1,9 @@
 import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
-import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { takeUntilDestroyed, toSignal } from '@angular/core/rxjs-interop';
 import { FormControl, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
-import { switchMap } from 'rxjs';
+import { interval, switchMap } from 'rxjs';
+import { ToastService } from '../../shared/toast.service';
 import {
   BoardAttendee,
   BoardCourt,
@@ -19,6 +20,23 @@ import { AdminHeaderComponent } from './admin-header.component';
 import { CourtCardComponent } from './pegboard/court-card.component';
 import { WaitingQueueComponent } from './pegboard/waiting-queue.component';
 import { FillDialogComponent, StartGamePayload } from './pegboard/fill-dialog.component';
+
+// Badminton scoring: a game is to 21, win by 2, capped at 30. Given the loser's score the
+// winner's is fully determined, so the host only enters the loser's.
+function winnerScore(loser: number): number {
+  if (loser <= 19) return 21;
+  if (loser <= 28) return loser + 2;
+  return 30; // loser === 29 → 30–29
+}
+
+// "winner–loser" for a valid losing score (integer 0–29), else null. Accepts the number an
+// <input type="number"> reactive control yields, or an empty/blank value when nothing's entered.
+function composeScore(raw: number | string | null): string | null {
+  if (raw === null || raw === '') return null;
+  const loser = Number(raw);
+  if (!Number.isInteger(loser) || loser < 0 || loser > 29) return null;
+  return `${winnerScore(loser)}-${loser}`;
+}
 
 // Full-screen, live club-night board. Subscribes to the SSE stream and re-fetches the board on
 // every event. The board read returns `canManage`: host controls render only on a live session
@@ -91,15 +109,6 @@ import { FillDialogComponent, StartGamePayload } from './pegboard/fill-dialog.co
             </div>
           </header>
 
-          @if (notice(); as n) {
-            <p
-              role="alert"
-              class="mt-4 rounded-md border-l-4 border-amber-500 bg-amber-50 px-4 py-3 font-mono text-sm text-amber-900 dark:border-amber-400 dark:bg-amber-950/60 dark:text-amber-200"
-            >
-              {{ n }}
-            </p>
-          }
-
           <!-- Phone/narrow: one pane at a time via tabs. At lg+ both panes show side-by-side
                and this control is hidden (see ADR 0006). -->
           <div
@@ -159,6 +168,7 @@ import { FillDialogComponent, StartGamePayload } from './pegboard/fill-dialog.co
                   <app-court-card
                     [court]="c"
                     [live]="isLive()"
+                    [now]="now()"
                     (fill)="openFill(c)"
                     (finish)="openFinish(c)"
                     (cancel)="askCancelGame(c)"
@@ -419,14 +429,25 @@ import { FillDialogComponent, StartGamePayload } from './pegboard/fill-dialog.co
         <label class="grid gap-1">
           <span
             class="font-mono text-xs uppercase tracking-wider text-slate-600 dark:text-slate-400"
-            >Score (optional)</span
+            >Losing score (optional)</span
           >
           <input
-            type="text"
-            formControlName="score"
-            placeholder="21-15"
+            type="number"
+            inputmode="numeric"
+            min="0"
+            max="29"
+            formControlName="loserScore"
+            placeholder="e.g. 15"
             class="rounded-md border border-slate-300 px-3 py-2 font-mono text-sm focus:outline-none focus:ring-2 focus:ring-slate-900 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 dark:focus:ring-slate-100"
           />
+          @if (derivedScore(); as s) {
+            <span class="font-mono text-xs text-slate-500 dark:text-slate-400">Final score {{ s }}</span>
+          } @else {
+            <span class="font-mono text-xs text-slate-500 dark:text-slate-400"
+              >The winner's score is worked out from the loser's (badminton to 21, win by 2, cap
+              30).</span
+            >
+          }
         </label>
         <button
           type="submit"
@@ -450,12 +471,12 @@ export default class PegboardBoardPage {
   private readonly router = inject(Router);
   private readonly api = inject(PegboardApi);
   private readonly playersApi = inject(PlayersApi);
+  private readonly toasts = inject(ToastService);
 
   protected readonly clubId = signal('');
   protected readonly sessionId = signal('');
   protected readonly board = signal<BoardView | null>(null);
-  protected readonly notice = signal<string | null>(null);
-  // Reference clock captured each time the board loads — drives wait-time display.
+  // Reference clock, ticked every second so wait times and court game timers stay live.
   protected readonly now = signal(0);
 
   protected readonly courtDialogOpen = signal(false);
@@ -540,8 +561,18 @@ export default class PegboardBoardPage {
 
   protected readonly finishForm = new FormGroup({
     winnerSide: new FormControl<GameSide | null>(null, { validators: [Validators.required] }),
-    score: new FormControl('', { nonNullable: true }),
+    // Only the losing score is entered; the winner's is derived (badminton: to 21, win by 2,
+    // cap at 30). 0–29 are the possible losing scores. type="number" yields a number | null.
+    loserScore: new FormControl<number | null>(null, {
+      validators: [Validators.min(0), Validators.max(29)],
+    }),
   });
+  // The loser's score the host is typing (null = not entered).
+  private readonly loserScoreValue = toSignal(this.finishForm.controls.loserScore.valueChanges, {
+    initialValue: null as number | null,
+  });
+  // "winner–loser" preview once a valid losing score is entered, else null.
+  protected readonly derivedScore = computed(() => composeScore(this.loserScoreValue()));
 
   constructor() {
     this.route.paramMap
@@ -557,8 +588,14 @@ export default class PegboardBoardPage {
       )
       .subscribe({
         next: (b) => this.setBoard(b),
-        error: () => this.notice.set('Lost connection to the board.'),
+        error: () => this.toasts.error('Lost connection to the board.'),
       });
+
+    // Tick every second so wait times and court game timers advance between board fetches.
+    this.now.set(Date.now());
+    interval(1000)
+      .pipe(takeUntilDestroyed())
+      .subscribe(() => this.now.set(Date.now()));
   }
 
   private setBoard(b: BoardView): void {
@@ -575,9 +612,9 @@ export default class PegboardBoardPage {
   // The board is host-facing; a 403 means the caller is a viewer. Surface, don't throw.
   private onMutationError(err: { status?: number; error?: { title?: string } }): void {
     if (err?.status === 403) {
-      this.notice.set('You do not have permission to run this session.');
+      this.toasts.error('You do not have permission to run this session.');
     } else {
-      this.notice.set(err?.error?.title ?? 'That action failed.');
+      this.toasts.error(err?.error?.title ?? 'That action failed.');
     }
   }
 
@@ -591,7 +628,6 @@ export default class PegboardBoardPage {
   protected onAddCourt(): void {
     const label = this.courtForm.getRawValue().label.trim();
     if (!label) return;
-    this.notice.set(null);
     this.api.addCourt(this.clubId(), this.sessionId(), label).subscribe({
       next: () => {
         this.courtForm.reset({ label: '' });
@@ -610,7 +646,6 @@ export default class PegboardBoardPage {
   }
 
   private removeCourt(court: BoardCourt): void {
-    this.notice.set(null);
     this.api.removeCourt(this.clubId(), this.sessionId(), court.id).subscribe({
       next: () => this.refresh(),
       error: (e) => this.onMutationError(e),
@@ -620,7 +655,6 @@ export default class PegboardBoardPage {
   // ---- Attendees ----
   // Open the add dialog defaulting to the existing-player picker, and (re)load the club roster.
   protected openAttendeeDialog(): void {
-    this.notice.set(null);
     this.attendeeMode.set('existing');
     this.playerSearch.set('');
     this.showVisitors.set(false);
@@ -634,7 +668,6 @@ export default class PegboardBoardPage {
   // Add an existing club player. The dialog stays open for quick bulk add; the picker drops them
   // once the board refresh confirms they're on.
   protected onAddExisting(player: PlayerLink): void {
-    this.notice.set(null);
     this.api.addPlayer(this.clubId(), this.sessionId(), player.playerId, null).subscribe({
       next: () => this.refresh(),
       error: (e) => this.onMutationError(e),
@@ -647,7 +680,6 @@ export default class PegboardBoardPage {
     const trimmed = name.trim();
     if (!trimmed) return;
     const gradeValue = grade ? Number(grade) : null;
-    this.notice.set(null);
     this.api.addVisitor(this.clubId(), this.sessionId(), trimmed, gender, gradeValue).subscribe({
       next: () => {
         this.visitorForm.reset({ name: '', gender: 'Male', grade: '' });
@@ -675,7 +707,6 @@ export default class PegboardBoardPage {
   }
 
   private setStatus(a: BoardAttendee, status: 'Waiting' | 'Resting' | 'Left'): void {
-    this.notice.set(null);
     this.api.setAttendanceStatus(this.clubId(), this.sessionId(), a.id, status).subscribe({
       next: () => this.refresh(),
       error: (e) => this.onMutationError(e),
@@ -690,7 +721,6 @@ export default class PegboardBoardPage {
   }
 
   private remove(a: BoardAttendee): void {
-    this.notice.set(null);
     this.api.removeAttendance(this.clubId(), this.sessionId(), a.id).subscribe({
       next: () => this.refresh(),
       error: (e) => this.onMutationError(e),
@@ -709,7 +739,6 @@ export default class PegboardBoardPage {
   }
 
   protected onSuggest(type: GameType): void {
-    this.notice.set(null);
     this.api.suggest(this.clubId(), this.sessionId(), type).subscribe({
       next: (s) => this.fillSuggestion.set(s),
       error: (e) => this.onMutationError(e),
@@ -720,7 +749,6 @@ export default class PegboardBoardPage {
   protected onAutoFill(type: GameType): void {
     const court = this.fillCourt();
     if (!court) return;
-    this.notice.set(null);
     this.api.autoFill(this.clubId(), this.sessionId(), court.id, type).subscribe({
       next: () => {
         this.closeFill();
@@ -733,7 +761,6 @@ export default class PegboardBoardPage {
   protected onStart(payload: StartGamePayload): void {
     const court = this.fillCourt();
     if (!court) return;
-    this.notice.set(null);
     this.api
       .startGame(
         this.clubId(),
@@ -746,7 +773,7 @@ export default class PegboardBoardPage {
       .subscribe({
         next: (r) => {
           if (r.makeupWarning) {
-            this.notice.set('Started, but the makeup is unusual for this game type.');
+            this.toasts.warning('Started, but the makeup is unusual for this game type.');
           }
           this.closeFill();
           this.refresh();
@@ -757,7 +784,7 @@ export default class PegboardBoardPage {
 
   // ---- Finish / cancel ----
   protected openFinish(court: BoardCourt): void {
-    this.finishForm.reset({ winnerSide: null, score: '' });
+    this.finishForm.reset({ winnerSide: null, loserScore: null });
     this.finishCourt.set(court);
   }
 
@@ -769,18 +796,11 @@ export default class PegboardBoardPage {
     const court = this.finishCourt();
     const game = court?.activeGame;
     if (!court || !game) return;
-    const { winnerSide, score } = this.finishForm.getRawValue();
+    const { winnerSide, loserScore } = this.finishForm.getRawValue();
     if (!winnerSide) return;
-    const trimmed = score.trim();
-    this.notice.set(null);
+    const score = composeScore(loserScore);
     this.api
-      .finishGame(
-        this.clubId(),
-        this.sessionId(),
-        game.id,
-        winnerSide,
-        trimmed === '' ? null : trimmed,
-      )
+      .finishGame(this.clubId(), this.sessionId(), game.id, winnerSide, score)
       .subscribe({
         next: () => {
           this.closeFinish();
@@ -801,7 +821,6 @@ export default class PegboardBoardPage {
   private cancelGame(court: BoardCourt): void {
     const game = court.activeGame;
     if (!game) return;
-    this.notice.set(null);
     this.api.cancelGame(this.clubId(), this.sessionId(), game.id).subscribe({
       next: () => this.refresh(),
       error: (e) => this.onMutationError(e),
@@ -818,7 +837,6 @@ export default class PegboardBoardPage {
   }
 
   private close(): void {
-    this.notice.set(null);
     this.api.closeSession(this.clubId(), this.sessionId()).subscribe({
       next: () =>
         this.router.navigate(['/clubs', this.clubId()], { queryParams: { tab: 'sessions' } }),

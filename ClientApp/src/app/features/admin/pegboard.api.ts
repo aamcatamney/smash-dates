@@ -42,6 +42,8 @@ export interface BoardGamePlayer {
 export interface BoardGame {
   id: string;
   type: GameType;
+  // ISO timestamp the game started — drives the live court timer.
+  startedAt: string;
   players: BoardGamePlayer[];
 }
 export interface BoardCourt {

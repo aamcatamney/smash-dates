@@ -312,7 +312,7 @@ public sealed class PegboardRepository : IPegboardRepository
             new { sessionId }, cancellationToken: ct))).AsList();
 
         var activeGames = (await conn.QueryAsync<ActiveGameRow>(new CommandDefinition(
-            "SELECT id, court_id, type FROM pegboard_games WHERE session_id = @sessionId AND status = 'Active'",
+            "SELECT id, court_id, type, started_at FROM pegboard_games WHERE session_id = @sessionId AND status = 'Active'",
             new { sessionId }, cancellationToken: ct))).AsList();
 
         var gamePlayers = (await conn.QueryAsync<GamePlayerRow>(new CommandDefinition(
@@ -349,7 +349,7 @@ public sealed class PegboardRepository : IPegboardRepository
                 .Select(p => new BoardGamePlayer(p.AttendanceId, p.DisplayName,
                     Enum.Parse<Gender>(p.Gender), p.Grade, Enum.Parse<GameSide>(p.Side)))
                 .ToList();
-            return new BoardGame(g.Id, Enum.Parse<GameType>(g.Type), players);
+            return new BoardGame(g.Id, Enum.Parse<GameType>(g.Type), g.StartedAt, players);
         }
 
         var boardCourts = courts.Select(c => new BoardCourt(c.Id, c.Label, GameForCourt(c.Id))).ToList();
@@ -381,7 +381,7 @@ public sealed class PegboardRepository : IPegboardRepository
 
     // Private row types for the board read (snake_case columns -> PascalCase props via Dapper).
     private sealed record CourtRow(Guid Id, string Label);
-    private sealed record ActiveGameRow(Guid Id, Guid CourtId, string Type);
+    private sealed record ActiveGameRow(Guid Id, Guid CourtId, string Type, DateTime StartedAt);
     private sealed record GamePlayerRow(Guid GameId, Guid AttendanceId, string Side, string DisplayName, string Gender, int? Grade);
     private sealed record AttendeeRow(
         Guid Id, Guid? PlayerId, string DisplayName, string Gender, int? Grade,

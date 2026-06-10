@@ -35,21 +35,29 @@ export interface StartGamePayload {
   template: `
     <app-modal [open]="open()" [title]="title()" (closed)="closed.emit()">
       <div class="grid gap-4">
-        <label class="grid gap-1">
-          <span
+        <fieldset class="grid gap-1">
+          <legend
             class="font-mono text-xs uppercase tracking-wider text-slate-600 dark:text-slate-400"
-            >Game type</span
           >
-          <select
-            [value]="type()"
-            (change)="onTypeChange($event)"
-            class="rounded-md border border-slate-300 px-3 py-2 font-mono text-sm focus:outline-none focus:ring-2 focus:ring-slate-900 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 dark:focus:ring-slate-100"
-          >
+            Game type
+          </legend>
+          <div class="grid grid-cols-2 gap-2 sm:grid-cols-4">
             @for (t of types; track t.type) {
-              <option [value]="t.type">{{ t.type }}</option>
+              <button
+                type="button"
+                (click)="type.set(t.type)"
+                [attr.aria-pressed]="type() === t.type"
+                [class]="
+                  type() === t.type
+                    ? 'min-h-11 rounded-md bg-slate-900 px-3 py-2 font-mono text-sm font-medium text-amber-300 dark:bg-amber-400 dark:text-slate-900'
+                    : 'min-h-11 rounded-md border border-slate-300 px-3 py-2 font-mono text-sm text-slate-700 hover:bg-slate-50 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800'
+                "
+              >
+                {{ t.type }}
+              </button>
             }
-          </select>
-        </label>
+          </div>
+        </fieldset>
 
         <div
           class="flex items-center justify-between font-mono text-xs text-slate-500 dark:text-slate-400"
@@ -172,10 +180,6 @@ export class FillDialogComponent {
       for (const id of s.sideB) map.set(id, 'B');
       this.assignments.set(map);
     });
-  }
-
-  protected onTypeChange(event: Event): void {
-    this.type.set((event.target as HTMLSelectElement).value as GameType);
   }
 
   protected sideOf(attendanceId: string): GameSide | null {

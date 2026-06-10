@@ -10,6 +10,7 @@ const busyCourt: BoardCourt = {
   activeGame: {
     id: 'g1',
     type: 'Doubles',
+    startedAt: '2026-01-01T00:00:00Z',
     players: [
       { attendanceId: 'a1', displayName: 'Alice', gender: 'Female', grade: null, side: 'A' },
       { attendanceId: 'a2', displayName: 'Bob', gender: 'Male', grade: null, side: 'B' },

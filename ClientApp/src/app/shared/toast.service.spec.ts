@@ -13,11 +13,21 @@ describe('ToastService', () => {
     expect(svc.toasts()[0].text).toBe('Created');
   });
 
-  it('auto-dismisses after the timeout', () => {
+  it('auto-dismisses success and warning after the timeout', () => {
     const svc = new ToastService();
     svc.success('Created');
-    expect(svc.toasts()).toHaveLength(1);
+    svc.warning('Heads up');
+    expect(svc.toasts()).toHaveLength(2);
     vi.advanceTimersByTime(4000);
+    expect(svc.toasts()).toHaveLength(0);
+  });
+
+  it('keeps errors until dismissed', () => {
+    const svc = new ToastService();
+    svc.error('Nope');
+    vi.advanceTimersByTime(60000);
+    expect(svc.toasts()).toHaveLength(1);
+    svc.dismiss(svc.toasts()[0].id);
     expect(svc.toasts()).toHaveLength(0);
   });
 

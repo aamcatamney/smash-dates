@@ -15,6 +15,7 @@ const board: BoardView = {
       activeGame: {
         id: 'game-1',
         type: 'Singles',
+        startedAt: '2026-01-01T00:00:00Z',
         players: [
           { attendanceId: 'a1', displayName: 'Alice', gender: 'Female', grade: 2, side: 'A' },
           { attendanceId: 'a2', displayName: 'Bob', gender: 'Male', grade: 3, side: 'B' },
@@ -143,7 +144,8 @@ describe('PegboardBoardPage', () => {
     const c = fixture.componentInstance as unknown as Record<string, any>;
 
     c['openFinish'](board.courts[0]);
-    c['finishForm'].setValue({ winnerSide: 'A', score: '21-15' });
+    // Only the losing score is entered; the winner's (21) is derived.
+    c['finishForm'].setValue({ winnerSide: 'A', loserScore: 15 });
     c['onFinish']();
 
     expect(api.finishGame).toHaveBeenCalledWith('club-1', 'session-1', 'game-1', 'A', '21-15');
