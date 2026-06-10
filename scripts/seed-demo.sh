@@ -100,6 +100,14 @@ for i in "${!PLAYER_NAMES[@]}"; do
 done
 say "Players + registrations at ${CLUB_NAMES[0]} (2 confirmed, 2 pending)"
 
+# A couple of visitors so the roster exercises the Member/Visitor distinction (hidden behind
+# the Players tab's "Visitors" toggle by default).
+post "/api/clubs/$riv/players" \
+  "{\"fullName\":\"Sophie Reed\",\"gender\":\"Female\",\"type\":\"Visitor\"}" >/dev/null
+post "/api/clubs/$riv/players" \
+  "{\"fullName\":\"Aaron Vale\",\"gender\":\"Male\",\"type\":\"Visitor\"}" >/dev/null
+say "2 visitors added at ${CLUB_NAMES[0]}"
+
 # The two confirmed players join the club's team squad (eligibility: confirmed Level + Male).
 for i in 0 1; do
   post "/api/clubs/$riv/teams/${TEAM_IDS[0]}/players" "{\"playerId\":\"${RIV_PLAYER_IDS[$i]}\"}" >/dev/null
