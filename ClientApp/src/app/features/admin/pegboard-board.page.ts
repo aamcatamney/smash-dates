@@ -232,6 +232,7 @@ import { FillDialogComponent, StartGamePayload } from './pegboard/fill-dialog.co
     <app-modal
       [open]="attendeeDialogOpen()"
       title="Add player"
+      size="lg"
       (closed)="attendeeDialogOpen.set(false)"
     >
       <div class="grid gap-3">
@@ -268,10 +269,34 @@ import { FillDialogComponent, StartGamePayload } from './pegboard/fill-dialog.co
             placeholder="Search club players…"
             class="rounded-md border border-slate-300 px-3 py-2 font-mono text-sm focus:outline-none focus:ring-2 focus:ring-slate-900 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 dark:focus:ring-slate-100"
           />
+          @if (pickerVisitorCount() > 0) {
+            <button
+              type="button"
+              role="switch"
+              [attr.aria-checked]="showVisitors()"
+              (click)="showVisitors.set(!showVisitors())"
+              class="inline-flex items-center gap-2 self-start rounded-md font-mono text-xs text-slate-600 focus:outline-none focus-visible:ring-2 focus-visible:ring-slate-900 focus-visible:ring-offset-2 dark:text-slate-400 dark:focus-visible:ring-slate-100 dark:focus-visible:ring-offset-slate-950"
+            >
+              <span
+                class="relative inline-block h-4 w-7 rounded-full transition-colors"
+                [class]="
+                  showVisitors()
+                    ? 'bg-slate-900 dark:bg-amber-400'
+                    : 'bg-slate-300 dark:bg-slate-700'
+                "
+              >
+                <span
+                  class="absolute left-0.5 top-0.5 h-3 w-3 rounded-full bg-white transition-transform dark:bg-slate-950"
+                  [class]="showVisitors() ? 'translate-x-3' : 'translate-x-0'"
+                ></span>
+              </span>
+              Visitors ({{ pickerVisitorCount() }})
+            </button>
+          }
           <ul
             class="max-h-72 divide-y divide-slate-200 overflow-auto rounded-md border border-slate-200 dark:divide-slate-800 dark:border-slate-800"
           >
-            @for (p of availablePlayers(); track p.playerId) {
+            @for (p of visiblePlayers(); track p.playerId) {
               <li class="flex items-center justify-between gap-2 px-3 py-2 font-mono text-sm">
                 <span class="text-slate-900 dark:text-slate-100"
                   >{{ p.fullName }}
@@ -289,7 +314,12 @@ import { FillDialogComponent, StartGamePayload } from './pegboard/fill-dialog.co
               </li>
             } @empty {
               <li class="px-3 py-2 font-mono text-sm text-slate-500 dark:text-slate-400">
-                No matching club players. Use “New visitor” for a walk-in.
+                @if (!showVisitors() && pickerVisitorCount() > 0) {
+                  No members to add. Toggle “Visitors ({{ pickerVisitorCount() }})” to show them, or
+                  use “New visitor” for a walk-in.
+                } @else {
+                  No matching club players. Use “New visitor” for a walk-in.
+                }
               </li>
             }
           </ul>
@@ -487,6 +517,18 @@ export default class PegboardBoardPage {
       .filter((p) => !q || p.fullName.toLowerCase().includes(q));
   });
 
+  // Visitors are hidden in the picker by default; the toggle reveals them (matches the club
+  // Players tab). Count reflects visitors currently hidden in the filtered list.
+  protected readonly showVisitors = signal(false);
+  protected readonly pickerVisitorCount = computed(
+    () => this.availablePlayers().filter((p) => p.type === 'Visitor').length,
+  );
+  protected readonly visiblePlayers = computed(() =>
+    this.showVisitors()
+      ? this.availablePlayers()
+      : this.availablePlayers().filter((p) => p.type !== 'Visitor'),
+  );
+
   protected readonly visitorForm = new FormGroup({
     name: new FormControl('', { nonNullable: true, validators: [Validators.required] }),
     gender: new FormControl<Gender>('Male', {
@@ -581,6 +623,7 @@ export default class PegboardBoardPage {
     this.notice.set(null);
     this.attendeeMode.set('existing');
     this.playerSearch.set('');
+    this.showVisitors.set(false);
     this.visitorForm.reset({ name: '', gender: 'Male', grade: '' });
     this.playersApi.listClubPlayers(this.clubId()).subscribe({
       next: (rows) => this.clubPlayers.set(rows),

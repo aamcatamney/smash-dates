@@ -22,7 +22,10 @@ import {
       #dlg
       (close)="closed.emit()"
       (click)="onBackdropClick($event)"
-      class="m-auto flex max-h-[90dvh] w-[calc(100%-2rem)] max-w-lg flex-col overflow-hidden rounded-md border border-slate-300 bg-white p-0 shadow-2xl dark:border-slate-700 dark:bg-slate-900"
+      [class.max-w-lg]="size() === 'md'"
+      [class.max-w-2xl]="size() === 'lg'"
+      [class.max-w-4xl]="size() === 'xl'"
+      class="m-auto flex max-h-[90dvh] w-[calc(100%-2rem)] flex-col overflow-hidden rounded-md border border-slate-300 bg-white p-0 shadow-2xl dark:border-slate-700 dark:bg-slate-900"
     >
       <div
         class="flex shrink-0 items-center justify-between border-b border-slate-200 px-4 py-3 dark:border-slate-800"
@@ -63,6 +66,8 @@ import {
 export class ModalComponent {
   readonly title = input('');
   readonly open = input(false);
+  // Max width: 'md' (max-w-lg, default), 'lg' (max-w-2xl) or 'xl' (max-w-4xl).
+  readonly size = input<'md' | 'lg' | 'xl'>('md');
   readonly closed = output<void>();
 
   private readonly dialog = viewChild.required<ElementRef<HTMLDialogElement>>('dlg');
