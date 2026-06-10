@@ -38,7 +38,7 @@ const candidate = (over: Partial<TransferCandidate> = {}): TransferCandidate => 
 describe('ClubPlayersComponent', () => {
   beforeEach(() => TestBed.resetTestingModule());
 
-  it('regsFor returns a player\'s non-rejected registrations only', () => {
+  it("regsFor returns a player's non-rejected registrations only", () => {
     const c = create(apiMock());
     c['registrations'].set([
       { id: 'a', playerId: 'p1', status: 'Confirmed', discipline: 'Level', leagueName: 'L' },
@@ -49,6 +49,20 @@ describe('ClubPlayersComponent', () => {
     const rows = c['regsFor']('p1');
     expect(rows).toHaveLength(1);
     expect(rows[0].id).toBe('a');
+  });
+
+  it('visitors are hidden by default and revealed by the toggle', () => {
+    const c = create(apiMock());
+    c['players'].set([
+      { playerId: 'p1', fullName: 'Member One', gender: 'Male', type: 'Member', grade: null },
+      { playerId: 'p2', fullName: 'Visiting Vera', gender: 'Female', type: 'Visitor', grade: null },
+    ]);
+
+    expect(c['visiblePlayers']().map((p: { playerId: string }) => p.playerId)).toEqual(['p1']);
+    expect(c['visitorCount']()).toBe(1);
+
+    c['showVisitors'].set(true);
+    expect(c['visiblePlayers']()).toHaveLength(2);
   });
 
   it('toggleType flips Member <-> Visitor and persists', () => {
