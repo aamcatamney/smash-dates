@@ -360,6 +360,78 @@ public sealed class PegboardRepository : IPegboardRepository
         return new BoardView(session, boardCourts, boardAttendees);
     }
 
+    public async Task<SessionSummaryView?> GetSessionSummaryAsync(Guid sessionId, CancellationToken ct = default)
+    {
+        var session = await GetSessionAsync(sessionId, ct);
+        if (session is null) return null;
+
+        using var conn = _factory.Create();
+
+        var attendees = (await conn.QueryAsync<SummaryAttendeeRow>(new CommandDefinition(
+            @"SELECT a.id, COALESCE(a.guest_name, p.full_name) AS display_name, a.created_at
+              FROM pegboard_attendances a
+              LEFT JOIN players p ON p.id = a.player_id
+              WHERE a.session_id = @sessionId",
+            new { sessionId }, cancellationToken: ct))).AsList();
+
+        var games = (await conn.QueryAsync<FinishedGameRow>(new CommandDefinition(
+            @"SELECT id, type, winner_side, score, started_at, ended_at
+              FROM pegboard_games
+              WHERE session_id = @sessionId AND status = 'Finished'
+              ORDER BY started_at",
+            new { sessionId }, cancellationToken: ct))).AsList();
+
+        var gamePlayers = (await conn.QueryAsync<SummaryGamePlayerRow>(new CommandDefinition(
+            @"SELECT gp.game_id, gp.attendance_id, gp.side,
+                     COALESCE(a.guest_name, p.full_name) AS display_name
+              FROM pegboard_game_players gp
+              JOIN pegboard_games g ON g.id = gp.game_id
+              JOIN pegboard_attendances a ON a.id = gp.attendance_id
+              LEFT JOIN players p ON p.id = a.player_id
+              WHERE g.session_id = @sessionId AND g.status = 'Finished'",
+            new { sessionId }, cancellationToken: ct))).AsList();
+
+        // End bound for "time present": when the session closed (fall back to the last game's end,
+        // or now, for a session that somehow isn't closed yet).
+        var endBound = session.ClosedAt
+            ?? games.Select(g => g.EndedAt).DefaultIfEmpty(DateTime.UtcNow).Max();
+        var byGame = gamePlayers.GroupBy(p => p.GameId).ToDictionary(g => g.Key, g => g.ToList());
+
+        var summaries = new List<SessionPlayerSummary>();
+        foreach (var a in attendees)
+        {
+            var matches = new List<SessionMatch>();
+            var courtSeconds = 0;
+            var won = 0;
+            foreach (var g in games)
+            {
+                if (!byGame.TryGetValue(g.Id, out var roster)) continue;
+                var mine = roster.FirstOrDefault(r => r.AttendanceId == a.Id);
+                if (mine is null) continue;
+                var duration = Math.Max(0, (int)(g.EndedAt - g.StartedAt).TotalSeconds);
+                courtSeconds += duration;
+                var didWin = g.WinnerSide == mine.Side;
+                if (didWin) won++;
+                var partners = roster.Where(r => r.Side == mine.Side && r.AttendanceId != a.Id)
+                    .Select(r => r.DisplayName).ToList();
+                var opponents = roster.Where(r => r.Side != mine.Side).Select(r => r.DisplayName).ToList();
+                matches.Add(new SessionMatch(g.Id, Enum.Parse<GameType>(g.Type), g.StartedAt, g.EndedAt,
+                    duration, Enum.Parse<GameSide>(mine.Side), didWin, g.Score, partners, opponents));
+            }
+            var presentSeconds = Math.Max(0, (int)(endBound - a.CreatedAt).TotalSeconds);
+            var waitingSeconds = Math.Max(0, presentSeconds - courtSeconds);
+            summaries.Add(new SessionPlayerSummary(a.Id, a.DisplayName, courtSeconds, waitingSeconds,
+                matches.Count, won, matches));
+        }
+
+        // Busiest first, matching the closed-board roster ordering.
+        var ordered = summaries
+            .OrderByDescending(s => s.GamesPlayed)
+            .ThenByDescending(s => s.CourtSeconds)
+            .ToList();
+        return new SessionSummaryView(session.Id, session.Status, session.OpenedAt, session.ClosedAt, ordered);
+    }
+
     public async Task<IReadOnlyList<(Guid A, Guid B)>> ListPlayedPairsAsync(Guid sessionId, CancellationToken ct = default)
     {
         using var conn = _factory.Create();
@@ -387,4 +459,10 @@ public sealed class PegboardRepository : IPegboardRepository
         Guid Id, Guid? PlayerId, string DisplayName, string Gender, int? Grade,
         string Status, DateTime WaitingSince, int GamesPlayed, int GamesWon);
     private sealed record PairRow(Guid A, Guid B);
+
+    // Private row types for the closed-session summary read.
+    private sealed record SummaryAttendeeRow(Guid Id, string DisplayName, DateTime CreatedAt);
+    private sealed record FinishedGameRow(
+        Guid Id, string Type, string? WinnerSide, string? Score, DateTime StartedAt, DateTime EndedAt);
+    private sealed record SummaryGamePlayerRow(Guid GameId, Guid AttendanceId, string Side, string DisplayName);
 }

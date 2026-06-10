@@ -12,6 +12,8 @@ import {
   GameSide,
   GameType,
   PegboardApi,
+  SessionPlayerSummary,
+  SessionSummaryView,
 } from './pegboard.api';
 import { Gender, PlayerLink, PlayersApi } from './players.api';
 import { ModalComponent } from '../../shared/modal.component';
@@ -202,6 +204,7 @@ function composeScore(raw: number | string | null): string | null {
                 (leave)="leave($event)"
                 (unrest)="unrest($event)"
                 (remove)="askRemove($event)"
+                (selectPlayer)="openPlayerSummary($event)"
               />
             </aside>
           </div>
@@ -459,6 +462,74 @@ function composeScore(raw: number | string | null): string | null {
       </form>
     </app-modal>
 
+    <!-- Closed-session player breakdown: matches played + court-vs-waiting time. -->
+    <app-modal
+      [open]="selectedPlayer() !== null"
+      [title]="selectedPlayer()?.displayName ?? ''"
+      size="lg"
+      (closed)="selectedPlayer.set(null)"
+    >
+      @if (selectedPlayer(); as pl) {
+        <div class="grid gap-4 font-mono text-sm">
+          <div class="grid grid-cols-2 gap-2">
+            <div class="rounded-md bg-slate-50 p-3 dark:bg-slate-800/60">
+              <p class="text-xs uppercase tracking-wider text-slate-500 dark:text-slate-400">
+                On court
+              </p>
+              <p class="mt-1 text-lg font-semibold text-slate-900 dark:text-slate-100">
+                {{ duration(pl.courtSeconds) }}
+              </p>
+            </div>
+            <div class="rounded-md bg-slate-50 p-3 dark:bg-slate-800/60">
+              <p class="text-xs uppercase tracking-wider text-slate-500 dark:text-slate-400">
+                Waiting
+              </p>
+              <p class="mt-1 text-lg font-semibold text-slate-900 dark:text-slate-100">
+                {{ duration(pl.waitingSeconds) }}
+              </p>
+            </div>
+          </div>
+          <p class="text-xs text-slate-500 dark:text-slate-400">
+            Won {{ pl.gamesWon }} of {{ pl.gamesPlayed }}. Waiting is the rest of the time present
+            (any rest counts as waiting).
+          </p>
+
+          <h3 class="text-xs uppercase tracking-wider text-slate-600 dark:text-slate-400">
+            Matches
+          </h3>
+          <ul class="grid gap-2">
+            @for (m of pl.matches; track m.gameId) {
+              <li class="rounded-md border border-slate-200 p-3 dark:border-slate-800">
+                <div class="flex items-center justify-between gap-2">
+                  <span
+                    class="font-medium"
+                    [class.text-emerald-700]="m.won"
+                    [class.dark:text-emerald-300]="m.won"
+                    [class.text-slate-600]="!m.won"
+                    [class.dark:text-slate-400]="!m.won"
+                    >{{ m.won ? 'Won' : 'Lost' }}@if (m.score) { · {{ m.score }} }</span
+                  >
+                  <span class="text-xs text-slate-500 dark:text-slate-400"
+                    >{{ m.type }} · {{ duration(m.durationSeconds) }}</span
+                  >
+                </div>
+                <p class="mt-1 text-xs text-slate-500 dark:text-slate-400">
+                  @if (m.partners.length) {
+                    with {{ m.partners.join(', ') }} ·
+                  }
+                  v {{ m.opponents.join(', ') }}
+                </p>
+              </li>
+            } @empty {
+              <li class="font-mono text-sm text-slate-500 dark:text-slate-400">
+                No matches played.
+              </li>
+            }
+          </ul>
+        </div>
+      }
+    </app-modal>
+
     <app-confirm
       [message]="pending()?.message ?? null"
       (confirmed)="runPending()"
@@ -497,6 +568,11 @@ export default class PegboardBoardPage {
   protected readonly finishCourt = signal<BoardCourt | null>(null);
 
   protected readonly pending = signal<{ message: string; action: () => void } | null>(null);
+
+  // Closed-session player breakdown: the fetched summary (cached per visit) and the player
+  // whose detail modal is open.
+  private readonly sessionSummary = signal<SessionSummaryView | null>(null);
+  protected readonly selectedPlayer = signal<SessionPlayerSummary | null>(null);
 
   // The caller may run host controls only on an open session they manage. Viewers and
   // closed-history boards collapse to the same read-only mode.
@@ -790,6 +866,37 @@ export default class PegboardBoardPage {
 
   protected closeFinish(): void {
     this.finishCourt.set(null);
+  }
+
+  // ---- Closed-session player breakdown ----
+  // Open a roster player's history. The summary is fetched once per visit and cached.
+  protected openPlayerSummary(a: BoardAttendee): void {
+    const cached = this.sessionSummary();
+    if (cached && cached.sessionId === this.sessionId()) {
+      this.showPlayer(cached, a.id);
+      return;
+    }
+    this.api.getSessionSummary(this.clubId(), this.sessionId()).subscribe({
+      next: (summary) => {
+        this.sessionSummary.set(summary);
+        this.showPlayer(summary, a.id);
+      },
+      error: (e) => this.onMutationError(e),
+    });
+  }
+
+  private showPlayer(summary: SessionSummaryView, attendanceId: string): void {
+    const player = summary.players.find((p) => p.attendanceId === attendanceId);
+    if (player) this.selectedPlayer.set(player);
+  }
+
+  // Humanised duration: "1h 23m", "23m", or "45s".
+  protected duration(seconds: number): string {
+    const s = Math.max(0, Math.round(seconds));
+    if (s < 60) return `${s}s`;
+    const minutes = Math.floor(s / 60);
+    if (minutes < 60) return `${minutes}m`;
+    return `${Math.floor(minutes / 60)}h ${minutes % 60}m`;
   }
 
   protected onFinish(): void {
