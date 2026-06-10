@@ -4,7 +4,7 @@ namespace smash_dates.Repositories;
 
 // Read DTOs for the assembled board.
 public sealed record BoardGamePlayer(Guid AttendanceId, string DisplayName, Gender Gender, int? Grade, GameSide Side);
-public sealed record BoardGame(Guid Id, GameType Type, IReadOnlyList<BoardGamePlayer> Players);
+public sealed record BoardGame(Guid Id, GameType Type, DateTime StartedAt, IReadOnlyList<BoardGamePlayer> Players);
 public sealed record BoardCourt(Guid Id, string Label, BoardGame? ActiveGame);
 public sealed record BoardAttendee(
     Guid Id, Guid? PlayerId, string DisplayName, Gender Gender, int? Grade,

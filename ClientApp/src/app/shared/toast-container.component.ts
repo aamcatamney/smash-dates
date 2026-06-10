@@ -1,8 +1,8 @@
 import { ChangeDetectionStrategy, Component, inject } from '@angular/core';
-import { ToastService } from './toast.service';
+import { ToastKind, ToastService } from './toast.service';
 
 // Renders the active toasts in a fixed, screen-reader-announced region. Mounted once at the
-// app root. Success/error are distinguished by an icon + colour (not colour alone).
+// app root. Kinds are distinguished by an icon + colour (not colour alone).
 @Component({
   selector: 'app-toast-container',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -14,7 +14,7 @@ import { ToastService } from './toast.service';
     >
       @for (t of toasts.toasts(); track t.id) {
         <div
-          role="status"
+          [attr.role]="t.kind === 'error' ? 'alert' : 'status'"
           class="pointer-events-auto flex w-full max-w-md items-start gap-3 rounded-md border-l-4 px-4 py-3 font-mono text-sm shadow-lg"
           [class.border-emerald-500]="t.kind === 'success'"
           [class.bg-emerald-50]="t.kind === 'success'"
@@ -22,6 +22,12 @@ import { ToastService } from './toast.service';
           [class.dark:border-emerald-400]="t.kind === 'success'"
           [class.dark:bg-emerald-950]="t.kind === 'success'"
           [class.dark:text-emerald-200]="t.kind === 'success'"
+          [class.border-amber-500]="t.kind === 'warning'"
+          [class.bg-amber-50]="t.kind === 'warning'"
+          [class.text-amber-900]="t.kind === 'warning'"
+          [class.dark:border-amber-400]="t.kind === 'warning'"
+          [class.dark:bg-amber-950]="t.kind === 'warning'"
+          [class.dark:text-amber-200]="t.kind === 'warning'"
           [class.border-red-500]="t.kind === 'error'"
           [class.bg-red-50]="t.kind === 'error'"
           [class.text-red-900]="t.kind === 'error'"
@@ -29,9 +35,7 @@ import { ToastService } from './toast.service';
           [class.dark:bg-red-950]="t.kind === 'error'"
           [class.dark:text-red-200]="t.kind === 'error'"
         >
-          <span aria-hidden="true" class="font-semibold">{{
-            t.kind === 'success' ? '✓' : '!'
-          }}</span>
+          <span aria-hidden="true" class="font-semibold">{{ icon(t.kind) }}</span>
           <span class="flex-1">{{ t.text }}</span>
           <button
             type="button"
@@ -48,4 +52,10 @@ import { ToastService } from './toast.service';
 })
 export class ToastContainerComponent {
   protected readonly toasts = inject(ToastService);
+
+  protected icon(kind: ToastKind): string {
+    if (kind === 'success') return '✓';
+    if (kind === 'warning') return '⚠';
+    return '!';
+  }
 }

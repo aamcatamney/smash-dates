@@ -1,6 +1,6 @@
 import { Injectable, signal } from '@angular/core';
 
-export type ToastKind = 'success' | 'error';
+export type ToastKind = 'success' | 'warning' | 'error';
 
 export interface Toast {
   readonly id: number;
@@ -8,8 +8,9 @@ export interface Toast {
   readonly kind: ToastKind;
 }
 
-// App-wide transient feedback. Pages call success()/error() after a mutation; the
-// ToastContainer (mounted once at the app root) renders them and they auto-dismiss.
+// App-wide transient feedback. Pages call success()/warning()/error() after a mutation; the
+// ToastContainer (mounted once at the app root) renders them. Success and warning auto-dismiss;
+// errors stay until the user dismisses them, so a missed failure doesn't vanish.
 // Signal-based so consumers and the container stay zoneless-friendly and OnPush.
 @Injectable({ providedIn: 'root' })
 export class ToastService {
@@ -23,6 +24,10 @@ export class ToastService {
     this.push(text, 'success');
   }
 
+  warning(text: string): void {
+    this.push(text, 'warning');
+  }
+
   error(text: string): void {
     this.push(text, 'error');
   }
@@ -34,6 +39,9 @@ export class ToastService {
   private push(text: string, kind: ToastKind): void {
     const id = this.nextId++;
     this._toasts.update((list) => [...list, { id, text, kind }]);
-    setTimeout(() => this.dismiss(id), ToastService.DISMISS_MS);
+    // Errors persist until manually dismissed; everything else auto-dismisses.
+    if (kind !== 'error') {
+      setTimeout(() => this.dismiss(id), ToastService.DISMISS_MS);
+    }
   }
 }
