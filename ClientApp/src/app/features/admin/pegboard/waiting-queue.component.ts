@@ -133,15 +133,20 @@ export function waitMinutes(sinceIso: string, nowMs: number): number {
       </h2>
       <ol class="mt-3 space-y-2">
         @for (a of roster(); track a.id) {
-          <li
-            class="flex items-center justify-between gap-2 rounded-md border border-slate-200 bg-white px-3 py-2 dark:border-slate-800 dark:bg-slate-900"
-          >
-            <span class="font-mono text-sm text-slate-700 dark:text-slate-300">{{
-              a.displayName
-            }}</span>
-            <span class="font-mono text-xs text-slate-500 dark:text-slate-400">
-              {{ a.gamesPlayed }} played · {{ a.gamesWon }} won
-            </span>
+          <li>
+            <button
+              type="button"
+              [attr.aria-label]="'Match history and time for ' + a.displayName"
+              (click)="selectPlayer.emit(a)"
+              class="flex w-full items-center justify-between gap-2 rounded-md border border-slate-200 bg-white px-3 py-2 text-left hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-slate-900 dark:border-slate-800 dark:bg-slate-900 dark:hover:bg-slate-800 dark:focus:ring-slate-100"
+            >
+              <span class="font-mono text-sm text-slate-700 dark:text-slate-300">{{
+                a.displayName
+              }}</span>
+              <span class="font-mono text-xs text-slate-500 dark:text-slate-400">
+                {{ a.gamesPlayed }} played · {{ a.gamesWon }} won ›
+              </span>
+            </button>
           </li>
         } @empty {
           <li
@@ -165,6 +170,8 @@ export class WaitingQueueComponent {
   readonly leave = output<BoardAttendee>();
   readonly unrest = output<BoardAttendee>();
   readonly remove = output<BoardAttendee>();
+  // Closed-history: a roster row was clicked to see that player's matches and time split.
+  readonly selectPlayer = output<BoardAttendee>();
 
   // The attendee whose action sheet is open (null = closed).
   protected readonly menuFor = signal<BoardAttendee | null>(null);

@@ -11,6 +11,7 @@ public static class PegboardEndpoints
         group.MapGetSessionEndpoint();
         group.MapGetBoardEndpoint();
         group.MapStreamBoardEndpoint();
+        group.MapSessionSummaryEndpoint();
 
         // Lifecycle (host/admin)
         group.MapOpenSessionEndpoint();

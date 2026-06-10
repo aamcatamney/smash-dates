@@ -78,6 +78,36 @@ export interface FillSuggestion {
   sideB: string[];
 }
 
+// Closed-session per-player breakdown (history). Court time is exact; waiting time is derived.
+export interface SessionMatch {
+  gameId: string;
+  type: GameType;
+  startedAt: string;
+  endedAt: string;
+  durationSeconds: number;
+  side: GameSide;
+  won: boolean;
+  score: string | null;
+  partners: string[];
+  opponents: string[];
+}
+export interface SessionPlayerSummary {
+  attendanceId: string;
+  displayName: string;
+  courtSeconds: number;
+  waitingSeconds: number;
+  gamesPlayed: number;
+  gamesWon: number;
+  matches: SessionMatch[];
+}
+export interface SessionSummaryView {
+  sessionId: string;
+  status: PegSessionStatus;
+  openedAt: string | null;
+  closedAt: string | null;
+  players: SessionPlayerSummary[];
+}
+
 @Injectable({ providedIn: 'root' })
 export class PegboardApi {
   private readonly http = inject(HttpClient);
@@ -115,6 +145,10 @@ export class PegboardApi {
   }
   getBoard(clubId: string, sessionId: string): Observable<BoardView> {
     return this.http.get<BoardView>(`${this.base(clubId)}/${sessionId}/board`);
+  }
+  // Closed-session breakdown: per-player matches and court-vs-waiting time.
+  getSessionSummary(clubId: string, sessionId: string): Observable<SessionSummaryView> {
+    return this.http.get<SessionSummaryView>(`${this.base(clubId)}/${sessionId}/summary`);
   }
 
   addCourt(clubId: string, sessionId: string, label: string): Observable<unknown> {

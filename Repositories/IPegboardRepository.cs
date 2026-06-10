@@ -23,6 +23,21 @@ public sealed record BoardView(
     string ClubName = "",
     string ClubShortCode = "");
 
+// Closed-session history for one player: every finished match they played, plus the time split.
+// Court time is exact (sum of the durations of games they were in); waiting time is derived as
+// the rest of their time present (session close minus when they were added, minus court time),
+// since transitions in/out of the queue aren't logged.
+public sealed record SessionMatch(
+    Guid GameId, GameType Type, DateTime StartedAt, DateTime EndedAt, int DurationSeconds,
+    GameSide Side, bool Won, string? Score,
+    IReadOnlyList<string> Partners, IReadOnlyList<string> Opponents);
+public sealed record SessionPlayerSummary(
+    Guid AttendanceId, string DisplayName, int CourtSeconds, int WaitingSeconds,
+    int GamesPlayed, int GamesWon, IReadOnlyList<SessionMatch> Matches);
+public sealed record SessionSummaryView(
+    Guid SessionId, PegboardSessionStatus Status, DateTime? OpenedAt, DateTime? ClosedAt,
+    IReadOnlyList<SessionPlayerSummary> Players);
+
 // A session in the club's list, with the venue name resolved for display.
 public sealed record SessionListRow(
     Guid Id, string Name, PegboardSessionStatus Status,
@@ -75,6 +90,7 @@ public interface IPegboardRepository
 
     // Read model
     Task<BoardView?> GetBoardAsync(Guid sessionId, CancellationToken ct = default);
+    Task<SessionSummaryView?> GetSessionSummaryAsync(Guid sessionId, CancellationToken ct = default);
 
     // Unordered attendance-id pairs that have shared a finished game this session (for variety).
     Task<IReadOnlyList<(Guid A, Guid B)>> ListPlayedPairsAsync(Guid sessionId, CancellationToken ct = default);

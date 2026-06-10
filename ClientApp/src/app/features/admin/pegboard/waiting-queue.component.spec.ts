@@ -80,6 +80,20 @@ describe('WaitingQueueComponent', () => {
     expect(text).not.toContain('Leave');
   });
 
+  it('closed: clicking a roster row emits selectPlayer with that attendee', () => {
+    const fixture = render(false);
+    let emitted: BoardAttendee | null = null;
+    fixture.componentInstance.selectPlayer.subscribe((a) => (emitted = a));
+    const host = fixture.nativeElement as HTMLElement;
+
+    host
+      .querySelector<HTMLButtonElement>('button[aria-label="Match history and time for Eve"]')
+      ?.dispatchEvent(new Event('click'));
+
+    expect(emitted!).not.toBeNull();
+    expect(emitted!.displayName).toBe('Eve');
+  });
+
   it('opening an attendee menu and choosing Rest emits rest with that attendee', () => {
     // Row actions live in a per-attendee action sheet. The sheet's buttons are always in the
     // DOM (the modal renders its content closed), so we set the open attendee via its ⋯ button
